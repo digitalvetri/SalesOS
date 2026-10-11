@@ -37,6 +37,9 @@ pnpm prisma:migrate:dev --name init
 # 6. seed tenant / entities / accounts / users
 pnpm prisma:seed
 
+# 6b. (optional) demo orders, payments, dispatches so dashboards look real
+pnpm prisma:seed:demo
+
 # 7. create Supabase auth rows for every seeded user (one shared temp password)
 BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth
 #    Windows PowerShell:  $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm bootstrap:auth
@@ -80,6 +83,7 @@ Each build phase lands with its own evidence file.
 - Phase P2 — Orders → [`docs/evidence/phase-2.md`](docs/evidence/phase-2.md).
 - Phase P3 — Payments & Collect → [`docs/evidence/phase-3.md`](docs/evidence/phase-3.md).
 - Phase P4 — Dispatch → [`docs/evidence/phase-4.md`](docs/evidence/phase-4.md).
+- Phase P5 — Dashboard & Reports → [`docs/evidence/phase-5.md`](docs/evidence/phase-5.md).
 
 See spec §17 for the full phase plan.
 
