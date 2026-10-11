@@ -40,6 +40,9 @@ model TenantSettings {
   waPhoneNumberId         String?
   waBusinessAccountId     String?
   waAccessTokenEnc        String? // encrypted at rest (AES-256-GCM, key in env)
+  waAppSecretEnc          String? // webhook X-Hub-Signature-256 key, encrypted at rest
+  waVerifyToken           String? // webhook GET hub.verify_token
+  waPayToText             String? // "UPI: ki@hdfc" — payment_reminder pay-to line
   waTemplatesJson         Json?
 }
 

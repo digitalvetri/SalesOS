@@ -17,7 +17,7 @@ jobs:
       DATABASE_URL: postgresql://u:p@localhost:5432/dummy
       DIRECT_URL: postgresql://u:p@localhost:5432/dummy
       SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-for-ci
-      APP_ENCRYPTION_KEY: 00000000000000000000000000000000000000000000=
+      APP_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
     steps:
       - uses: actions/checkout@v4
