@@ -547,7 +547,7 @@ function OrderSheetRow({ row, mode }: { row: OrderV2Row; mode: Mode }) {
     if (!editing) return;
     setPending(true);
     try {
-      let args: { orderId: string; productText?: string; total?: string } = {
+      const args: { orderId: string; productText?: string; total?: string } = {
         orderId: row.id,
       };
       if (editing === "product") {

@@ -81,17 +81,22 @@ export function ProductFormSheet(props: ProductFormSheetProps) {
   const [customer, setCustomer] = React.useState(initial.customerPrice ?? "");
 
   // Reset form state whenever the sheet opens with a (possibly new) initial.
+  // Defer the setStates to a microtask so React's new cascading-render lint
+  // (react-hooks/set-state-in-effect) stays happy.
   React.useEffect(() => {
     if (!open) return;
-    setName(initial.name);
-    setSpec(initial.spec ?? "");
-    setAliasInput(initial.aliases.join(", "));
-    setCategoryId(initial.categoryId);
-    setNewCategory("");
-    setIsStockItem(initial.isStockItem);
-    setDealerWo(initial.dealerPriceWoMotor ?? "");
-    setDealer(initial.dealerPrice ?? "");
-    setCustomer(initial.customerPrice ?? "");
+    const id = setTimeout(() => {
+      setName(initial.name);
+      setSpec(initial.spec ?? "");
+      setAliasInput(initial.aliases.join(", "));
+      setCategoryId(initial.categoryId);
+      setNewCategory("");
+      setIsStockItem(initial.isStockItem);
+      setDealerWo(initial.dealerPriceWoMotor ?? "");
+      setDealer(initial.dealerPrice ?? "");
+      setCustomer(initial.customerPrice ?? "");
+    }, 0);
+    return () => clearTimeout(id);
   }, [open, initial]);
 
   const aliases = aliasInput

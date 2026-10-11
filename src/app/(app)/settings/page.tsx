@@ -38,8 +38,8 @@ export default async function SettingsPage() {
 
         <Card title="Default monthly target">
           <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-            Used for any employee whose current month doesn't have a specific
-            target set. Set 0 to opt out of fallback targets.
+            Used for any employee whose current month doesn&apos;t have a
+            specific target set. Set 0 to opt out of fallback targets.
           </p>
           <DefaultTargetEditor
             initial={settings?.defaultMonthlyTarget.toString() ?? "0"}
