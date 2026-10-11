@@ -389,9 +389,7 @@ export function NewOrderWizard({
           ? t("submittedPending", { number: r.data.number })
           : t("submitted", { number: r.data.number }),
       );
-      // Order detail page lands in P2-D; for now return to the list where the
-      // new row is visible.
-      router.push("/orders");
+      router.push(`/orders/${r.data.id}`);
     } finally {
       setPending(false);
     }

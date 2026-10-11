@@ -3,7 +3,14 @@ import { z } from "zod";
 import { makeServerAction } from "@/lib/serverAction";
 import { AppError } from "@/lib/errors";
 import { withIdempotency } from "@/lib/idempotency";
-import { createOrder, cancelOrder } from "@/server/services/orderService";
+import {
+  createOrder,
+  cancelOrder,
+  approvePrice,
+  rejectPrice,
+  requestCancel,
+  addOrderNote,
+} from "@/server/services/orderService";
 
 const PaymentMethod = z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE", "CARD"]);
 const ChargeKind = z.enum(["FREIGHT", "INSTALLATION", "PACKING", "OTHER"]);
@@ -119,5 +126,97 @@ export const cancelOrderAction = makeServerAction({
       note: parsed.note ?? null,
     });
     return { id: row.id, status: row.status };
+  },
+});
+
+const ApproveInput = z.object({
+  orderId: z.string(),
+  updatedAt: z.coerce.date(),
+  note: z.string().max(400).nullable().optional(),
+});
+
+export const approvePriceAction = makeServerAction({
+  input: ApproveInput,
+  action: "orders.approvePrice",
+  revalidate: "/orders",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const row = await approvePrice({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      orderId: parsed.orderId,
+      updatedAt: parsed.updatedAt,
+      note: parsed.note ?? null,
+    });
+    return { id: row.id, status: row.status };
+  },
+});
+
+const RejectInput = z.object({
+  orderId: z.string(),
+  updatedAt: z.coerce.date(),
+  note: z.string().min(1).max(400),
+});
+
+export const rejectPriceAction = makeServerAction({
+  input: RejectInput,
+  action: "orders.approvePrice",
+  revalidate: "/orders",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const row = await rejectPrice({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      orderId: parsed.orderId,
+      updatedAt: parsed.updatedAt,
+      note: parsed.note,
+    });
+    return { id: row.id, status: row.status };
+  },
+});
+
+const RequestCancelInput = z.object({
+  orderId: z.string(),
+  reason: CancelReason,
+  note: z.string().max(400).nullable().optional(),
+});
+
+export const requestCancelAction = makeServerAction({
+  input: RequestCancelInput,
+  action: "orders.cancel",
+  resolveOwnership: () => ({ isOwn: true }),
+  revalidate: "/orders",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const res = await requestCancel({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      orderId: parsed.orderId,
+      reason: parsed.reason,
+      note: parsed.note ?? null,
+    });
+    return { id: res.id };
+  },
+});
+
+const AddNoteInput = z.object({
+  orderId: z.string(),
+  note: z.string().min(1).max(1000),
+});
+
+export const addOrderNoteAction = makeServerAction({
+  input: AddNoteInput,
+  action: "orders.view",
+  resolveOwnership: () => ({ isOwn: true }),
+  revalidate: "/orders",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    await addOrderNote({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      orderId: parsed.orderId,
+      note: parsed.note,
+    });
+    return { ok: true as const };
   },
 });

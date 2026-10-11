@@ -107,9 +107,8 @@ test.describe("New-order wizard — Sales creates an order under 60s (P2 gate)",
     await expect(page.getByRole("heading", { name: /payment & confirm/i })).toBeVisible();
     await page.getByRole("button", { name: /confirm order/i }).click();
 
-    // P2-C lands on /orders list after submit (detail page is P2-D).
-    await page.waitForURL(/\/orders$/, { timeout: 30_000 });
-    // The newly-created order's row should contain the customer we picked.
+    // Lands on the order detail page.
+    await page.waitForURL(/\/orders\/[^/]+$/, { timeout: 30_000 });
     await expect(page.getByText("E2E Existing Customer")).toBeVisible();
 
     const elapsedSeconds = (Date.now() - t0) / 1000;
