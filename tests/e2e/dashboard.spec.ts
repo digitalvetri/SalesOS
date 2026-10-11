@@ -3,6 +3,7 @@
 // Run against seeded demo data (`pnpm prisma:seed:demo`) for realistic numbers.
 import { test, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
+import ExcelJS from "exceljs";
 
 const SHOTS = "docs/evidence/screenshots";
 mkdirSync(SHOTS, { recursive: true });
@@ -62,4 +63,23 @@ test.describe("Admin dashboard", () => {
     await expect(page.getByRole("heading", { name: "Sales team" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Needs action" })).toHaveCount(0);
   });
+});
+
+test("reports: download opens as a valid workbook (§11.14)", async ({ page }, ti) => {
+  test.skip(ti.project.name === "mobile" || !OWNER, "Desktop; set SEED_PASSWORD_OWNER");
+  await login(page, "9840000001", OWNER);
+  await page.goto("/reports");
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  await expect(page.locator("[data-gold]")).toHaveCount(1);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Download .xlsx" }).first().click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^SalesOS-sales-register-\d{4}-\d{2}-\d{2}_to_\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile((await download.path())!);
+  const ws = wb.worksheets[0]!;
+  expect((ws.getRow(1).values as unknown[]).slice(1, 3)).toEqual(["Order date", "Order no."]);
+  expect(ws.views[0]).toMatchObject({ state: "frozen", ySplit: 1 });
+  await page.screenshot({ path: `${SHOTS}/reports.png`, fullPage: true });
 });

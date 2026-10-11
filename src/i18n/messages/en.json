@@ -652,5 +652,44 @@
       "OTHER": "Other",
       "UNKNOWN": "Not recorded"
     }
+  },
+  "reports": {
+    "title": "Reports",
+    "ownOnly": "Your own orders only.",
+    "from": "From",
+    "to": "To",
+    "entity": "Entity",
+    "apply": "Apply",
+    "download": "Download .xlsx",
+    "r": {
+      "sales-register": {
+        "name": "Sales register",
+        "desc": "Orders with every line, for the period."
+      },
+      "collections": {
+        "name": "Collections register",
+        "desc": "Payments with status, received into, verified by."
+      },
+      "outstanding": {
+        "name": "Outstanding by customer",
+        "desc": "Open balances with overdue aging, as of today."
+      },
+      "salesperson-performance": {
+        "name": "Salesperson performance",
+        "desc": "Booked, target, collected per salesperson."
+      },
+      "cash-with-staff": {
+        "name": "Cash with staff / deposits",
+        "desc": "Personal receipts and when they were deposited."
+      },
+      "cancellations": {
+        "name": "Cancellations",
+        "desc": "Cancelled orders with reasons and refunds still due."
+      },
+      "product-sales": {
+        "name": "Product sales",
+        "desc": "Quantity and value per machine."
+      }
+    }
   }
 }
