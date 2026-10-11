@@ -316,7 +316,7 @@ export default async function OrderDetailPage({
                               })
                             : t(`followUp.${f!.channel}`)}
                       </div>
-                      {(e?.note || (f?.note && f.channel !== "OTHER")) && (
+                      {(e?.note || (f?.note && (f.channel === "CALL" || f.channel === "VISIT"))) && (
                         <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
                           {e?.note ?? f?.note}
                         </div>
