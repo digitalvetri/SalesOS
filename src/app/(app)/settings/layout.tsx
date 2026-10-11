@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
 import { getTranslations } from "next-intl/server";
-import { Tabs } from "./_components/Tabs";
+import { Tabs } from "@/components/app/Tabs";
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   let session;
