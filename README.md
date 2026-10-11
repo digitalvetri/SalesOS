@@ -43,6 +43,8 @@ pnpm prisma:seed:demo
 # 7. create Supabase auth rows for every seeded user (one shared temp password)
 BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth
 #    Windows PowerShell:  $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm bootstrap:auth
+#    Already bootstrapped and forgot the password? Reset everyone's:
+#      $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm auth:reset-passwords
 
 # 8. run
 pnpm dev                             # http://localhost:3000

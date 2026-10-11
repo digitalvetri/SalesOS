@@ -8,6 +8,9 @@
 //
 // Usage:
 //   BOOTSTRAP_PASSWORD='A-strong-temporary-password' pnpm tsx scripts/bootstrap-auth-users.ts
+//
+// --reset-all (or `pnpm auth:reset-passwords`): also resets the password of users that
+// were bootstrapped earlier. Without it they keep their old password — local dev only.
 import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
@@ -34,6 +37,23 @@ async function main() {
   const sb = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (process.argv.includes("--reset-all")) {
+    const linked = await prisma.user.findMany({
+      where: { NOT: { authUserId: { startsWith: PLACEHOLDER_PREFIX } } },
+    });
+    let reset = 0;
+    for (const u of linked) {
+      const { error } = await sb.auth.admin.updateUserById(u.authUserId, { password });
+      if (error) {
+        console.warn(`  Could not reset password for ${u.phoneE164} (${u.name}): ${error.message}`);
+        continue;
+      }
+      console.log(`  ↻ ${u.phoneE164} ${u.name} (${u.role}) password reset`);
+      reset++;
+    }
+    console.log(`Reset ${reset} of ${linked.length} existing login(s).`);
+  }
 
   const users = await prisma.user.findMany({
     where: { authUserId: { startsWith: PLACEHOLDER_PREFIX } },
