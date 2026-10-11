@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
 import { prisma } from "@/server/repo/client";
-import { uploadProof } from "@/server/storage/paymentProofs";
+import { BUCKETS, uploadImage } from "@/server/storage/buckets";
 import {
   PROOF_MAX_BYTES,
   isProofMime,
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const path = proofPathFor(session.tenantId, order.id, crypto.randomUUID(), mime);
-    await uploadProof(path, body, mime);
+    await uploadImage(BUCKETS.paymentProofs, path, body, mime);
     return NextResponse.json({ ok: true, data: { path } });
   } catch (e) {
     if (isAppError(e)) {
