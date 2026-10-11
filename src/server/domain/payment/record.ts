@@ -42,7 +42,6 @@ export function isPaidOnAllowed(paidOn: Date, now: Date): boolean {
 
 // ───────── Proof storage paths ─────────
 
-export const PROOF_BUCKET = "payment-proofs";
 export const PROOF_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export type ProofMime = (typeof PROOF_MIME_TYPES)[number];
 /** Client compresses to ~300 KB (spec P3 prompt); the server accepts up to 2 MB. */
