@@ -15,6 +15,9 @@ import { RecordPaymentSheet } from "./RecordPaymentSheet";
 import { RefundSheet } from "./RefundSheet";
 import { PaymentList, type PaymentRow } from "./PaymentList";
 import { istDateString } from "@/server/domain/payment/record";
+import { reminderAvailableAt, reminderText, waLink } from "@/server/domain/payment/collect";
+import { ContactButtons } from "../../collect/ContactButtons";
+import { PromiseDateSheet } from "../../collect/PromiseDateSheet";
 import Decimal from "decimal.js";
 
 export default async function OrderDetailPage({
@@ -52,6 +55,9 @@ export default async function OrderDetailPage({
     can(session.role, "payments.record", { isOwn }) &&
     order.status !== "CANCELLED" &&
     balanceDue.greaterThan(0);
+  const canFollowUp = canRecordPayment && order.status !== "CLOSED";
+  const lastReminder = [...order.followUps].reverse().find((f) => f.channel === "WHATSAPP");
+  const reminderBlockedUntil = reminderAvailableAt(lastReminder?.at ?? null, new Date());
   const canRefund = can(session.role, "payments.recordRefund") && balanceDue.lessThan(0);
   const approvalVisible = canApprove && order.status === "PENDING_APPROVAL";
   const canRequestCancel =
@@ -85,6 +91,7 @@ export default async function OrderDetailPage({
   const userIds = Array.from(
     new Set([
       ...order.events.map((e) => e.actorId),
+      ...order.followUps.map((f) => f.byUserId),
       ...order.payments.map((p) => p.createdById),
       ...order.payments.flatMap((p) => (p.receivedByUserId ? [p.receivedByUserId] : [])),
     ]),
@@ -153,12 +160,17 @@ export default async function OrderDetailPage({
   // Timeline = order events + payments recorded (spec §11.4 shows "Advance ₹10,000").
   type TimelineItem =
     | { kind: "event"; id: string; at: Date; event: (typeof order.events)[number] }
-    | { kind: "payment"; id: string; at: Date; payment: (typeof order.payments)[number] };
+    | { kind: "payment"; id: string; at: Date; payment: (typeof order.payments)[number] }
+    | { kind: "followUp"; id: string; at: Date; followUp: (typeof order.followUps)[number] };
   const timeline: TimelineItem[] = [
     ...order.events.map((e) => ({ kind: "event" as const, id: e.id, at: e.at, event: e })),
     ...(canSeeMoney
       ? order.payments.map((p) => ({ kind: "payment" as const, id: p.id, at: p.createdAt, payment: p }))
       : []),
+    // Promise-date changes already appear as a NOTE event; show contacts only.
+    ...order.followUps
+      .filter((f) => f.channel !== "OTHER")
+      .map((f) => ({ kind: "followUp" as const, id: f.id, at: f.at, followUp: f })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
   return (
@@ -289,6 +301,7 @@ export default async function OrderDetailPage({
               {timeline.map((item) => {
                 const e = item.kind === "event" ? item.event : null;
                 const p = item.kind === "payment" ? item.payment : null;
+                const f = item.kind === "followUp" ? item.followUp : null;
                 return (
                 <li key={item.id} className="px-4 py-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
@@ -296,18 +309,20 @@ export default async function OrderDetailPage({
                       <div className="font-medium">
                         {e
                           ? describeEvent(e.type, e.fromStatus, e.toStatus)
-                          : t("timelinePayment", {
-                              type: t(`paymentType.${p!.type}`),
-                              amount: formatInr(p!.amount.toString()),
-                            })}
+                          : p
+                            ? t("timelinePayment", {
+                                type: t(`paymentType.${p.type}`),
+                                amount: formatInr(p.amount.toString()),
+                              })
+                            : t(`followUp.${f!.channel}`)}
                       </div>
-                      {e?.note && (
+                      {(e?.note || (f?.note && (f.channel === "CALL" || f.channel === "VISIT"))) && (
                         <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
-                          {e.note}
+                          {e?.note ?? f?.note}
                         </div>
                       )}
                       <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
-                        {actorName.get(e ? e.actorId : p!.createdById) ?? "—"}
+                        {actorName.get(e ? e.actorId : p ? p.createdById : f!.byUserId) ?? "—"}
                       </div>
                     </div>
                     <time className="shrink-0 tabular-nums text-xs text-[color:var(--color-ink-3)]">
@@ -378,6 +393,47 @@ export default async function OrderDetailPage({
               )}
               {paymentRows.length > 0 && <PaymentList payments={paymentRows} />}
             </section>
+
+            {canFollowUp && (
+              <section className="rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4">
+                <div className="label-caps mb-2">{t("collect")}</div>
+                <p className="mb-3 text-sm text-[color:var(--color-ink-2)]">
+                  {order.promisedPaymentDate
+                    ? t("promisedPayment", {
+                        date: order.promisedPaymentDate.toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        }),
+                      })
+                    : t("noPromisedPayment")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <ContactButtons
+                    phoneE164={order.customer.phoneE164}
+                    orderIds={[order.id]}
+                    reminderHref={waLink(
+                      order.customer.phoneE164,
+                      reminderText({
+                        customerName: order.customer.businessName ?? order.customer.name,
+                        entityName: order.entity.name,
+                        orders: [{ number: order.number, balanceDue: balanceDue.toString() }],
+                      }),
+                    )}
+                    reminderBlockedUntil={reminderBlockedUntil?.toISOString() ?? null}
+                    compact
+                  />
+                  <PromiseDateSheet
+                    orderId={order.id}
+                    orderNumber={order.number}
+                    current={order.promisedPaymentDate?.toISOString().slice(0, 10) ?? null}
+                    today={istDateString(new Date())}
+                    compact
+                  />
+                </div>
+              </section>
+            )}
 
             {approvalVisible && (
               <ApprovalActions

@@ -119,6 +119,15 @@
       "PART": "Part payment",
       "FINAL": "Final payment",
       "REFUND": "Refund"
+    },
+    "collect": "Collect",
+    "promisedPayment": "Customer promised to pay by {date}.",
+    "noPromisedPayment": "No promised payment date yet.",
+    "followUp": {
+      "WHATSAPP": "Reminder sent (WhatsApp)",
+      "CALL": "Called customer",
+      "VISIT": "Visited customer",
+      "OTHER": "Follow-up"
     }
   },
   "orderWizard": {
@@ -461,5 +470,46 @@
     "footer": "Goes to Accounts for verification",
     "saved": "Refund saved — {receipt}",
     "errTooMuch": "More than the refund due."
+  },
+  "collect": {
+    "title": "Collect",
+    "outstanding": "outstanding",
+    "filters": "Filter balances",
+    "filter": {
+      "all": "All",
+      "overdue": "Overdue",
+      "week": "This week",
+      "today": "Promised today"
+    },
+    "emptyAll": "No open balances — everything is collected.",
+    "emptyFilter": "Nothing in this view.",
+    "ordersCount": "{count, plural, one {# order} other {# orders}}",
+    "overdueDays": "overdue {days, plural, one {# day} other {# days}}",
+    "lastContact": "last {channel} {ago}",
+    "today": "today",
+    "daysAgo": "{days}d ago",
+    "channel": {
+      "WHATSAPP": "WA",
+      "CALL": "call",
+      "VISIT": "visit",
+      "OTHER": "note"
+    },
+    "dueOn": "due {date}",
+    "noDueDate": "no due date yet",
+    "call": "Call",
+    "whatsapp": "WhatsApp",
+    "reminded": "Reminded",
+    "remindedTitle": "Next reminder after {when}",
+    "reminderLogged": "Reminder logged.",
+    "promiseDate": "Promise date",
+    "promiseTitle": "Promised payment date",
+    "promiseOn": "Customer will pay by",
+    "note": "Note (optional)",
+    "notePlaceholder": "e.g. after Diwali stock clears",
+    "savePromise": "Save",
+    "clearPromise": "Clear date",
+    "promiseSaved": "Promised date saved.",
+    "promiseCleared": "Promised date cleared.",
+    "close": "Close"
   }
 }

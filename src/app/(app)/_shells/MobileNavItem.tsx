@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -10,7 +12,12 @@ export type MobileNavItemProps = {
   label: string;
 };
 
-export function MobileNavItem({ href, disabled, active, icon, label }: MobileNavItemProps) {
+export function MobileNavItem({ href, disabled, active: activeProp, icon, label }: MobileNavItemProps) {
+  const pathname = usePathname();
+  // Explicit `active` wins; otherwise match the current route (same rule as DesktopSidebar).
+  const active =
+    activeProp ??
+    (href ? (href === "/home" ? pathname === "/home" : pathname === href || pathname.startsWith(`${href}/`)) : false);
   const content = (
     <>
       <span aria-hidden className="text-lg">
