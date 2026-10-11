@@ -52,5 +52,78 @@
   },
   "empty": {
     "nothingYet": "இங்கே இன்னும் எதுவும் இல்லை."
+  },
+  "settings": {
+    "title": "அமைப்புகள்",
+    "tabs": {
+      "users": "பயனர்கள்",
+      "entities": "நிறுவனங்கள்",
+      "accounts": "கணக்குகள்",
+      "targets": "இலக்குகள்"
+    },
+    "users": {
+      "listTitle": "பயனர்கள்",
+      "newUser": "+ புதிய பயனர்",
+      "colName": "பெயர்",
+      "colPhone": "கைபேசி",
+      "colRole": "பங்கு",
+      "colLang": "மொழி",
+      "colEntity": "இயல்பு நிறுவனம்",
+      "colActive": "செயலில்",
+      "colActions": "செயல்கள்",
+      "deactivate": "முடக்கு",
+      "activate": "செயல்படுத்து",
+      "resetPassword": "கடவுச்சொல் மாற்று",
+      "cannotDeactivateSelf": "உங்கள் சொந்த கணக்கை முடக்க முடியாது.",
+      "createTitle": "புதிய பயனர்",
+      "fieldName": "பெயர்",
+      "fieldPhone": "கைபேசி எண்",
+      "fieldRole": "பங்கு",
+      "fieldLang": "மொழி",
+      "fieldDefaultEntity": "இயல்பு நிறுவனம்",
+      "fieldCanReceivePayments": "பணம் பெற முடியும்",
+      "canReceiveHint": "பணம் பதிவு செய்யும் போது \"பெறப்பட்டது\" பட்டியலில் தோன்றும்.",
+      "ownerBlocked": "ஒரு உரிமையாளரை மட்டுமே உரிமையாளர் உருவாக்க முடியும்.",
+      "created": "பயனர் உருவாக்கப்பட்டது. கீழே உள்ள கடவுச்சொல்லை பகிர்ந்து கொள்ளுங்கள் — இது ஒருமுறை மட்டுமே காட்டப்படும்.",
+      "tempPasswordLabel": "தற்காலிக கடவுச்சொல்",
+      "copy": "நகலெடு",
+      "copied": "நகலெடுக்கப்பட்டது",
+      "whatsapp": "வாட்ஸ்அப் மூலம் பகிர்",
+      "backToList": "பயனர் பட்டியலுக்கு திரும்பு"
+    },
+    "entities": {
+      "title": "பில்லிங் நிறுவனங்கள்",
+      "colCode": "குறியீடு",
+      "colName": "பெயர்",
+      "colGstin": "GSTIN",
+      "colAccounts": "கணக்குகள்",
+      "save": "மாற்றங்களை சேமி",
+      "saved": "சேமிக்கப்பட்டது."
+    },
+    "accounts": {
+      "title": "பணம் எங்கே வந்து சேருகிறது",
+      "newAccount": "+ புதிய கணக்கு",
+      "colLabel": "பெயர்",
+      "colEntity": "நிறுவனம்",
+      "colKind": "வகை",
+      "colLast4": "கடைசி 4",
+      "colActive": "செயலில்",
+      "kindBank": "வங்கி",
+      "kindUpi": "UPI",
+      "kindCash": "பண பெட்டி",
+      "deactivate": "முடக்கு",
+      "activate": "செயல்படுத்து",
+      "fieldEntity": "நிறுவனம்",
+      "fieldLabel": "பெயர்",
+      "fieldKind": "வகை",
+      "fieldLast4": "கடைசி 4 (விரும்பினால்)"
+    },
+    "targets": {
+      "title": "மாத இலக்குகள் (₹ புக் செய்தது)",
+      "colSalesperson": "விற்பனையாளர்",
+      "colTotal": "மொத்தம்",
+      "noSalespeople": "இன்னும் விற்பனையாளர்கள் இல்லை. பயனர்கள் தாவலில் உருவாக்கவும்.",
+      "placeholder": "—"
+    }
   }
 }
