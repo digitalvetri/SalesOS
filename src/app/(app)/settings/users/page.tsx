@@ -44,7 +44,6 @@ export default async function UsersPage() {
               <th className="px-4 py-3">{t("colName")}</th>
               <th className="px-4 py-3">{t("colPhone")}</th>
               <th className="px-4 py-3">{t("colRole")}</th>
-              <th className="px-4 py-3">{t("colLang")}</th>
               <th className="px-4 py-3">{t("colEntity")}</th>
               <th className="px-4 py-3">{t("colActive")}</th>
               <th className="px-4 py-3 text-right">{t("colActions")}</th>
@@ -61,7 +60,6 @@ export default async function UsersPage() {
                 <td className="px-4 py-3">
                   <Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge>
                 </td>
-                <td className="px-4 py-3 uppercase">{u.lang}</td>
                 <td className="px-4 py-3">{u.defaultEntityId ? entityMap.get(u.defaultEntityId) ?? "—" : "—"}</td>
                 <td className="px-4 py-3">{u.active ? "✓" : "—"}</td>
                 <td className="px-4 py-3 text-right">

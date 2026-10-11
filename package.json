@@ -23,6 +23,7 @@
     "prisma:seed": "dotenv run -f .env.local -- tsx prisma/seed.ts",
     "prisma:seed:demo": "dotenv run -f .env.local -- tsx prisma/seed-demo.ts",
     "bootstrap:auth": "dotenv run -f .env.local -- tsx scripts/bootstrap-auth-users.ts",
+    "auth:reset-passwords": "dotenv run -f .env.local -- tsx scripts/bootstrap-auth-users.ts --reset-all",
     "db:setup": "pnpm run prisma:migrate && pnpm run prisma:seed",
     "sb:start": "supabase start",
     "sb:stop": "supabase stop",

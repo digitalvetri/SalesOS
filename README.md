@@ -43,6 +43,8 @@ pnpm prisma:seed:demo
 # 7. create Supabase auth rows for every seeded user (one shared temp password)
 BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth
 #    Windows PowerShell:  $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm bootstrap:auth
+#    Already bootstrapped and forgot the password? Reset everyone's:
+#      $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm auth:reset-passwords
 
 # 8. run
 pnpm dev                             # http://localhost:3000
@@ -85,6 +87,7 @@ Each build phase lands with its own evidence file.
 - Phase P4 — Dispatch → [`docs/evidence/phase-4.md`](docs/evidence/phase-4.md).
 - Phase P5 — Dashboard & Reports → [`docs/evidence/phase-5.md`](docs/evidence/phase-5.md).
 - Phase P6 — WhatsApp → [`docs/evidence/phase-6.md`](docs/evidence/phase-6.md).
+- Phase P7 — Excel import → [`docs/evidence/phase-7.md`](docs/evidence/phase-7.md).
 
 See spec §17 for the full phase plan.
 

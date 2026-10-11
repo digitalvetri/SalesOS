@@ -307,7 +307,8 @@
       "entities": "Entities",
       "accounts": "Accounts",
       "targets": "Targets",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "import": "Import"
     },
     "users": {
       "listTitle": "Users",
@@ -315,7 +316,6 @@
       "colName": "Name",
       "colPhone": "Mobile",
       "colRole": "Role",
-      "colLang": "Lang",
       "colEntity": "Default entity",
       "colActive": "Active",
       "colActions": "Actions",
@@ -327,7 +327,6 @@
       "fieldName": "Name",
       "fieldPhone": "Mobile number",
       "fieldRole": "Role",
-      "fieldLang": "Language",
       "fieldDefaultEntity": "Default entity",
       "fieldCanReceivePayments": "Can receive payments",
       "canReceiveHint": "Shows this person in the \"received into\" list on payment entries.",
@@ -386,7 +385,7 @@
       "clearToken": "Remove token (switch to wa.me links)",
       "payTo": "Pay-to line in reminders",
       "templates": "Template names",
-      "templatesHelp": "Names as approved in Meta Business Manager (English + Tamil variants share the name; set the language code).",
+      "templatesHelp": "Names as approved in Meta Business Manager (set the language code, e.g. en).",
       "templateLabel": {
         "order_confirmation": "Order confirmation",
         "payment_received": "Payment received",
