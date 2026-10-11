@@ -11,6 +11,7 @@ import {
   requestCancel,
   addOrderNote,
 } from "@/server/services/orderService";
+import { sendOrderConfirmation } from "@/server/services/whatsappService";
 
 const PaymentMethod = z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE", "CARD"]);
 const ChargeKind = z.enum(["FREIGHT", "INSTALLATION", "PACKING", "OTHER"]);
@@ -67,6 +68,7 @@ const CreateInput = z.object({
   discount: DecimalStr.optional(),
   notes: z.string().max(1000).nullable().optional(),
   advance: Advance.nullable().optional(),
+  sendConfirmation: z.boolean().optional(), // §11.3 "Send WhatsApp confirmation"
 });
 
 export const createOrderAction = makeServerAction({
@@ -101,7 +103,17 @@ export const createOrderAction = makeServerAction({
           advance: parsed.advance ?? null,
         }),
     });
-    return { ...result.value, replay: result.kind === "replay" };
+    // Confirmed orders only (a price-approval order isn't confirmed yet). Cloud API
+    // sends now; otherwise a DEEPLINK row is logged and the detail page offers the link.
+    let whatsapp: "sent" | "link" | null = null;
+    if (parsed.sendConfirmation && result.kind === "fresh" && !result.value.needsApproval) {
+      const r = await sendOrderConfirmation({ tenantId: session.tenantId, actorId: session.userId, orderId: result.value.id }).catch((e) => {
+        console.error("[whatsapp.order_confirmation]", e);
+        return null;
+      });
+      whatsapp = r?.mode === "api" ? "sent" : "link";
+    }
+    return { ...result.value, replay: result.kind === "replay", whatsapp };
   },
 });
 

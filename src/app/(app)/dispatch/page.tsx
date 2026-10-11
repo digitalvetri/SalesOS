@@ -5,6 +5,7 @@ import { requireSession } from "@/server/auth/session";
 import { can } from "@/server/auth/permissions";
 import { getDispatchBoard } from "@/server/repo/dispatchBoard";
 import { DispatchBoard } from "./DispatchBoard";
+import { getWaConfig } from "@/server/services/whatsappService";
 
 export default async function DispatchPage() {
   const session = await requireSession();
@@ -19,7 +20,7 @@ export default async function DispatchPage() {
           <span className="text-sm text-[color:var(--color-danger)]">{t("stuckCount", { count: board.stuckCount })}</span>
         )}
       </header>
-      <DispatchBoard columns={board.columns} today={board.today} />
+      <DispatchBoard columns={board.columns} today={board.today} apiConfigured={(await getWaConfig(session.tenantId)).configured} />
     </div>
   );
 }

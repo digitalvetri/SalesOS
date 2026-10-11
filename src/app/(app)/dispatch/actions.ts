@@ -9,6 +9,7 @@ import {
   markDelivered,
   handOverNow,
 } from "@/server/services/dispatchService";
+import { sendDispatchUpdate } from "@/server/services/whatsappService";
 
 // §4.2 "Update production/dispatch status": Owner, Admin, Dispatch.
 const BusinessDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -96,5 +97,15 @@ export const handOverNowAction = makeServerAction({
   async run(p, s) {
     if (!s) throw new AppError("UNAUTHENTICATED", "Sign in required.");
     return handOverNow({ tenantId: s.tenantId, actorId: s.userId, actorRole: s.role, orderId: p.orderId, today: toDate(p.today) });
+  },
+});
+
+/** §5.3 one-tap WhatsApp update after a dispatch: Cloud API, or a wa.me link back. */
+export const sendDispatchUpdateAction = makeServerAction({
+  input: z.object({ dispatchId: z.string().min(1) }),
+  action: "dispatch.updateStatus",
+  async run(p, s) {
+    if (!s) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    return sendDispatchUpdate({ tenantId: s.tenantId, actorId: s.userId, dispatchId: p.dispatchId });
   },
 });

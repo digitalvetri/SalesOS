@@ -15,6 +15,7 @@ import {
 } from "@/server/repo/salesHome";
 import { getDispatchBoard } from "@/server/repo/dispatchBoard";
 import { DispatchQueue } from "../dispatch/DispatchBoard";
+import { getWaConfig } from "@/server/services/whatsappService";
 
 export default async function HomePage() {
   const session = await requireSession();
@@ -228,7 +229,7 @@ async function DispatchHome({ tenantId }: { tenantId: string }) {
       <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">
         {board.stuckCount > 0 ? t("stuckCount", { count: board.stuckCount }) : t("queueCount", { count: cards.length })}
       </p>
-      <DispatchQueue cards={cards} today={board.today} />
+      <DispatchQueue cards={cards} today={board.today} apiConfigured={(await getWaConfig(tenantId)).configured} />
     </div>
   );
 }

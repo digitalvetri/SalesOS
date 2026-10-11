@@ -30,5 +30,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
+  // Webhook + cron are machine-to-machine: no auth cookies to refresh, keep them fast.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/whatsapp/webhook|api/cron/|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
 };

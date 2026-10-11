@@ -11,6 +11,7 @@ import {
   markDeposited,
   recordRefund,
 } from "@/server/services/paymentService";
+import { notifyPaymentsVerified } from "@/server/services/whatsappService";
 
 const PaymentMethod = z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE", "CARD"]);
 
@@ -87,12 +88,17 @@ export const verifyPaymentsAction = makeServerAction({
   revalidate: ["/payments", "/orders", "/home"],
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
-    return verifyPayments({
+    const result = await verifyPayments({
       tenantId: session.tenantId,
       actorId: session.userId,
       actorRole: session.role,
       paymentIds: parsed.paymentIds,
     });
+    // §13 payment_received on verification — API only, never blocks the verify.
+    await notifyPaymentsVerified({ tenantId: session.tenantId, actorId: session.userId, paymentIds: parsed.paymentIds }).catch((e) =>
+      console.error("[whatsapp.payment_received]", e),
+    );
+    return result;
   },
 });
 

@@ -135,7 +135,12 @@
     "deliveredOn": "Delivered {date}",
     "inTransit": "In transit",
     "photoN": "Photo {n}",
-    "deliveryPhoto": "Delivery photo"
+    "deliveryPhoto": "Delivery photo",
+    "createdTitle": "Order confirmed",
+    "createdPending": "Order saved — waiting for price approval",
+    "confirmationSent": "Confirmation sent to the customer on WhatsApp.",
+    "shareWhatsapp": "Share on WhatsApp",
+    "done": "Done"
   },
   "orderWizard": {
     "title": "New order",
@@ -184,7 +189,8 @@
       "confirm": "Confirm order",
       "needCustomer": "Pick or create a customer first.",
       "needLines": "Add at least one machine or custom item.",
-      "lineErrors": "Every line needs a name, qty, and a valid price."
+      "lineErrors": "Every line needs a name, qty, and a valid price.",
+      "sendWhatsapp": "Send WhatsApp confirmation"
     },
     "resume": {
       "title": "Continue draft from {time}?",
@@ -300,7 +306,8 @@
       "users": "Users",
       "entities": "Entities",
       "accounts": "Accounts",
-      "targets": "Targets"
+      "targets": "Targets",
+      "whatsapp": "WhatsApp"
     },
     "users": {
       "listTitle": "Users",
@@ -365,6 +372,49 @@
       "colTotal": "Total",
       "noSalespeople": "No salespeople yet. Create them in the Users tab.",
       "placeholder": "—"
+    },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "statusApi": "Connected to the WhatsApp Cloud API — messages send automatically.",
+      "statusDeeplink": "Not connected — staff send messages through 'Open in WhatsApp' links (wa.me).",
+      "credentials": "Meta Cloud API",
+      "phoneNumberId": "Phone number ID",
+      "businessAccountId": "Business account ID",
+      "accessToken": "Access token",
+      "appSecret": "App secret (webhook signature)",
+      "savedEncrypted": "•••••• saved (encrypted) — type to replace",
+      "clearToken": "Remove token (switch to wa.me links)",
+      "payTo": "Pay-to line in reminders",
+      "templates": "Template names",
+      "templatesHelp": "Names as approved in Meta Business Manager (English + Tamil variants share the name; set the language code).",
+      "templateLabel": {
+        "order_confirmation": "Order confirmation",
+        "payment_received": "Payment received",
+        "dispatch_update": "Dispatch update",
+        "payment_reminder": "Payment reminder"
+      },
+      "language": "Language code",
+      "webhook": "Webhook",
+      "webhookUrl": "Callback URL (paste into Meta)",
+      "verifyToken": "Verify token",
+      "notSetYet": "Generated on first save",
+      "regenerate": "Regenerate",
+      "copy": "Copy",
+      "copied": "Copied.",
+      "autoReminders": "Automatic payment reminders",
+      "autoEnabled": "Send reminders automatically for overdue orders",
+      "everyDays": "Every … days",
+      "maxCount": "At most … reminders per order",
+      "autoRules": "Never on Sundays, only 10:00–19:00 IST, and never within 48 hours of any other reminder. Requires the Cloud API.",
+      "save": "Save WhatsApp settings",
+      "saving": "Saving…",
+      "saved": "WhatsApp settings saved.",
+      "testSend": "Test send",
+      "testPhone": "Phone for the test",
+      "sendTest": "Send test reminder",
+      "testSent": "Sent via the Cloud API ({id}).",
+      "testDeeplink": "API not connected (or the send failed) — use the fallback:",
+      "openInWhatsapp": "Open in WhatsApp"
     }
   },
   "recordPayment": {
@@ -525,7 +575,8 @@
     "clearPromise": "Clear date",
     "promiseSaved": "Promised date saved.",
     "promiseCleared": "Promised date cleared.",
-    "close": "Close"
+    "close": "Close",
+    "reminderSent": "Reminder sent on WhatsApp."
   },
   "dispatch": {
     "title": "Dispatch board",
@@ -582,7 +633,8 @@
     "deliveredOn": "Delivered on",
     "deliveryPhoto": "Delivery photo (optional)",
     "confirmDelivered": "Confirm delivered",
-    "close": "Close"
+    "close": "Close",
+    "updateSent": "Dispatch update sent on WhatsApp."
   },
   "dashboard": {
     "title": "Dashboard",
