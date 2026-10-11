@@ -21,8 +21,8 @@ export async function MobileDispatchShell({
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
       >
-        <MobileNavItem href="/home" active icon={<ClipboardList className="h-5 w-5" />} label={t("common.queue")} />
-        <MobileNavItem disabled icon={<LayoutGrid className="h-5 w-5" />} label={t("common.board")} />
+        <MobileNavItem href="/home" icon={<ClipboardList className="h-5 w-5" />} label={t("common.queue")} />
+        <MobileNavItem href="/dispatch" icon={<LayoutGrid className="h-5 w-5" />} label={t("common.board")} />
         <MobileNavItem disabled icon={<CircleUser className="h-5 w-5" />} label={t("common.me")} />
       </nav>
     </div>

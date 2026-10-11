@@ -14,20 +14,22 @@ import {
   salesPendingActions,
 } from "@/server/repo/salesHome";
 import type { Role } from "@/server/repo/client";
+import { getDispatchBoard } from "@/server/repo/dispatchBoard";
+import { DispatchQueue } from "../dispatch/DispatchBoard";
 
-const BANNER_KEY: Record<Exclude<Role, "SALES">, string> = {
+const BANNER_KEY: Record<Exclude<Role, "SALES" | "DISPATCH">, string> = {
   OWNER: "shell.roleBanner.owner",
   ADMIN: "shell.roleBanner.admin",
   ACCOUNTS: "shell.roleBanner.accounts",
-  DISPATCH: "shell.roleBanner.dispatch",
 };
 
 export default async function HomePage() {
   const session = await requireSession();
   const t = await getTranslations();
 
+  if (session.role === "DISPATCH") return <DispatchHome tenantId={session.tenantId} />;
   if (session.role !== "SALES") {
-    return <EmptyState title={t(BANNER_KEY[session.role as Exclude<Role, "SALES">])} />;
+    return <EmptyState title={t(BANNER_KEY[session.role as Exclude<Role, "SALES" | "DISPATCH">])} />;
   }
 
   return <SalesHome session={session} />;
@@ -221,4 +223,21 @@ function greetingByHour(d: Date): "morning" | "afternoon" | "evening" {
   if (istHour < 12) return "morning";
   if (istHour < 17) return "afternoon";
   return "evening";
+}
+
+// Dispatch role home = Queue (§11.0): every actionable card, most urgent first.
+async function DispatchHome({ tenantId }: { tenantId: string }) {
+  const t = await getTranslations("dispatch");
+  const board = await getDispatchBoard({ tenantId });
+  const cards = [...board.columns.CONFIRMED, ...board.columns.IN_PRODUCTION, ...board.columns.READY, ...board.columns.DISPATCHED]
+    .sort((a, b) => Number(b.gold) - Number(a.gold) || Number(b.stuck) - Number(a.stuck) || b.ageDays - a.ageDays);
+  return (
+    <div className="mx-auto max-w-xl px-4 py-6">
+      <h1 className="text-xl font-semibold tracking-tight">{t("queueTitle")}</h1>
+      <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">
+        {board.stuckCount > 0 ? t("stuckCount", { count: board.stuckCount }) : t("queueCount", { count: cards.length })}
+      </p>
+      <DispatchQueue cards={cards} today={board.today} />
+    </div>
+  );
 }

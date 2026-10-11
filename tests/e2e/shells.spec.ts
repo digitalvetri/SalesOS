@@ -30,7 +30,7 @@ async function login(page: import("@playwright/test").Page, role: Role) {
 test.describe("Role shells", () => {
   // Non-SALES roles still render the stub empty-state (P5 adds their dashboards).
   // SALES role now sees the full §11.2 home (P2-E).
-  const empty = ["dispatch", "owner", "admin", "accounts"] as const;
+  const empty = ["owner", "admin", "accounts"] as const;
   for (const role of empty) {
     test(`${role} shell renders empty state`, async ({ page }) => {
       await login(page, role);
@@ -38,6 +38,12 @@ test.describe("Role shells", () => {
       await page.screenshot({ path: `${SHOTS}/shell-${role}.png`, fullPage: true });
     });
   }
+
+  test("dispatch shell renders the queue (§11.0)", async ({ page }) => {
+    await login(page, "dispatch");
+    await expect(page.getByRole("heading", { name: "Queue" })).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/shell-dispatch.png`, fullPage: true });
+  });
 
   test("sales shell renders the §11.2 home", async ({ page }) => {
     await login(page, "sales");

@@ -79,6 +79,7 @@ Each build phase lands with its own evidence file.
 - Phase P1 — Masters → [`docs/evidence/phase-1.md`](docs/evidence/phase-1.md).
 - Phase P2 — Orders → [`docs/evidence/phase-2.md`](docs/evidence/phase-2.md).
 - Phase P3 — Payments & Collect → [`docs/evidence/phase-3.md`](docs/evidence/phase-3.md).
+- Phase P4 — Dispatch → [`docs/evidence/phase-4.md`](docs/evidence/phase-4.md).
 
 See spec §17 for the full phase plan.
 

@@ -4,7 +4,7 @@
 //
 // Each `step()` block pastes its expected vs actual values; the final
 // `summary` is captured into docs/evidence/phase-3.md.
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { config } from "dotenv";
 import Decimal from "decimal.js";
 import { PrismaClient } from "@prisma/client";
@@ -293,7 +293,6 @@ describe.skipIf(!DB_READY)("§17-P3 gate — payment sequences (BR-09)", () => {
 
     // Final summary — captured in gate evidence.
     for (const r of results) {
-      // eslint-disable-next-line no-console
       console.log(
         `[P3-gate] ${r.step.padEnd(55)} ` +
           `expected=${r.expectedBalance.padStart(10)}/${r.expectedStatus.padEnd(10)} ` +
