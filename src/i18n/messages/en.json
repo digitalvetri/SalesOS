@@ -53,6 +53,27 @@
   "empty": {
     "nothingYet": "Nothing here yet."
   },
+  "salesHome": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "ofTarget": "of",
+    "orders": "orders",
+    "avgOrder": "avg",
+    "toCollect": "To collect",
+    "fromCount": "from {count} customer(s)",
+    "needsYou": "Needs you",
+    "rejectedPrice": "{count} price rejection(s)",
+    "rejectedPayments": "{count} payment(s) rejected",
+    "recentOrders": "Recent orders",
+    "seeAll": "See all",
+    "noOrders": "No orders yet. Tap +New order to start.",
+    "due": "due",
+    "paid": "Paid",
+    "newOrder": "New order"
+  },
   "orderDetail": {
     "backToList": "Back to orders",
     "balanceBadge": "Due",

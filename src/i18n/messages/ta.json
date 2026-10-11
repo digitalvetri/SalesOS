@@ -53,6 +53,27 @@
   "empty": {
     "nothingYet": "இங்கே இன்னும் எதுவும் இல்லை."
   },
+  "salesHome": {
+    "greeting": {
+      "morning": "காலை வணக்கம்",
+      "afternoon": "மதிய வணக்கம்",
+      "evening": "மாலை வணக்கம்"
+    },
+    "ofTarget": "/",
+    "orders": "ஆர்டர்கள்",
+    "avgOrder": "சராசரி",
+    "toCollect": "வசூலிக்க வேண்டியவை",
+    "fromCount": "{count} வாடிக்கையாளரிடமிருந்து",
+    "needsYou": "உங்களுக்கு தேவை",
+    "rejectedPrice": "{count} விலை நிராகரிப்பு",
+    "rejectedPayments": "{count} பணம் நிராகரிக்கப்பட்டது",
+    "recentOrders": "சமீபத்திய ஆர்டர்கள்",
+    "seeAll": "அனைத்தையும் காண்",
+    "noOrders": "இன்னும் ஆர்டர்கள் இல்லை. +புதிய ஆர்டர் தொடங்கவும்.",
+    "due": "நிலுவை",
+    "paid": "செலுத்தப்பட்டது",
+    "newOrder": "புதிய ஆர்டர்"
+  },
   "orderDetail": {
     "backToList": "ஆர்டர் பட்டியலுக்கு திரும்பு",
     "balanceBadge": "நிலுவை",
