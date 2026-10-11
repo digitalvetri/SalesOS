@@ -53,6 +53,33 @@
   "empty": {
     "nothingYet": "Nothing here yet."
   },
+  "catalogue": {
+    "title": "Price list",
+    "importAction": "Import xlsx",
+    "exportAction": "Export xlsx",
+    "searchPlaceholder": "Search machine, alias, HP…",
+    "totalProducts": "products",
+    "colName": "Product",
+    "colSpec": "HP / Spec",
+    "colDealerWoMotor": "Dealer w/o motor",
+    "colDealer": "Dealer",
+    "colCustomer": "Customer",
+    "empty": {
+      "needCategories": "No products yet. Import your price list to get started."
+    },
+    "import": {
+      "title": "Import price list",
+      "description": "Upload the \"PRICE LIST KI - KFM - 2026\" xlsx (or an equivalent spreadsheet). Columns detected by header text: PRODUCT · HP · DEALER PRICE w/o MOTOR · DEALER PRICE · CUSTOMER PRICE. Section headings become categories. Blank product-name rows inherit the previous row's name (COPP-style variants).",
+      "backToPriceList": "Back to price list",
+      "fileLabel": "Choose .xlsx file (max 20 MB)",
+      "rowsFound": "Rows found",
+      "withPrices": "With prices",
+      "categoriesFound": "Categories",
+      "issues": "Issues",
+      "commit": "Commit {total} rows",
+      "committed": "Imported. {created} new · {updated} updated."
+    }
+  },
   "settings": {
     "title": "Settings",
     "tabs": {

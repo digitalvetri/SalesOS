@@ -28,6 +28,16 @@ ALTER TABLE "DispatchLine" ADD CONSTRAINT dispatchline_qty_positive_chk
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
+-- Trigram GIN indexes for forgiving product search (spec §12.5 — "10l tilt" finds
+-- "10L Tilting Wet Grinder"). searchText is a lowercased concatenation of
+-- name + spec + aliases maintained by productService.
+CREATE INDEX IF NOT EXISTS product_searchtext_trgm_idx
+  ON "Product" USING gin ("searchText" gin_trgm_ops);
+
+-- Customer name search (P1-D).
+CREATE INDEX IF NOT EXISTS customer_name_trgm_idx
+  ON "Customer" USING gin (name gin_trgm_ops);
+
 -- ───────────── RLS defence in depth (spec D3, §14) ─────────────
 -- Enable RLS on every table. Deliberately NO policies for anon/authenticated roles,
 -- so direct Supabase-client reads from the browser get denied.

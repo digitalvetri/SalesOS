@@ -53,6 +53,33 @@
   "empty": {
     "nothingYet": "இங்கே இன்னும் எதுவும் இல்லை."
   },
+  "catalogue": {
+    "title": "விலைப் பட்டியல்",
+    "importAction": "xlsx இறக்குமதி",
+    "exportAction": "xlsx ஏற்றுமதி",
+    "searchPlaceholder": "இயந்திரம், மாற்றுப்பெயர், HP…",
+    "totalProducts": "தயாரிப்புகள்",
+    "colName": "தயாரிப்பு",
+    "colSpec": "HP / வகை",
+    "colDealerWoMotor": "டீலர் (மோட்டார் இல்லாமல்)",
+    "colDealer": "டீலர்",
+    "colCustomer": "வாடிக்கையாளர்",
+    "empty": {
+      "needCategories": "இன்னும் தயாரிப்புகள் இல்லை. தொடங்க உங்கள் விலைப் பட்டியலை இறக்குமதி செய்யவும்."
+    },
+    "import": {
+      "title": "விலைப் பட்டியல் இறக்குமதி",
+      "description": "\"PRICE LIST KI - KFM - 2026\" xlsx கோப்பை பதிவேற்றவும். PRODUCT · HP · DEALER PRICE w/o MOTOR · DEALER PRICE · CUSTOMER PRICE என்ற நெடுவரிசைகள் கண்டறியப்படும். பிரிவுத் தலைப்புகள் வகைகளாக மாறும். தயாரிப்பு பெயர் இல்லாத வரிகள் முந்தைய வரியின் பெயரை இடமாற்றும்.",
+      "backToPriceList": "விலைப் பட்டியலுக்கு திரும்பு",
+      "fileLabel": ".xlsx கோப்பை தேர்ந்தெடுக்கவும் (அதிகபட்சம் 20 MB)",
+      "rowsFound": "வரிகள்",
+      "withPrices": "விலைகளுடன்",
+      "categoriesFound": "வகைகள்",
+      "issues": "சிக்கல்கள்",
+      "commit": "{total} வரிகளை பதிவு செய்",
+      "committed": "இறக்குமதி ஆனது. {created} புதிய · {updated} புதுப்பிக்கப்பட்டது."
+    }
+  },
   "settings": {
     "title": "அமைப்புகள்",
     "tabs": {
