@@ -293,6 +293,55 @@ export default async function OrderDetailPage({
             </table>
           </section>
 
+          {order.dispatches.length > 0 && (
+            <section className="overflow-hidden rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
+              <header className="bg-[color:var(--color-surface-2)] px-4 py-2">
+                <h3 className="label-caps">{t("dispatches")}</h3>
+              </header>
+              <ul className="divide-y divide-[color:var(--color-border)]">
+                {order.dispatches.map((d) => {
+                  const day = (x: Date) =>
+                    x.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" });
+                  const lineName = new Map(order.lines.map((l) => [l.id, l.description]));
+                  return (
+                    <li key={d.id} className="px-4 py-3 text-sm" data-testid="dispatch-row">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="font-medium">
+                          {t("dispatchedOn", { date: day(d.dispatchedOn) })}
+                        </span>
+                        <Badge tone={d.deliveredOn ? "ok" : "info"}>
+                          {d.deliveredOn ? t("deliveredOn", { date: day(d.deliveredOn) }) : t("inTransit")}
+                        </Badge>
+                      </div>
+                      <div className="mt-1 text-xs text-[color:var(--color-ink-2)]">
+                        {d.lines.map((l) => `${lineName.get(l.orderLineId) ?? "—"} ×${l.qty}`).join(", ")}
+                      </div>
+                      {(d.transporter || d.lrNumber || d.vehicleNo) && (
+                        <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
+                          {[d.transporter, d.lrNumber && `LR ${d.lrNumber}`, d.vehicleNo].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                      {(d.photoPaths.length > 0 || d.deliveryProofPath) && (
+                        <div className="mt-1 flex flex-wrap gap-3 text-xs">
+                          {d.photoPaths.map((_, i) => (
+                            <a key={i} href={`/api/dispatch/${d.id}/photo?i=${i}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                              {t("photoN", { n: i + 1 })}
+                            </a>
+                          ))}
+                          {d.deliveryProofPath && (
+                            <a href={`/api/dispatch/${d.id}/photo?i=delivery`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                              {t("deliveryPhoto")}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           <section className="rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
             <header className="bg-[color:var(--color-surface-2)] px-4 py-2">
               <h3 className="label-caps">{t("timeline")}</h3>
@@ -498,6 +547,10 @@ function describeEvent(
       return "Cancellation request rejected";
     case "NOTE":
       return "Note added";
+    case "DISPATCH":
+      return "Part dispatched";
+    case "DELIVERY":
+      return "Part delivery confirmed";
     case "EDIT":
       return "Order edited";
     case "REASSIGN":
