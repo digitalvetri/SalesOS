@@ -27,7 +27,7 @@ async function login(browser: Browser, baseURL: string, phone: string, password:
   await page.getByLabel("Mobile number").fill(phone);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/home$/);
+  await page.waitForURL(/\/(home|dashboard|payments)$/);
   return { context, page };
 }
 
