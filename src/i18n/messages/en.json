@@ -52,5 +52,78 @@
   },
   "empty": {
     "nothingYet": "Nothing here yet."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "users": "Users",
+      "entities": "Entities",
+      "accounts": "Accounts",
+      "targets": "Targets"
+    },
+    "users": {
+      "listTitle": "Users",
+      "newUser": "+ New user",
+      "colName": "Name",
+      "colPhone": "Mobile",
+      "colRole": "Role",
+      "colLang": "Lang",
+      "colEntity": "Default entity",
+      "colActive": "Active",
+      "colActions": "Actions",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "resetPassword": "Reset password",
+      "cannotDeactivateSelf": "You cannot deactivate your own account.",
+      "createTitle": "New user",
+      "fieldName": "Name",
+      "fieldPhone": "Mobile number",
+      "fieldRole": "Role",
+      "fieldLang": "Language",
+      "fieldDefaultEntity": "Default entity",
+      "fieldCanReceivePayments": "Can receive payments",
+      "canReceiveHint": "Shows this person in the \"received into\" list on payment entries.",
+      "ownerBlocked": "Only an Owner can create another Owner.",
+      "created": "User created. Share the password below — it is shown only once.",
+      "tempPasswordLabel": "Temporary password",
+      "copy": "Copy",
+      "copied": "Copied",
+      "whatsapp": "Share via WhatsApp",
+      "backToList": "Back to users"
+    },
+    "entities": {
+      "title": "Billing entities",
+      "colCode": "Code",
+      "colName": "Name",
+      "colGstin": "GSTIN",
+      "colAccounts": "Accounts",
+      "save": "Save changes",
+      "saved": "Saved."
+    },
+    "accounts": {
+      "title": "Where money lands",
+      "newAccount": "+ New account",
+      "colLabel": "Label",
+      "colEntity": "Entity",
+      "colKind": "Type",
+      "colLast4": "Last 4",
+      "colActive": "Active",
+      "kindBank": "Bank",
+      "kindUpi": "UPI",
+      "kindCash": "Cash drawer",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "fieldEntity": "Entity",
+      "fieldLabel": "Label",
+      "fieldKind": "Type",
+      "fieldLast4": "Last 4 (optional)"
+    },
+    "targets": {
+      "title": "Monthly targets (₹ booked)",
+      "colSalesperson": "Salesperson",
+      "colTotal": "Total",
+      "noSalespeople": "No salespeople yet. Create them in the Users tab.",
+      "placeholder": "—"
+    }
   }
 }
