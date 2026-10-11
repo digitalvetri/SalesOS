@@ -28,10 +28,15 @@ const config = [
     files: ["src/server/repo/**/*.{ts,tsx}"],
     rules: { "no-restricted-imports": "off" },
   },
-  // Scripts, prisma side-tools, and integration tests may import @prisma/client
+  // Scripts, prisma side-tools, and integration/e2e tests may import @prisma/client
   // directly — tests manage their own tenant lifecycle, scripts bootstrap the DB.
   {
-    files: ["scripts/**/*.{mjs,ts}", "prisma/**/*.ts", "tests/integration/**/*.ts"],
+    files: [
+      "scripts/**/*.{mjs,ts}",
+      "prisma/**/*.ts",
+      "tests/integration/**/*.ts",
+      "tests/e2e/**/*.ts",
+    ],
     rules: { "no-restricted-imports": "off", "@typescript-eslint/no-explicit-any": "off" },
   },
 ];

@@ -53,6 +53,63 @@
   "empty": {
     "nothingYet": "Nothing here yet."
   },
+  "orderWizard": {
+    "title": "New order",
+    "back": "Back",
+    "step1": {
+      "title": "Who is this order for?",
+      "name": "Full name",
+      "business": "Business name (optional)",
+      "city": "City",
+      "type": "Type",
+      "useExisting": "Open existing for {name}",
+      "needPhoneAndName": "Enter a valid mobile number and a name.",
+      "next": "Next"
+    },
+    "step2": {
+      "title": "What are they buying?",
+      "addMachine": "Add machine",
+      "addCustom": "Add custom item",
+      "customLabel": "Custom item name",
+      "addFreight": "Freight",
+      "addInstallation": "Installation",
+      "addPacking": "Packing",
+      "price": "Price",
+      "listPrice": "List",
+      "lineTotal": "Line total",
+      "belowList": "Below list — needs owner approval, saved as pending.",
+      "subtotal": "Subtotal",
+      "next": "Next"
+    },
+    "step3": {
+      "title": "Payment & confirm",
+      "customer": "Customer",
+      "billFrom": "Bill from",
+      "deliveryBy": "Delivery by",
+      "advanceToggle": "Advance received now?",
+      "amount": "Amount",
+      "method": "Method",
+      "receivedInto": "Received into",
+      "reference": "UTR / cheque no.",
+      "payBalanceBy": "Pay balance by",
+      "note": "Note",
+      "total": "Total",
+      "advance": "Advance",
+      "balanceAfterAdvance": "Balance after advance",
+      "approvalNote": "Some lines are below list. The order will be saved and sent for approval.",
+      "confirm": "Confirm order",
+      "needCustomer": "Pick or create a customer first.",
+      "needLines": "Add at least one machine or custom item.",
+      "lineErrors": "Every line needs a name, qty, and a valid price."
+    },
+    "resume": {
+      "title": "Continue draft from {time}?",
+      "continue": "Continue",
+      "discard": "Discard"
+    },
+    "submitted": "Order {number} created.",
+    "submittedPending": "Order {number} saved — waiting for approval."
+  },
   "orders": {
     "title": "Orders",
     "newOrder": "+ New order",
