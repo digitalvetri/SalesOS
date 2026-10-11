@@ -24,13 +24,11 @@ const PhoneSchema = z.string().min(3).transform((raw, ctx) => {
 });
 
 const RoleSchema = z.enum(["OWNER", "ADMIN", "ACCOUNTS", "SALES", "DISPATCH"]);
-const LangSchema = z.enum(["en", "ta"]);
 
 const CreateInput = z.object({
   name: z.string().min(1).max(80),
   phone: PhoneSchema,
   role: RoleSchema,
-  lang: LangSchema.optional(),
   defaultEntityId: z.string().optional().nullable(),
   canReceivePayments: z.boolean().optional(),
 });
@@ -54,7 +52,6 @@ export const createUserAction = makeServerAction({
       phoneE164: parsed.phone,
       password,
       role: parsed.role,
-      lang: parsed.lang,
       defaultEntityId: parsed.defaultEntityId ?? null,
       canReceivePayments: parsed.canReceivePayments,
     });
@@ -67,7 +64,6 @@ const UpdateInput = z.object({
   userId: z.string(),
   name: z.string().min(1).max(80).optional(),
   role: RoleSchema.optional(),
-  lang: LangSchema.optional(),
   defaultEntityId: z.string().optional().nullable(),
   canReceivePayments: z.boolean().optional(),
   active: z.boolean().optional(),
