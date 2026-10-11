@@ -19,6 +19,7 @@ import { fyLabelOf } from "@/server/domain/fy";
 import { toDbString, dec } from "@/server/domain/money";
 import { computeBalance } from "@/server/domain/payment/balance";
 import {
+  OVERPAY_TOLERANCE,
   inferPaymentType,
   isPaidOnAllowed,
   isProofPathFor,
@@ -307,11 +308,29 @@ export async function recordRefund(input: RefundInput) {
     throw new AppError("VALIDATION", "Refund amount must be positive.");
   }
 
+  if (!input.receivedIntoAccountId) {
+    throw new AppError("VALIDATION", "Pick the company account the refund was paid from.");
+  }
+  if (!isPaidOnAllowed(input.paidOn, new Date())) {
+    throw new AppError("VALIDATION", "Refund date cannot be in the future.");
+  }
+  await assertReceiverInTenant(input);
+
   const order = await prisma.order.findFirst({
     where: { tenantId: input.tenantId, id: input.orderId },
-    select: { id: true, number: true, orderDate: true },
+    select: { id: true, number: true, orderDate: true, balanceDue: true },
   });
   if (!order) throw new AppError("NOT_FOUND", "Order not found.");
+  // A refund can only pay back what is owed (negative balance, BR-09), ±₹1 rounding.
+  const refundDue = dec(order.balanceDue.toString()).negated();
+  if (amount.minus(refundDue).greaterThan(OVERPAY_TOLERANCE)) {
+    throw new AppError(
+      "VALIDATION",
+      refundDue.greaterThan(0)
+        ? `Refund exceeds the amount due back (₹${refundDue.toFixed(2)}).`
+        : "Nothing is due back to the customer on this order.",
+    );
+  }
   const fy = fyLabelOf(order.orderDate);
 
   return prisma.$transaction(async (tx) => {
@@ -377,51 +396,59 @@ export async function markDeposited(input: MarkDepositedInput) {
   if (input.actorRole !== "OWNER" && input.actorRole !== "ADMIN" && input.actorRole !== "ACCOUNTS") {
     throw new AppError("FORBIDDEN", "Only Owner, Admin or Accounts can mark deposits.");
   }
-
-  const before = await prisma.payment.findFirst({
-    where: { tenantId: input.tenantId, id: input.paymentId },
-    select: {
-      id: true,
-      receivedByUserId: true,
-      depositedToAccountId: true,
-      status: true,
-    },
-  });
-  if (!before) throw new AppError("NOT_FOUND", "Payment not found.");
-  if (!before.receivedByUserId) {
-    throw new AppError("VALIDATION", "This payment was not received by a person.");
-  }
-  if (before.depositedToAccountId) {
-    throw new AppError("VALIDATION", "This payment is already marked deposited.");
+  if (!isPaidOnAllowed(input.depositedOn, new Date())) {
+    throw new AppError("VALIDATION", "Deposit date cannot be in the future.");
   }
 
   const account = await prisma.account.findFirst({
-    where: { tenantId: input.tenantId, id: input.depositedToAccountId },
+    where: { tenantId: input.tenantId, id: input.depositedToAccountId, active: true },
     select: { id: true },
   });
   if (!account) throw new AppError("NOT_FOUND", "Destination account not found.");
 
-  const after = await prisma.payment.update({
-    where: { id: before.id },
-    data: {
-      depositedToAccountId: input.depositedToAccountId,
-      depositedOn: input.depositedOn,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const before = await tx.payment.findFirst({
+      where: { tenantId: input.tenantId, id: input.paymentId },
+      select: {
+        id: true,
+        receivedByUserId: true,
+        depositedToAccountId: true,
+        status: true,
+      },
+    });
+    if (!before) throw new AppError("NOT_FOUND", "Payment not found.");
+    if (!before.receivedByUserId) {
+      throw new AppError("VALIDATION", "This payment was not received by a person.");
+    }
+    if (before.status === "REJECTED") {
+      throw new AppError("VALIDATION", "A rejected payment cannot be deposited.");
+    }
+    // Conditional update guards against two people marking the same cash at once.
+    const { count } = await tx.payment.updateMany({
+      where: { id: before.id, depositedToAccountId: null },
+      data: {
+        depositedToAccountId: input.depositedToAccountId,
+        depositedOn: input.depositedOn,
+      },
+    });
+    if (count === 0) {
+      throw new AppError("VALIDATION", "This payment is already marked deposited.");
+    }
 
-  await writeAudit(prisma, {
-    tenantId: input.tenantId,
-    actorId: input.actorId,
-    action: "PAYMENT_DEPOSIT",
-    entity: "Payment",
-    entityId: before.id,
-    after: {
-      depositedToAccountId: input.depositedToAccountId,
-      depositedOn: input.depositedOn,
-    },
-  });
+    await writeAudit(tx, {
+      tenantId: input.tenantId,
+      actorId: input.actorId,
+      action: "PAYMENT_DEPOSIT",
+      entity: "Payment",
+      entityId: before.id,
+      after: {
+        depositedToAccountId: input.depositedToAccountId,
+        depositedOn: input.depositedOn,
+      },
+    });
 
-  return after;
+    return tx.payment.findUniqueOrThrow({ where: { id: before.id } });
+  });
 }
 
 // ───────── Internals ─────────

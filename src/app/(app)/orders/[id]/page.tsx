@@ -12,6 +12,7 @@ import { OrderActions } from "./OrderActions";
 import { ApprovalActions } from "./ApprovalActions";
 import { CancelRequestButton } from "./CancelRequestButton";
 import { RecordPaymentSheet } from "./RecordPaymentSheet";
+import { RefundSheet } from "./RefundSheet";
 import { PaymentList, type PaymentRow } from "./PaymentList";
 import { istDateString } from "@/server/domain/payment/record";
 import Decimal from "decimal.js";
@@ -51,6 +52,7 @@ export default async function OrderDetailPage({
     can(session.role, "payments.record", { isOwn }) &&
     order.status !== "CANCELLED" &&
     balanceDue.greaterThan(0);
+  const canRefund = can(session.role, "payments.recordRefund") && balanceDue.lessThan(0);
   const approvalVisible = canApprove && order.status === "PENDING_APPROVAL";
   const canRequestCancel =
     level(session.role, "orders.cancel") === "ownRequest" &&
@@ -110,7 +112,7 @@ export default async function OrderDetailPage({
   const accountLabel = new Map(paymentAccounts.map((a) => [a.id, a.label]));
 
   // Record-payment sheet options: the order's entity accounts + staff who can receive.
-  const [sheetAccounts, receiveStaff, me] = canRecordPayment
+  const [sheetAccounts, receiveStaff, me] = canRecordPayment || canRefund
     ? await Promise.all([
         prisma.account.findMany({
           where: { tenantId: session.tenantId, entityId: order.entityId, active: true },
@@ -358,6 +360,18 @@ export default async function OrderDetailPage({
                     accounts={sheetAccounts}
                     receiveStaff={receiveStaff.map((u) => ({ id: u.id, label: u.name }))}
                     actor={{ id: session.userId, canReceivePayments: me?.canReceivePayments ?? false }}
+                    gold={!approvalVisible}
+                  />
+                </div>
+              )}
+              {canRefund && (
+                <div className="mt-4">
+                  <RefundSheet
+                    orderId={order.id}
+                    orderNumber={order.number}
+                    refundDue={balanceDue.abs().toString()}
+                    today={istDateString(new Date())}
+                    accounts={sheetAccounts}
                     gold={!approvalVisible}
                   />
                 </div>

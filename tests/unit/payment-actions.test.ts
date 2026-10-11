@@ -13,7 +13,14 @@ vi.mock("@/server/repo/client", () => ({
 }));
 
 const mockRecord = vi.fn();
-vi.mock("@/server/services/paymentService", () => ({ recordPayment: mockRecord }));
+const mockOther = vi.fn();
+vi.mock("@/server/services/paymentService", () => ({
+  recordPayment: mockRecord,
+  verifyPayments: mockOther,
+  rejectPayment: mockOther,
+  markDeposited: mockOther,
+  recordRefund: mockOther,
+}));
 
 vi.mock("@/lib/idempotency", () => ({
   withIdempotency: async ({ work }: { work: () => Promise<unknown> }) => ({
@@ -95,5 +102,47 @@ describe("recordPaymentAction", () => {
     expect(await action(input({ receivedInto: "bank" }))).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
     expect(await action(input({ paidOn: "10/10/2026" }))).toMatchObject({ ok: false, error: { code: "VALIDATION" } });
     expect(mockRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe("verify / reject / deposit / refund actions — §4.2 roles", () => {
+  const key = "4f1c2f0e-8b7a-4c55-9a7e-0d6c7f3e2a11";
+  const cases = [
+    ["verifyPaymentsAction", { paymentIds: ["p1"] }],
+    ["rejectPaymentAction", { paymentId: "p1", reason: "UTR not found" }],
+    ["markDepositedAction", { paymentId: "p1", accountId: "a1", depositedOn: "2026-10-10" }],
+    [
+      "recordRefundAction",
+      { idempotencyKey: key, orderId: "o1", amount: "100", method: "UPI", paidOn: "2026-10-10", accountId: "a1" },
+    ],
+  ] as const;
+
+  beforeEach(() => {
+    mockGetSession.mockReset();
+    mockOther.mockReset();
+    mockOther.mockResolvedValue({ id: "p1", verifiedCount: 1, orderIds: [], paymentId: "p1", receiptNo: "R" });
+  });
+
+  for (const [name, payload] of cases) {
+    it(`${name}: Sales and Dispatch are refused, Accounts allowed`, async () => {
+      const mod = await import("@/app/(app)/payments/actions");
+      const action = mod[name] as (raw: unknown) => Promise<{ ok: boolean; error?: { code: string } }>;
+      for (const role of ["SALES", "DISPATCH"]) {
+        mockGetSession.mockResolvedValue(session(role));
+        expect(await action(payload)).toMatchObject({ ok: false, error: { code: "FORBIDDEN" } });
+      }
+      expect(mockOther).not.toHaveBeenCalled();
+      mockGetSession.mockResolvedValue(session("ACCOUNTS"));
+      expect(await action(payload)).toMatchObject({ ok: true });
+    });
+  }
+
+  it("reject needs a non-blank reason", async () => {
+    mockGetSession.mockResolvedValue(session("ADMIN"));
+    const { rejectPaymentAction } = await import("@/app/(app)/payments/actions");
+    expect(await rejectPaymentAction({ paymentId: "p1", reason: "   " })).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION" },
+    });
   });
 });
