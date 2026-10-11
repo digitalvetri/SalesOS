@@ -13,7 +13,7 @@ async function loginAsAdmin(page: import("@playwright/test").Page) {
   await page.getByLabel("Mobile number").fill("9840000002");
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/home$/);
+  await page.waitForURL(/\/(home|dashboard|payments)$/);
 }
 
 test.describe("Customers — phone-first create + list", () => {

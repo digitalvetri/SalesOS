@@ -24,7 +24,8 @@
     "reports": "Reports",
     "settings": "Settings",
     "comingSoon": "Coming soon",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "toggleTheme": "Light / dark theme"
   },
   "login": {
     "title": "Sign in",
@@ -213,7 +214,10 @@
     "balanceAny": "Any",
     "balanceDue": "Has balance",
     "balancePaid": "Paid in full",
-    "apply": "Apply filters"
+    "apply": "Apply filters",
+    "balanceRefund": "Refund due",
+    "filteredView": "Filtered view ({range}).",
+    "clearFilters": "Show all orders"
   },
   "customers": {
     "title": "Customers",
@@ -459,7 +463,12 @@
     "depositDate": "Deposit date",
     "withPerson": "with {name}",
     "depositedToast": "{receipt} marked deposited.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "tabCollected": "Collected",
+    "collectedTitle": "Collected (verified)",
+    "fromDate": "From",
+    "toDate": "To",
+    "emptyCollected": "No verified payments in this period."
   },
   "refund": {
     "open": "Record refund",
@@ -574,5 +583,113 @@
     "deliveryPhoto": "Delivery photo (optional)",
     "confirmDelivered": "Confirm delivered",
     "close": "Close"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "period": "Period",
+    "entity": "Billing entity",
+    "apply": "Apply",
+    "moneyTiles": "Money",
+    "periods": {
+      "this_month": "This month",
+      "last_month": "Last month",
+      "last_30": "Last 30 days",
+      "this_fy": "This financial year"
+    },
+    "booked": "Booked",
+    "collected": "Collected ✓",
+    "awaiting": "Awaiting verification",
+    "cashWithStaff": "Cash with staff",
+    "outstanding": "Outstanding",
+    "vsPrev": "{sign} {pct}% vs {prev}",
+    "noComparison": "no earlier figure to compare",
+    "prevPeriod": "previous period",
+    "collectedNote": "verified, minus refunds",
+    "payments": "{count, plural, one {# payment} other {# payments}}",
+    "people": "{count, plural, one {# person} other {# people}}",
+    "overdueShort": "overdue",
+    "trendTitle": "Booked · last 12 months",
+    "needsAction": "Needs action",
+    "review": "Review",
+    "verify": "Verify",
+    "view": "View",
+    "na": {
+      "approvals": "{count, plural, one {# price approval} other {# price approvals}}",
+      "verify": "{count, plural, one {# payment to verify} other {# payments to verify}}",
+      "stuck": "{count, plural, one {# stuck order} other {# stuck orders}}",
+      "cancel": "{count, plural, one {# cancel request} other {# cancel requests}}",
+      "refunds": "{count, plural, one {# refund due} other {# refunds due}}"
+    },
+    "salesTeam": "Sales team",
+    "lb": {
+      "name": "Salesperson",
+      "booked": "Booked",
+      "target": "Target",
+      "orders": "Orders",
+      "avg": "Avg",
+      "collected": "Collected"
+    },
+    "aging": "Overdue aging",
+    "agingBucket": {
+      "0-15": "0–15 days",
+      "16-30": "16–30 days",
+      "31-60": "31–60 days",
+      "60+": "60+ days"
+    },
+    "topMachines": "Top machines (qty)",
+    "topMachinesValue": "Top machines (value)",
+    "cancellations": "Cancellations",
+    "topCustomers": "Top customers",
+    "repeatCustomers": "{count, plural, one {# repeat customer} other {# repeat customers}} (2+ orders)",
+    "nothingYet": "Nothing in this period.",
+    "reason": {
+      "DELIVERY_DELAY": "Delivery delay",
+      "PRICE": "Price",
+      "CUSTOMER_CHANGED_MIND": "Changed mind",
+      "FINANCIAL_ISSUE": "Financial",
+      "WRONG_SPEC": "Wrong spec",
+      "DUPLICATE_ENTRY": "Duplicate",
+      "OTHER": "Other",
+      "UNKNOWN": "Not recorded"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "ownOnly": "Your own orders only.",
+    "from": "From",
+    "to": "To",
+    "entity": "Entity",
+    "apply": "Apply",
+    "download": "Download .xlsx",
+    "r": {
+      "sales-register": {
+        "name": "Sales register",
+        "desc": "Orders with every line, for the period."
+      },
+      "collections": {
+        "name": "Collections register",
+        "desc": "Payments with status, received into, verified by."
+      },
+      "outstanding": {
+        "name": "Outstanding by customer",
+        "desc": "Open balances with overdue aging, as of today."
+      },
+      "salesperson-performance": {
+        "name": "Salesperson performance",
+        "desc": "Booked, target, collected per salesperson."
+      },
+      "cash-with-staff": {
+        "name": "Cash with staff / deposits",
+        "desc": "Personal receipts and when they were deposited."
+      },
+      "cancellations": {
+        "name": "Cancellations",
+        "desc": "Cancelled orders with reasons and refunds still due."
+      },
+      "product-sales": {
+        "name": "Product sales",
+        "desc": "Quantity and value per machine."
+      }
+    }
   }
 }

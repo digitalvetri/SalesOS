@@ -28,6 +28,8 @@
   --color-danger-bg: #F6E3E3;
   --color-info: #2D4F7C;
   --color-info-bg: #E4EBF4;
+  /* Chart mark (single-series magnitude). Validated: dataviz six checks, light + dark. */
+  --color-chart: #2A78D6;
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -61,6 +63,13 @@
   --color-danger-bg: #2C1818;
   --color-info: #93B4E0;
   --color-info-bg: #172131;
+  --color-chart: #3987E5;
+}
+
+/* Theme-specific icons in menus */
+:root[data-theme="dark"] .dark-hidden,
+:root:not([data-theme="dark"]) .light-hidden {
+  display: none;
 }
 
 /* Base */

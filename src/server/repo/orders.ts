@@ -32,6 +32,8 @@ export type OrderListFilters = {
   dateFrom?: Date;
   dateTo?: Date;
   hasBalance?: boolean;
+  refundDue?: boolean; // negative balance (§9 "Refunds due")
+  cancelRequested?: boolean; // open cancel request (CANCEL_REQUEST event, not yet cancelled)
   search?: string; // number, customer name, or phone
 };
 
@@ -45,9 +47,10 @@ export async function listOrders(opts: {
   const where: Prisma.OrderWhereInput = { tenantId: opts.tenantId };
   const f = opts.filters;
 
-  if (opts.salespersonScope) where.salespersonId = opts.salespersonScope;
   if (f.statuses && f.statuses.length > 0) where.status = { in: f.statuses };
   if (f.salespersonId) where.salespersonId = f.salespersonId;
+  // Applied after the filter so a Sales user's own-orders scope always wins.
+  if (opts.salespersonScope) where.salespersonId = opts.salespersonScope;
   if (f.entityId) where.entityId = f.entityId;
   if (f.customerId) where.customerId = f.customerId;
   if (f.dateFrom || f.dateTo) {
@@ -57,6 +60,11 @@ export async function listOrders(opts: {
   }
   if (f.hasBalance === true) where.balanceDue = { gt: 0 };
   if (f.hasBalance === false) where.balanceDue = { lte: 0 };
+  if (f.refundDue) where.balanceDue = { lt: 0 };
+  if (f.cancelRequested) {
+    where.events = { some: { type: "CANCEL_REQUEST" } };
+    where.status = { not: "CANCELLED" };
+  }
 
   if (f.search && f.search.trim().length > 0) {
     const q = f.search.trim();

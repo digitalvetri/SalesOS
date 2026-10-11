@@ -184,3 +184,38 @@ async function resolveNames(
     accounts: new Map(accounts.map((a) => [a.id, a.label])),
   };
 }
+
+/** Verified payments with paidOn in [from, to] — the list behind §9 "Collected (verified)". */
+export async function listCollected(opts: { tenantId: string; from: string; to: string; entityId?: string }) {
+  const where: Prisma.PaymentWhereInput = {
+    tenantId: opts.tenantId,
+    status: "VERIFIED",
+    paidOn: { gte: new Date(`${opts.from}T00:00:00.000Z`), lte: new Date(`${opts.to}T00:00:00.000Z`) },
+    ...(opts.entityId ? { order: { entityId: opts.entityId } } : {}),
+  };
+  const payments = await prisma.payment.findMany({
+    where,
+    orderBy: [{ paidOn: "desc" }, { createdAt: "desc" }],
+    take: 500,
+    include: { order: { select: { id: true, number: true, salespersonId: true, customer: { select: { name: true, businessName: true } } } } },
+  });
+  const names = await resolveNames(opts.tenantId, payments);
+  let net = new Decimal(0);
+  const rows = payments.map((p) => {
+    net = p.type === "REFUND" ? net.minus(p.amount.toString()) : net.plus(p.amount.toString());
+    return {
+      id: p.id,
+      receiptNo: p.receiptNo,
+      type: p.type,
+      method: p.method,
+      amount: p.amount.toString(),
+      paidOn: p.paidOn,
+      into: p.receivedIntoAccountId
+        ? (names.accounts.get(p.receivedIntoAccountId) ?? "—")
+        : `${names.users.get(p.receivedByUserId!) ?? "—"} (personal)`,
+      order: { id: p.order.id, number: p.order.number, customerName: p.order.customer.businessName ?? p.order.customer.name },
+      salesperson: names.users.get(p.order.salespersonId) ?? "—",
+    };
+  });
+  return { rows, net: net.toString() };
+}

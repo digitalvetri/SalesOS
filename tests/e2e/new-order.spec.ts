@@ -81,7 +81,7 @@ test.describe("New-order wizard — Sales creates an order under 60s (P2 gate)",
     await page.getByLabel("Mobile number").fill("9840000013");
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/home$/);
+    await page.waitForURL(/\/(home|dashboard|payments)$/);
 
     const t0 = Date.now();
 

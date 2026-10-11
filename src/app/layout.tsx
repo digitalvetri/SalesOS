@@ -6,6 +6,8 @@ import { readLocale } from "@/i18n/config";
 import { BRAND } from "@/config/brand";
 import { Toaster } from "@/components/app/Toast";
 import { GoldAudit } from "@/components/app/GoldAudit";
+import { cookies } from "next/headers";
+import { THEME_COOKIE } from "@/config/theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -36,9 +38,11 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await readLocale();
   const messages = await getMessages();
+  // Dark theme is an explicit opt-in (§10.1, Owner/Admin profile toggle).
+  const dark = (await cookies()).get(THEME_COOKIE)?.value === "dark";
 
   return (
-    <html lang={locale} className={`${inter.variable} ${notoTamil.variable}`}>
+    <html lang={locale} className={`${inter.variable} ${notoTamil.variable}`} {...(dark ? { "data-theme": "dark" } : {})}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}

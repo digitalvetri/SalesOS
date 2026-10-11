@@ -18,7 +18,7 @@ export async function DesktopAccountsShell({
     { label: t("common.collect"), icon: <IndianRupee className="h-4 w-4" />, href: "/collect" },
     { label: t("common.orders"), icon: <List className="h-4 w-4" />, href: "/orders" },
     { label: t("common.customers"), icon: <Users className="h-4 w-4" />, href: "/customers" },
-    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, disabled: true },
+    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, href: "/reports" },
   ];
   return (
     <div className="flex min-h-dvh flex-col">

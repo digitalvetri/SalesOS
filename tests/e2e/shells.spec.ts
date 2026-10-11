@@ -24,20 +24,27 @@ async function login(page: import("@playwright/test").Page, role: Role) {
   await page.getByLabel("Mobile number").fill(phone);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/home$/);
+  await page.waitForURL(/\/(home|dashboard|payments)$/);
 }
 
 test.describe("Role shells", () => {
-  // Non-SALES roles still render the stub empty-state (P5 adds their dashboards).
-  // SALES role now sees the full §11.2 home (P2-E).
-  const empty = ["owner", "admin", "accounts"] as const;
-  for (const role of empty) {
-    test(`${role} shell renders empty state`, async ({ page }) => {
+  // §11.0 landing pages: Owner/Admin → Dashboard (P5), Accounts → Payments (P3),
+  // Dispatch → Queue (P4), Sales → §11.2 home (P2-E).
+  for (const role of ["owner", "admin"] as const) {
+    test(`${role} lands on the dashboard`, async ({ page }) => {
       await login(page, role);
-      await expect(page.getByText(/You're signed in as/i)).toBeVisible();
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
       await page.screenshot({ path: `${SHOTS}/shell-${role}.png`, fullPage: true });
     });
   }
+
+  test("accounts lands on payments", async ({ page }) => {
+    await login(page, "accounts");
+    await expect(page).toHaveURL(/\/payments$/);
+    await expect(page.getByRole("heading", { name: "Verify payments" })).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/shell-accounts.png`, fullPage: true });
+  });
 
   test("dispatch shell renders the queue (§11.0)", async ({ page }) => {
     await login(page, "dispatch");

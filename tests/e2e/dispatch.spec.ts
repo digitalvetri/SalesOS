@@ -39,7 +39,8 @@ test.describe("Dispatch board — partial dispatch → delivered → closed", ()
     const order = await prisma.order.create({
       data: {
         tenantId: tenant.id, number, entityId: entity.id, customerId: customer.id, salespersonId: sales.id,
-        orderDate: new Date(Date.now() - 12 * 86_400_000), status: "CONFIRMED",
+        // Older than any demo-seed order (≤ 180 d) so it is the oldest stuck card and holds the gold.
+        orderDate: new Date(Date.now() - 200 * 86_400_000), status: "CONFIRMED",
         promisedDeliveryDate: new Date(Date.now() - 2 * 86_400_000),
         subtotal: "60000", chargesTotal: "0", discount: "0", total: "60000", balanceDue: "0", createdById: sales.id,
         lines: { create: [
@@ -86,7 +87,7 @@ test.describe("Dispatch board — partial dispatch → delivered → closed", ()
     await page.getByLabel("Mobile number").fill(phone);
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/home$/);
+    await page.waitForURL(/\/(home|dashboard|payments)$/);
 
     await page.goto("/dispatch");
     const card = page.getByTestId("board-card").filter({ hasText: number });
@@ -154,7 +155,7 @@ test.describe("Dispatch board — partial dispatch → delivered → closed", ()
     await mp.getByLabel("Mobile number").fill(phone);
     await mp.getByLabel("Password").fill(PASSWORD);
     await mp.getByRole("button", { name: /sign in/i }).click();
-    await mp.waitForURL(/\/home$/);
+    await mp.waitForURL(/\/(home|dashboard|payments)$/);
     await mp.goto("/dispatch");
     await expect(mp.getByRole("tab").first()).toBeVisible();
     await mp.screenshot({ path: `${SHOTS}/dispatch-board-mobile.png`, fullPage: true });

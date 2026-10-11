@@ -16,6 +16,7 @@ export default async function PaymentsLayout({ children }: { children: React.Rea
         tabs={[
           { href: "/payments", label: t("tabVerify"), exact: true },
           { href: "/payments/cash", label: t("tabCash") },
+          { href: "/payments/collected", label: t("tabCollected") },
         ]}
       />
       {children}

@@ -24,14 +24,14 @@ export async function DesktopOwnerAdminShell({
   const t = await getTranslations();
   const items = [
     { label: t("common.home"), icon: <Home className="h-4 w-4" />, href: "/home" },
-    { label: t("common.dashboard"), icon: <LayoutDashboard className="h-4 w-4" />, disabled: true },
+    { label: t("common.dashboard"), icon: <LayoutDashboard className="h-4 w-4" />, href: "/dashboard" },
     { label: t("common.orders"), icon: <List className="h-4 w-4" />, href: "/orders" },
     { label: t("common.payments"), icon: <IndianRupee className="h-4 w-4" />, href: "/payments" },
     { label: t("common.collect"), icon: <IndianRupee className="h-4 w-4" />, href: "/collect" },
     { label: t("common.dispatch"), icon: <Package className="h-4 w-4" />, href: "/dispatch" },
     { label: t("common.customers"), icon: <Users className="h-4 w-4" />, href: "/customers" },
     { label: t("common.priceList"), icon: <Tag className="h-4 w-4" />, href: "/catalogue" },
-    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, disabled: true },
+    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, href: "/reports" },
     { label: t("common.settings"), icon: <Settings className="h-4 w-4" />, href: "/settings" },
   ];
   return (

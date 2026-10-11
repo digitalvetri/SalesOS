@@ -21,6 +21,7 @@
     "prisma:migrate:dev": "dotenv run -f .env.local -- prisma migrate dev && pnpm run prisma:apply-extra",
     "prisma:apply-extra": "dotenv run -f .env.local -- tsx prisma/apply-extra.ts",
     "prisma:seed": "dotenv run -f .env.local -- tsx prisma/seed.ts",
+    "prisma:seed:demo": "dotenv run -f .env.local -- tsx prisma/seed-demo.ts",
     "bootstrap:auth": "dotenv run -f .env.local -- tsx scripts/bootstrap-auth-users.ts",
     "db:setup": "pnpm run prisma:migrate && pnpm run prisma:seed",
     "sb:start": "supabase start",
