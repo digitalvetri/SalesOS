@@ -18,6 +18,11 @@ import { receiptNumber, receiptCounterKey } from "@/server/domain/order/numberin
 import { fyLabelOf } from "@/server/domain/fy";
 import { toDbString, dec } from "@/server/domain/money";
 import { computeBalance } from "@/server/domain/payment/balance";
+import {
+  inferPaymentType,
+  isPaidOnAllowed,
+  isProofPathFor,
+} from "@/server/domain/payment/record";
 
 // ───────── Record ─────────
 
@@ -26,7 +31,8 @@ export type RecordPaymentInput = {
   actorId: string;
   actorRole: Role;
   orderId: string;
-  type: Exclude<PaymentType, "REFUND">;
+  /** Omit to infer from context (§11.5 has no type picker) — see inferPaymentType. */
+  type?: Exclude<PaymentType, "REFUND">;
   method: PaymentMethod;
   amount: Decimal.Value;
   paidOn: Date;
@@ -42,6 +48,12 @@ export async function recordPayment(input: RecordPaymentInput) {
   const amount = dec(input.amount);
   if (!amount.isPositive() || amount.isZero()) {
     throw new AppError("VALIDATION", "Payment amount must be positive.");
+  }
+  if (!isPaidOnAllowed(input.paidOn, new Date())) {
+    throw new AppError("VALIDATION", "Payment date cannot be in the future.");
+  }
+  if (input.proofPath && !isProofPathFor(input.proofPath, input.tenantId, input.orderId)) {
+    throw new AppError("VALIDATION", "Proof upload does not belong to this order.");
   }
 
   const order = await prisma.order.findFirst({
@@ -60,19 +72,34 @@ export async function recordPayment(input: RecordPaymentInput) {
   if (input.actorRole === "SALES" && order.salespersonId !== input.actorId) {
     throw new AppError("FORBIDDEN", "Sales can only record payments on their own orders.");
   }
+  if (order.status === "CANCELLED") {
+    throw new AppError("VALIDATION", "This order is cancelled — record a refund instead.");
+  }
+  await assertReceiverInTenant(input);
 
   // Overpayment check uses the current pending+verified total (BR-09 netReceived).
   const existingPayments = await prisma.payment.findMany({
     where: { orderId: order.id, status: { not: "REJECTED" } },
     select: { type: true, status: true, amount: true },
   });
+  const current = existingPayments.map((p) => ({
+    type: p.type,
+    status: p.status,
+    amount: p.amount.toString(),
+  }));
+  const type =
+    input.type ??
+    inferPaymentType({
+      amount,
+      balanceDue: computeBalance(
+        { total: order.total.toString(), status: order.status },
+        current,
+      ).balanceDue,
+      priorLivePayments: current.filter((p) => p.type !== "REFUND").length,
+    });
   const prospective = [
-    ...existingPayments.map((p) => ({
-      type: p.type,
-      status: p.status,
-      amount: p.amount.toString(),
-    })),
-    { type: input.type, status: "PENDING_VERIFICATION" as const, amount: amount.toString() },
+    ...current,
+    { type, status: "PENDING_VERIFICATION" as const, amount: amount.toString() },
   ];
   const projected = computeBalance(
     { total: order.total.toString(), status: order.status },
@@ -99,7 +126,7 @@ export async function recordPayment(input: RecordPaymentInput) {
         tenantId: input.tenantId,
         receiptNo,
         orderId: order.id,
-        type: input.type,
+        type,
         method: input.method,
         amount: toDbString(amount),
         paidOn: input.paidOn,
@@ -128,7 +155,7 @@ export async function recordPayment(input: RecordPaymentInput) {
       },
     });
 
-    return { paymentId: payment.id, receiptNo };
+    return { paymentId: payment.id, receiptNo, type };
   });
 }
 
@@ -442,6 +469,33 @@ export async function recomputeAndWriteBalance(
         note: newStatus === "CLOSED" ? "Balance paid — auto-closed" : "Payment reversed — reopened",
       },
     });
+  }
+}
+
+// The receiver ids arrive from the client — make sure they point inside this tenant.
+async function assertReceiverInTenant(input: {
+  tenantId: string;
+  receivedIntoAccountId?: string | null;
+  receivedByUserId?: string | null;
+}): Promise<void> {
+  if (input.receivedIntoAccountId) {
+    const account = await prisma.account.findFirst({
+      where: { tenantId: input.tenantId, id: input.receivedIntoAccountId, active: true },
+      select: { id: true },
+    });
+    if (!account) throw new AppError("VALIDATION", "Pick an active company account.");
+  }
+  if (input.receivedByUserId) {
+    const user = await prisma.user.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        id: input.receivedByUserId,
+        active: true,
+        canReceivePayments: true,
+      },
+      select: { id: true },
+    });
+    if (!user) throw new AppError("VALIDATION", "That person cannot receive payments.");
   }
 }
 

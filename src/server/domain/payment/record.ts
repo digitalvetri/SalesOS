@@ -20,7 +20,7 @@ export function inferPaymentType(input: {
 }): "ADVANCE" | "PART" | "FINAL" {
   const amount = dec(input.amount);
   const balance = dec(input.balanceDue);
-  if (balance.isPositive() && amount.plus(OVERPAY_TOLERANCE).greaterThanOrEqualTo(balance)) {
+  if (balance.greaterThan(0) && amount.plus(OVERPAY_TOLERANCE).greaterThanOrEqualTo(balance)) {
     return "FINAL";
   }
   return input.priorLivePayments === 0 ? "ADVANCE" : "PART";
@@ -81,4 +81,14 @@ export function fitWithin(width: number, height: number, max: number): { width: 
   if (longest <= max) return { width, height };
   const scale = max / longest;
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
+/** Magic-byte check so a renamed file can't masquerade as an image. */
+export function sniffImageMime(head: Uint8Array): ProofMime | null {
+  const at = (i: number) => head[i];
+  if (at(0) === 0xff && at(1) === 0xd8 && at(2) === 0xff) return "image/jpeg";
+  if (at(0) === 0x89 && at(1) === 0x50 && at(2) === 0x4e && at(3) === 0x47) return "image/png";
+  const ascii = (from: number, to: number) => String.fromCharCode(...head.slice(from, to));
+  if (head.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  return null;
 }

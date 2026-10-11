@@ -111,7 +111,15 @@
     "cancelConfirmTitle": "Cancel this order?",
     "cancelConfirmBody": "The order status becomes CANCELLED. Verified advance payments become refunds due. Not reversible.",
     "approveCancelRequest": "Approve cancel request",
-    "cancelled": "Order cancelled."
+    "cancelled": "Order cancelled.",
+    "refundDue": "Refund due",
+    "timelinePayment": "{type} {amount}",
+    "paymentType": {
+      "ADVANCE": "Advance",
+      "PART": "Part payment",
+      "FINAL": "Final payment",
+      "REFUND": "Refund"
+    }
   },
   "orderWizard": {
     "title": "New order",
@@ -338,6 +346,51 @@
       "colTotal": "Total",
       "noSalespeople": "No salespeople yet. Create them in the Users tab.",
       "placeholder": "—"
+    }
+  },
+  "recordPayment": {
+    "open": "Record payment",
+    "title": "Record payment",
+    "close": "Close",
+    "balanceDue": "Balance due",
+    "amount": "Amount",
+    "full": "Full",
+    "date": "Date",
+    "method": "Method",
+    "methods": {
+      "CASH": "Cash",
+      "UPI": "UPI",
+      "BANK_TRANSFER": "Bank",
+      "CHEQUE": "Cheque",
+      "CARD": "Card"
+    },
+    "receivedInto": "Received into",
+    "companyAccounts": "Company accounts",
+    "person": "Person (cash with staff)",
+    "me": "Me ({name})",
+    "personalHint": "Shows as cash with staff until Accounts marks it deposited.",
+    "reference": "UTR / Ref",
+    "chequeNo": "Cheque no.",
+    "proof": "Screenshot (optional)",
+    "proofPreview": "Payment screenshot preview",
+    "removeProof": "Remove",
+    "compressing": "Preparing image…",
+    "save": "Save payment",
+    "saving": "Saving…",
+    "footer": "Goes to Accounts for verification",
+    "chequeFooter": "Stays pending until the cheque clears",
+    "saved": "Payment saved — {receipt}",
+    "errAmount": "Enter an amount above zero.",
+    "errOverpay": "More than the balance due.",
+    "errImage": "Could not read that image.",
+    "errUpload": "Screenshot upload failed. Try again.",
+    "intoPerson": "into {name} (personal)",
+    "withPerson": "With {name}",
+    "viewProof": "View proof",
+    "status": {
+      "PENDING_VERIFICATION": "Awaiting verification",
+      "VERIFIED": "Verified",
+      "REJECTED": "Rejected"
     }
   }
 }
