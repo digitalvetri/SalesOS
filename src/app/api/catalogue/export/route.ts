@@ -1,7 +1,7 @@
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
 import { exportPriceList } from "@/server/services/priceListExport";
-import { AppError, appErrorStatus, isAppError } from "@/lib/errors";
+import { appErrorStatus, isAppError } from "@/lib/errors";
 
 export const runtime = "nodejs";
 

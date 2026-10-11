@@ -193,11 +193,18 @@ model Customer {
   address      String?
   notes        String?
   ownerUserId  String? // salesperson who brought them
+  // Merge target: when a duplicate is merged, source gets mergedIntoId = survivor.id
+  // Soft merge preserves history (spec BR-12 — nothing is hard-deleted).
+  mergedIntoId String?
+  mergedInto   Customer?    @relation("CustomerMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom   Customer[]   @relation("CustomerMerge")
+  mergedAt     DateTime?
   createdAt    DateTime     @default(now())
   orders       Order[]
 
   @@unique([tenantId, phoneE164])
   @@index([tenantId, name])
+  @@index([tenantId, mergedIntoId])
 }
 
 // ───────────── Orders ─────────────

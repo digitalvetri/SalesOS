@@ -2,7 +2,7 @@
 // preview → commit flow, then confirms the resulting products show up on the
 // price-list page.
 import { test, expect } from "@playwright/test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import ExcelJS from "exceljs";
 
