@@ -2,21 +2,21 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces */
-  --color-bg: #F7F6F2;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #F0EEE8;
-  --color-border: #E3E0D8;
-  --color-border-strong: #CFCBC1;
+  /* Surfaces — warmed cream to match the "soft luxury" mockup. */
+  --color-bg: #F6EFE2;
+  --color-surface: #FFFBF4;
+  --color-surface-2: #EFE6D4;
+  --color-border: #E7DCC4;
+  --color-border-strong: #D5C7A6;
 
-  /* Ink */
-  --color-ink: #121316;
-  --color-ink-2: #4A4C52;
-  --color-ink-3: #7D7F86;
+  /* Ink — darker brown-black on the warm cream. */
+  --color-ink: #1F1A10;
+  --color-ink-2: #4F4535;
+  --color-ink-3: #857B65;
 
   /* The one accent */
-  --color-gold: #B08A3E;
-  --color-gold-ink: #1A1408;
+  --color-gold: #9E7B35;
+  --color-gold-ink: #1F1708;
   --color-gold-soft: #F3EAD6;
 
   /* Status (muted — never compete with gold) */
@@ -31,14 +31,26 @@
   /* Chart mark (single-series magnitude). Validated: dataviz six checks, light + dark. */
   --color-chart: #2A78D6;
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
+  /* Nav chrome — soft cream sidebar / topbar / mobile bottom-nav. Matches
+     the "warm luxury" dashboard mockup: light beige surfaces with a brown
+     ink on top and gold for active state. */
+  --color-nav-bg: #F6EEDF;
+  --color-nav-bg-2: #ECE2CB;
+  --color-nav-active-bg: #E4D4AE;
+  --color-nav-ink: #2E2416;
+  --color-nav-ink-2: #6B5C44;
+  --color-nav-ink-3: #96886B;
+  --color-nav-border: #DFD0B3;
+  --color-nav-accent: #9E7B35;
 
-  --shadow-1: 0 1px 2px rgba(18, 19, 22, 0.06);
-  --shadow-2: 0 6px 24px rgba(18, 19, 22, 0.08);
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 22px;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --shadow-1: 0 1px 2px rgba(60, 46, 20, 0.05);
+  --shadow-2: 0 10px 28px rgba(60, 46, 20, 0.08);
+
+  --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Dark theme — explicit opt-in for Owner/Admin desktop (toggle in profile). */

@@ -36,7 +36,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
       <DropdownMenu.Trigger asChild>
         <button
           aria-label={user.name}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] text-xs font-semibold text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface)]"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-nav-border)] bg-[color:var(--color-nav-bg-2)] text-xs font-semibold text-[color:var(--color-nav-accent)] hover:bg-[color:var(--color-nav-active-bg)]"
         >
           {initials(user.name)}
         </button>

@@ -1,9 +1,13 @@
 import { getTranslations } from "next-intl/server";
-import { ClipboardList, LayoutGrid, CircleUser } from "lucide-react";
+import { LayoutDashboard, List } from "lucide-react";
 import { TopBar } from "./TopBar";
 import { MobileNavItem } from "./MobileNavItem";
+import { DesktopSidebar } from "./DesktopSidebar";
 import type { SessionUser } from "@/server/repo/users";
 
+// v1.1 removed the Dispatch board. DISPATCH-role users (if any remain)
+// get the Employee shell: Overview + Orders. Their orders view lets them
+// mark things completed.
 export async function MobileDispatchShell({
   user,
   children,
@@ -12,18 +16,24 @@ export async function MobileDispatchShell({
   children: React.ReactNode;
 }) {
   const t = await getTranslations();
+  const sidebarItems = [
+    { label: t("common.overview"), icon: <LayoutDashboard className="h-5 w-5" />, href: "/home" },
+    { label: t("common.orders"), icon: <List className="h-5 w-5" />, href: "/orders" },
+  ];
   return (
     <div className="flex min-h-dvh flex-col">
       <TopBar user={user} />
-      <main className="flex-1 pb-20">{children}</main>
+      <div className="flex flex-1">
+        <DesktopSidebar items={sidebarItems} />
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      </div>
       <nav
         role="navigation"
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
+        className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-[color:var(--color-nav-border)] bg-[color:var(--color-nav-bg)] md:hidden"
       >
-        <MobileNavItem href="/home" icon={<ClipboardList className="h-5 w-5" />} label={t("common.queue")} />
-        <MobileNavItem href="/dispatch" icon={<LayoutGrid className="h-5 w-5" />} label={t("common.board")} />
-        <MobileNavItem disabled icon={<CircleUser className="h-5 w-5" />} label={t("common.me")} />
+        <MobileNavItem href="/home" icon={<LayoutDashboard className="h-5 w-5" />} label={t("common.overview")} />
+        <MobileNavItem href="/orders" icon={<List className="h-5 w-5" />} label={t("common.orders")} />
       </nav>
     </div>
   );

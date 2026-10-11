@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { LOCALE } from "@/i18n/locale";
@@ -10,10 +10,11 @@ import { cookies } from "next/headers";
 import { THEME_COOKIE } from "@/config/theme";
 import "./globals.css";
 
-const inter = Inter({
+const sans = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans-brand",
   display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dark = (await cookies()).get(THEME_COOKIE)?.value === "dark";
 
   return (
-    <html lang={LOCALE} className={inter.variable} {...(dark ? { "data-theme": "dark" } : {})}>
+    <html lang={LOCALE} className={sans.variable} {...(dark ? { "data-theme": "dark" } : {})}>
       <body>
         <NextIntlClientProvider locale={LOCALE} messages={messages}>
           {children}

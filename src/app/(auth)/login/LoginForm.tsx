@@ -12,7 +12,7 @@ import { signInAction } from "./actions";
 export function LoginForm() {
   const t = useTranslations();
   const router = useRouter();
-  const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -22,7 +22,7 @@ export function LoginForm() {
     if (pending) return;
     setPending(true);
     try {
-      const result = await signInAction({ phone, password });
+      const result = await signInAction({ email, password });
       if (result.ok) {
         router.push("/home");
         router.refresh();
@@ -47,24 +47,17 @@ export function LoginForm() {
     <form onSubmit={onSubmit} noValidate>
       <div className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="phone">{t("login.phoneLabel")}</Label>
-          <div className="flex overflow-hidden rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] focus-within:ring-2 focus-within:ring-[color:var(--color-ink)]/60">
-            <span className="flex items-center justify-center bg-[color:var(--color-surface-2)] px-3 text-sm text-[color:var(--color-ink-2)]">
-              +91
-            </span>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              required
-              className="flex-1 border-0 bg-transparent px-3 text-base text-[color:var(--color-ink)] placeholder:text-[color:var(--color-ink-3)] focus-visible:outline-none"
-              placeholder="98437 22055"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
+          <Label htmlFor="email">{t("login.emailLabel")}</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@salesos.in"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
 
         <div className="space-y-2">
@@ -91,7 +84,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <Button type="submit" gold className="h-12 w-full" disabled={pending || !phone || !password}>
+        <Button type="submit" gold className="h-12 w-full" disabled={pending || !email || !password}>
           {pending ? t("common.loading") : t("login.submit")}
         </Button>
 
