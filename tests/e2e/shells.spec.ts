@@ -1,0 +1,38 @@
+// Shell screenshots for each role. Requires seeded Supabase users to run end-to-end;
+// in CI we exercise them by setting SALESOS_TEST_SESSION cookies in a before-each
+// (see docs/evidence/phase-0.md once Supabase credentials are provided).
+import { test, expect } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+
+const SHOTS = "docs/evidence/screenshots";
+mkdirSync(SHOTS, { recursive: true });
+
+type Role = "sales" | "dispatch" | "owner" | "admin" | "accounts";
+
+const CREDS: Record<Role, { phone: string; password: string }> = {
+  sales: { phone: "9840000013", password: process.env.SEED_PASSWORD_SALES ?? "" },
+  dispatch: { phone: "9840000021", password: process.env.SEED_PASSWORD_DISPATCH ?? "" },
+  owner: { phone: "9840000001", password: process.env.SEED_PASSWORD_OWNER ?? "" },
+  admin: { phone: "9840000002", password: process.env.SEED_PASSWORD_ADMIN ?? "" },
+  accounts: { phone: "9840000003", password: process.env.SEED_PASSWORD_ACCOUNTS ?? "" },
+};
+
+async function login(page: import("@playwright/test").Page, role: Role) {
+  const { phone, password } = CREDS[role];
+  test.skip(!password, `Set SEED_PASSWORD_${role.toUpperCase()} to run ${role} shell test`);
+  await page.goto("/login");
+  await page.getByLabel("Mobile number").fill(phone);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL(/\/home$/);
+}
+
+test.describe("Role shells (empty states)", () => {
+  for (const role of ["sales", "dispatch", "owner", "admin", "accounts"] as const) {
+    test(`${role} shell renders`, async ({ page }) => {
+      await login(page, role);
+      await expect(page.getByText(/You're signed in as/i)).toBeVisible();
+      await page.screenshot({ path: `${SHOTS}/shell-${role}.png`, fullPage: true });
+    });
+  }
+});

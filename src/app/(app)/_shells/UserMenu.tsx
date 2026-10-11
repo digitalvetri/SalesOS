@@ -1,0 +1,55 @@
+"use client";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { LogOut } from "lucide-react";
+import type { SessionUser } from "@/server/repo/users";
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "·";
+}
+
+export function UserMenu({ user }: { user: SessionUser }) {
+  const router = useRouter();
+  const t = useTranslations();
+
+  async function signOut() {
+    await fetch("/api/auth/signout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          aria-label={user.name}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] text-xs font-semibold text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface)]"
+        >
+          {initials(user.name)}
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-40 min-w-[200px] rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] p-1 text-sm shadow-[var(--shadow-2)]"
+        >
+          <div className="px-3 py-2">
+            <div className="font-medium">{user.name}</div>
+            <div className="text-xs text-[color:var(--color-ink-3)]">{user.role}</div>
+          </div>
+          <DropdownMenu.Separator className="my-1 h-px bg-[color:var(--color-border)]" />
+          <DropdownMenu.Item
+            onSelect={signOut}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 hover:bg-[color:var(--color-surface-2)]"
+          >
+            <LogOut className="h-4 w-4" />
+            {t("common.signOut")}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}

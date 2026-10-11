@@ -1,0 +1,129 @@
+/* SalesOS — Sovereign design system. Tokens per spec §10.1. */
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces */
+  --color-bg: #F7F6F2;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F0EEE8;
+  --color-border: #E3E0D8;
+  --color-border-strong: #CFCBC1;
+
+  /* Ink */
+  --color-ink: #121316;
+  --color-ink-2: #4A4C52;
+  --color-ink-3: #7D7F86;
+
+  /* The one accent */
+  --color-gold: #B08A3E;
+  --color-gold-ink: #1A1408;
+  --color-gold-soft: #F3EAD6;
+
+  /* Status (muted — never compete with gold) */
+  --color-ok: #2F6B4F;
+  --color-ok-bg: #E6F0EA;
+  --color-warn: #8A5A12;
+  --color-warn-bg: #F6ECDA;
+  --color-danger: #9B2C2C;
+  --color-danger-bg: #F6E3E3;
+  --color-info: #2D4F7C;
+  --color-info-bg: #E4EBF4;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  --shadow-1: 0 1px 2px rgba(18, 19, 22, 0.06);
+  --shadow-2: 0 6px 24px rgba(18, 19, 22, 0.08);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-tamil: var(--font-noto-tamil), var(--font-inter), sans-serif;
+}
+
+/* Dark theme — explicit opt-in for Owner/Admin desktop (toggle in profile). */
+:root[data-theme="dark"] {
+  --color-bg: #0E0F11;
+  --color-surface: #16171A;
+  --color-surface-2: #1C1E22;
+  --color-border: #2A2C31;
+  --color-border-strong: #3A3D44;
+  --color-ink: #F2F1EE;
+  --color-ink-2: #B7B8BD;
+  --color-ink-3: #85878E;
+  --color-gold: #C9A25A;
+  --color-gold-ink: #16120A;
+  --color-gold-soft: #2B2416;
+  --color-ok: #7FC3A0;
+  --color-ok-bg: #16261E;
+  --color-warn: #E0B26A;
+  --color-warn-bg: #2A2114;
+  --color-danger: #E39191;
+  --color-danger-bg: #2C1818;
+  --color-info: #93B4E0;
+  --color-info-bg: #172131;
+}
+
+/* Base */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "cv11" 1;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html[lang="ta"] body {
+  font-family: var(--font-tamil);
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Minimum body size on mobile per §10.2. */
+@media (max-width: 480px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Focus ring per §10.7 */
+*:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Section labels per §10.2 */
+.label-caps {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-3);
+}
+
+/* The single gold element on each screen marks itself with data-gold. */
+[data-gold] {
+  background: var(--color-gold);
+  color: var(--color-gold-ink);
+}
+[data-gold]:hover {
+  box-shadow: 0 0 0 4px var(--color-gold-soft);
+}
+
+/* Respect reduced motion — spec §10.6 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

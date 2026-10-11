@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-ci
+      DATABASE_URL: postgresql://u:p@localhost:5432/dummy
+      DIRECT_URL: postgresql://u:p@localhost:5432/dummy
+      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-for-ci
+      APP_ENCRYPTION_KEY: 00000000000000000000000000000000000000000000=
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint (incl. @prisma/client import fixture)
+        run: pnpm run lint
+
+      - name: Unit + integration tests
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build

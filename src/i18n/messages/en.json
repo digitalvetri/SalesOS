@@ -1,0 +1,56 @@
+{
+  "brand": {
+    "name": "SalesOS",
+    "entities": "KI · KFM"
+  },
+  "common": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "home": "Home",
+    "orders": "Orders",
+    "collect": "Collect",
+    "me": "Me",
+    "queue": "Queue",
+    "board": "Board",
+    "dashboard": "Dashboard",
+    "payments": "Payments",
+    "dispatch": "Dispatch",
+    "customers": "Customers",
+    "priceList": "Price List",
+    "reports": "Reports",
+    "settings": "Settings",
+    "comingSoon": "Coming soon",
+    "notifications": "Notifications"
+  },
+  "login": {
+    "title": "Sign in",
+    "phoneLabel": "Mobile number",
+    "passwordLabel": "Password",
+    "showPassword": "Show",
+    "hidePassword": "Hide",
+    "forgot": "Forgot password? Ask your admin.",
+    "submit": "Sign in",
+    "errors": {
+      "invalidCredentials": "Mobile number or password is wrong.",
+      "deactivated": "Your account is turned off. Contact your admin.",
+      "rateLimited": "Too many attempts. Try again in a few minutes.",
+      "unknown": "Something went wrong — reference #{ref}"
+    }
+  },
+  "shell": {
+    "roleBanner": {
+      "owner": "You're signed in as Owner. The admin dashboard arrives in Phase P5.",
+      "admin": "You're signed in as Admin. The admin dashboard arrives in Phase P5.",
+      "accounts": "You're signed in as Accounts. The payments verify queue arrives in Phase P3.",
+      "sales": "You're signed in as Sales. The new-order flow arrives in Phase P2.",
+      "dispatch": "You're signed in as Dispatch. The dispatch board arrives in Phase P4."
+    }
+  },
+  "empty": {
+    "nothingYet": "Nothing here yet."
+  }
+}

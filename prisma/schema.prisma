@@ -1,0 +1,501 @@
+// SalesOS — full data model per spec §7.
+// Reads: docs/superpowers/specs/2026-10-10-salesos-design.md
+// All business tables carry tenantId. Money is Decimal(14,2).
+// Direct @prisma/client imports are allowed ONLY inside src/server/repo/** (ESLint rule).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ───────────── Tenancy & identity ─────────────
+
+model Tenant {
+  id        String          @id @default(cuid())
+  name      String
+  slug      String          @unique
+  createdAt DateTime        @default(now())
+  settings  TenantSettings?
+  entities  BillingEntity[]
+  users     User[]
+}
+
+model TenantSettings {
+  tenantId                String  @id
+  tenant                  Tenant  @relation(fields: [tenantId], references: [id])
+  pricesIncludeGst        Boolean @default(true)
+  defaultGstRate          Decimal @default(18) @db.Decimal(5, 2)
+  maxSalesDiscountPct     Decimal @default(10) @db.Decimal(5, 2)
+  customLineApprovalAbove Decimal @default(50000) @db.Decimal(14, 2)
+  overdueGraceDays        Int     @default(7)
+  productionAlertDays     Int     @default(10)
+  autoRemindersEnabled    Boolean @default(false)
+  autoReminderEveryDays   Int     @default(5)
+  autoReminderMaxCount    Int     @default(3)
+  waPhoneNumberId         String?
+  waBusinessAccountId     String?
+  waAccessTokenEnc        String? // encrypted at rest (AES-256-GCM, key in env)
+  waTemplatesJson         Json?
+}
+
+model BillingEntity {
+  id       String    @id @default(cuid())
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  code     String // "KI", "KFM"
+  name     String // "Kumaar Industries"
+  gstin    String?
+  address  String?
+  phone    String?
+  logoPath String?
+  active   Boolean   @default(true)
+  accounts Account[]
+  orders   Order[]
+
+  @@unique([tenantId, code])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  ACCOUNTS
+  SALES
+  DISPATCH
+}
+
+enum Lang {
+  en
+  ta
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  tenantId           String
+  tenant             Tenant        @relation(fields: [tenantId], references: [id])
+  authUserId         String        @unique // Supabase auth.users.id
+  name               String
+  phoneE164          String
+  role               Role
+  lang               Lang          @default(en)
+  defaultEntityId    String?
+  active             Boolean       @default(true)
+  canReceivePayments Boolean       @default(false) // appears in "received into" list
+  createdAt          DateTime      @default(now())
+  lastLoginAt        DateTime?
+  ordersAsSales      Order[]       @relation("OrderSalesperson")
+  targets            SalesTarget[]
+
+  @@unique([tenantId, phoneE164])
+  @@index([tenantId, role, active])
+}
+
+model SalesTarget {
+  id       String   @id @default(cuid())
+  tenantId String
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  month    DateTime @db.Date // first day of month (IST)
+  amount   Decimal  @db.Decimal(14, 2)
+
+  @@unique([tenantId, userId, month])
+}
+
+// ───────────── Money destinations ─────────────
+
+enum AccountKind {
+  BANK
+  UPI
+  CASH_DRAWER
+}
+
+model Account {
+  id       String        @id @default(cuid())
+  tenantId String
+  entityId String
+  entity   BillingEntity @relation(fields: [entityId], references: [id])
+  label    String // "KFM Current A/c (HDFC)", "KI UPI Scanner"
+  kind     AccountKind
+  last4    String?
+  active   Boolean       @default(true)
+
+  @@index([tenantId, active])
+}
+
+// ───────────── Catalogue ─────────────
+
+model ProductCategory {
+  id        String    @id @default(cuid())
+  tenantId  String
+  name      String // "Wet Grinders", "Pulverizers", "Turbo Stoves"
+  sortOrder Int       @default(0)
+  products  Product[]
+
+  @@unique([tenantId, name])
+}
+
+model Product {
+  id                 String                @id @default(cuid())
+  tenantId           String
+  categoryId         String
+  category           ProductCategory       @relation(fields: [categoryId], references: [id])
+  name               String // "10L Tilting Wet Grinder"
+  spec               String? // "1 HP", "SS 304", "50 kg/hr"
+  searchText         String // lowercased name+spec+aliases for fast search (pg_trgm)
+  aliases            String[] // "10 ltr tilting", "10l tt", "t/w/g 10"
+  dealerPriceWoMotor Decimal?              @db.Decimal(14, 2)
+  dealerPrice        Decimal?              @db.Decimal(14, 2)
+  customerPrice      Decimal?              @db.Decimal(14, 2)
+  gstRate            Decimal?              @db.Decimal(5, 2)
+  isStockItem        Boolean               @default(false) // can be "handed over now"
+  active             Boolean               @default(true)
+  updatedAt          DateTime              @updatedAt
+  priceHistory       ProductPriceHistory[]
+  OrderLine          OrderLine[]
+
+  @@index([tenantId, active])
+}
+
+model ProductPriceHistory {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id])
+  dealerPriceWoMotor Decimal? @db.Decimal(14, 2)
+  dealerPrice        Decimal? @db.Decimal(14, 2)
+  customerPrice      Decimal? @db.Decimal(14, 2)
+  changedById        String
+  changedAt          DateTime @default(now())
+}
+
+// ───────────── Customers ─────────────
+
+enum CustomerType {
+  END_CUSTOMER
+  DEALER
+  INSTITUTION
+}
+
+model Customer {
+  id           String       @id @default(cuid())
+  tenantId     String
+  name         String // person or business name
+  businessName String?
+  phoneE164    String
+  altPhone     String?
+  type         CustomerType @default(END_CUSTOMER)
+  city         String?
+  state        String? // default "Tamil Nadu"
+  gstin        String?
+  address      String?
+  notes        String?
+  ownerUserId  String? // salesperson who brought them
+  createdAt    DateTime     @default(now())
+  orders       Order[]
+
+  @@unique([tenantId, phoneE164])
+  @@index([tenantId, name])
+}
+
+// ───────────── Orders ─────────────
+
+enum OrderStatus {
+  PENDING_APPROVAL
+  CONFIRMED
+  IN_PRODUCTION
+  READY
+  PARTIALLY_DISPATCHED
+  DISPATCHED
+  DELIVERED
+  CLOSED
+  CANCELLED
+}
+
+enum CancelReason {
+  DELIVERY_DELAY
+  PRICE
+  CUSTOMER_CHANGED_MIND
+  FINANCIAL_ISSUE
+  WRONG_SPEC
+  DUPLICATE_ENTRY
+  OTHER
+}
+
+enum OrderSource {
+  APP
+  IMPORT
+}
+
+model Order {
+  id                   String        @id @default(cuid())
+  tenantId             String
+  number               String // KI/26-27/0042
+  entityId             String
+  entity               BillingEntity @relation(fields: [entityId], references: [id])
+  customerId           String
+  customer             Customer      @relation(fields: [customerId], references: [id])
+  salespersonId        String
+  salesperson          User          @relation("OrderSalesperson", fields: [salespersonId], references: [id])
+  orderDate            DateTime      @db.Date
+  promisedDeliveryDate DateTime?     @db.Date
+  promisedPaymentDate  DateTime?     @db.Date
+  status               OrderStatus   @default(CONFIRMED)
+  subtotal             Decimal       @db.Decimal(14, 2)
+  chargesTotal         Decimal       @default(0) @db.Decimal(14, 2)
+  discount             Decimal       @default(0) @db.Decimal(14, 2)
+  total                Decimal       @db.Decimal(14, 2)
+  balanceDue           Decimal       @db.Decimal(14, 2) // derived cache, BR-09
+  needsApproval        Boolean       @default(false)
+  approvalNote         String?
+  approvedById         String?
+  approvedAt           DateTime?
+  cancelReason         CancelReason?
+  cancelNote           String?
+  notes                String?
+  source               OrderSource   @default(APP)
+  importRef            String? // "VIJI!R142"
+  createdById          String
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  lines                OrderLine[]
+  charges              OrderCharge[]
+  payments             Payment[]
+  dispatches           Dispatch[]
+  events               OrderEvent[]
+  followUps            FollowUp[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, salespersonId, orderDate])
+  @@index([tenantId, customerId])
+  @@index([tenantId, balanceDue])
+}
+
+model OrderLine {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  productId     String? // null = custom line
+  product       Product? @relation(fields: [productId], references: [id])
+  description   String // snapshot of product name+spec, or custom text
+  qty           Int
+  listPrice     Decimal? @db.Decimal(14, 2) // customerPrice at time of order
+  floorPrice    Decimal? @db.Decimal(14, 2) // dealerPrice at time of order
+  unitPrice     Decimal  @db.Decimal(14, 2)
+  gstRate       Decimal  @db.Decimal(5, 2)
+  lineTotal     Decimal  @db.Decimal(14, 2)
+  dispatchedQty Int      @default(0)
+  sortOrder     Int      @default(0)
+
+  dispatchLines DispatchLine[]
+}
+
+enum ChargeKind {
+  FREIGHT
+  INSTALLATION
+  PACKING
+  OTHER
+}
+
+model OrderCharge {
+  id      String     @id @default(cuid())
+  orderId String
+  order   Order      @relation(fields: [orderId], references: [id])
+  kind    ChargeKind
+  label   String
+  amount  Decimal    @db.Decimal(14, 2)
+}
+
+model OrderEvent {
+  id         String       @id @default(cuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id])
+  actorId    String
+  type       String // STATUS_CHANGE | EDIT | APPROVAL | NOTE | REASSIGN
+  fromStatus OrderStatus?
+  toStatus   OrderStatus?
+  note       String?
+  at         DateTime     @default(now())
+
+  @@index([orderId, at])
+}
+
+// ───────────── Payments ─────────────
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+}
+
+enum PaymentType {
+  ADVANCE
+  PART
+  FINAL
+  REFUND
+}
+
+enum PaymentStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  tenantId              String
+  receiptNo             String
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id])
+  type                  PaymentType
+  method                PaymentMethod
+  amount                Decimal       @db.Decimal(14, 2)
+  paidOn                DateTime      @db.Date
+  receivedIntoAccountId String? // company account
+  receivedByUserId      String? // person, when not a company account
+  referenceNo           String? // UTR / cheque no.
+  proofPath             String? // Supabase Storage path
+  status                PaymentStatus @default(PENDING_VERIFICATION)
+  verifiedById          String?
+  verifiedAt            DateTime?
+  rejectReason          String?
+  depositedToAccountId  String? // when cash/personal UPI moved to company
+  depositedOn           DateTime?     @db.Date
+  note                  String?
+  createdById           String
+  createdAt             DateTime      @default(now())
+
+  @@unique([tenantId, receiptNo])
+  @@index([tenantId, status])
+  @@index([tenantId, receivedByUserId, depositedOn])
+  // SQL CHECK (extra.sql): exactly one of receivedIntoAccountId / receivedByUserId is set
+}
+
+// ───────────── Dispatch ─────────────
+
+model Dispatch {
+  id                String         @id @default(cuid())
+  orderId           String
+  order             Order          @relation(fields: [orderId], references: [id])
+  dispatchedOn      DateTime       @db.Date
+  transporter       String?
+  lrNumber          String?
+  vehicleNo         String?
+  photoPaths        String[]
+  note              String?
+  deliveredOn       DateTime?      @db.Date
+  deliveryProofPath String?
+  createdById       String
+  lines             DispatchLine[]
+}
+
+model DispatchLine {
+  id          String    @id @default(cuid())
+  dispatchId  String
+  dispatch    Dispatch  @relation(fields: [dispatchId], references: [id])
+  orderLineId String
+  orderLine   OrderLine @relation(fields: [orderLineId], references: [id])
+  qty         Int
+}
+
+// ───────────── Follow-ups, notifications, counters, audit ─────────────
+
+enum FollowUpChannel {
+  WHATSAPP
+  CALL
+  VISIT
+  OTHER
+}
+
+model FollowUp {
+  id       String          @id @default(cuid())
+  orderId  String
+  order    Order           @relation(fields: [orderId], references: [id])
+  channel  FollowUpChannel
+  note     String?
+  nextOn   DateTime?       @db.Date
+  byUserId String
+  at       DateTime        @default(now())
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  kind      String // APPROVAL_NEEDED | APPROVED | REJECTED | PAYMENT_REJECTED | ORDER_STUCK | CANCEL_REQUEST
+  title     String
+  body      String
+  link      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, userId, readAt])
+}
+
+model WhatsAppMessage {
+  id          String   @id @default(cuid())
+  tenantId    String
+  orderId     String?
+  toE164      String
+  template    String
+  paramsJson  Json
+  waMessageId String?
+  status      String // QUEUED | SENT | DELIVERED | READ | FAILED | DEEPLINK
+  error       String?
+  sentById    String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, orderId])
+}
+
+model DocumentCounter {
+  tenantId String
+  key      String // "ORDER:KI:26-27" | "RCPT:26-27"
+  value    Int    @default(0)
+
+  @@id([tenantId, key])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  ip        String?
+  userAgent String?
+  at        DateTime @default(now())
+
+  @@index([tenantId, entity, entityId])
+  @@index([tenantId, at])
+}
+
+model ImportBatch {
+  id          String   @id @default(cuid())
+  tenantId    String
+  fileName    String
+  status      String // PARSED | COMMITTED | FAILED
+  summaryJson Json
+  rowsJson    Json // normalized rows + issues, for preview
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  phoneE164 String
+  ip        String
+  success   Boolean
+  at        DateTime @default(now())
+
+  @@index([phoneE164, at])
+  @@index([ip, at])
+}
