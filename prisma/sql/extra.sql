@@ -24,9 +24,10 @@ ALTER TABLE "DispatchLine" DROP CONSTRAINT IF EXISTS dispatchline_qty_positive_c
 ALTER TABLE "DispatchLine" ADD CONSTRAINT dispatchline_qty_positive_chk
   CHECK ( "qty" > 0 );
 
--- ───────────── pg_trgm (used for product + customer search in P1+) ─────────────
-
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- pg_trgm extension + its GIN indexes moved to a tracked migration — see
+-- prisma/migrations/20261011072000_add_pg_trgm_indexes/migration.sql.
+-- (Keeping them here caused Prisma to report drift on every subsequent
+-- `migrate dev` run.)
 
 -- Trigram GIN indexes for forgiving product search (spec §12.5 — "10l tilt" finds
 -- "10L Tilting Wet Grinder"). searchText is a lowercased concatenation of

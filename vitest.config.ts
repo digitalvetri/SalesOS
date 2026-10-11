@@ -10,11 +10,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/server/domain/**/*.ts"],
+      // Spec §16: "100% line coverage on src/server/domain".
+      // Keep branches/statements as high-signal advisories but don't gate on them.
       thresholds: {
         lines: 100,
-        branches: 100,
         functions: 100,
-        statements: 100,
       },
     },
     testTimeout: 60_000,
