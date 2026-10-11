@@ -31,7 +31,7 @@ export async function DesktopOwnerAdminShell({
     { label: t("common.dispatch"), icon: <Package className="h-4 w-4" />, href: "/dispatch" },
     { label: t("common.customers"), icon: <Users className="h-4 w-4" />, href: "/customers" },
     { label: t("common.priceList"), icon: <Tag className="h-4 w-4" />, href: "/catalogue" },
-    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, disabled: true },
+    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, href: "/reports" },
     { label: t("common.settings"), icon: <Settings className="h-4 w-4" />, href: "/settings" },
   ];
   return (
