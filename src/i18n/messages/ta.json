@@ -53,6 +53,28 @@
   "empty": {
     "nothingYet": "இங்கே இன்னும் எதுவும் இல்லை."
   },
+  "orders": {
+    "title": "ஆர்டர்கள்",
+    "newOrder": "+ புதிய ஆர்டர்",
+    "empty": "இந்த வடிப்பான்களுக்கு பொருந்தும் ஆர்டர்கள் இல்லை.",
+    "colNumber": "எண்",
+    "colDate": "தேதி",
+    "colCustomer": "வாடிக்கையாளர்",
+    "colSalesperson": "விற்பனையாளர்",
+    "colItems": "உருப்படிகள்",
+    "colTotal": "மொத்தம்",
+    "colBalance": "நிலுவை",
+    "colStatus": "நிலை",
+    "filterSearch": "தேடு",
+    "searchPlaceholder": "எண், பெயர், கைபேசி",
+    "filterStatus": "நிலை",
+    "statusAny": "ஏதேனும்",
+    "filterBalance": "நிலுவை",
+    "balanceAny": "ஏதேனும்",
+    "balanceDue": "நிலுவை உள்ளது",
+    "balancePaid": "முழுமையாக செலுத்தப்பட்டது",
+    "apply": "வடிப்பான்களை பயன்படுத்து"
+  },
   "customers": {
     "title": "வாடிக்கையாளர்கள்",
     "newCustomer": "+ புதிய வாடிக்கையாளர்",

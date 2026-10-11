@@ -53,6 +53,28 @@
   "empty": {
     "nothingYet": "Nothing here yet."
   },
+  "orders": {
+    "title": "Orders",
+    "newOrder": "+ New order",
+    "empty": "No orders match these filters.",
+    "colNumber": "Number",
+    "colDate": "Date",
+    "colCustomer": "Customer",
+    "colSalesperson": "Salesperson",
+    "colItems": "Items",
+    "colTotal": "Total",
+    "colBalance": "Balance",
+    "colStatus": "Status",
+    "filterSearch": "Search",
+    "searchPlaceholder": "Number, name, phone",
+    "filterStatus": "Status",
+    "statusAny": "Any status",
+    "filterBalance": "Balance",
+    "balanceAny": "Any",
+    "balanceDue": "Has balance",
+    "balancePaid": "Paid in full",
+    "apply": "Apply filters"
+  },
   "customers": {
     "title": "Customers",
     "newCustomer": "+ New customer",

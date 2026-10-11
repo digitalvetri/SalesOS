@@ -506,3 +506,18 @@ model LoginAttempt {
   @@index([phoneE164, at])
   @@index([ip, at])
 }
+
+// Idempotency ledger (spec §14). Create / payment Server Actions pass a UUID per
+// submit; the server stores the key for 24h and short-circuits retries by returning
+// the original result. Prevents double orders over flaky mobile networks.
+model IdempotencyKey {
+  key        String   @id
+  tenantId   String
+  userId     String
+  scope      String // e.g. "orders.create", "payments.create"
+  resultJson Json?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}
