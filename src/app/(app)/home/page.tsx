@@ -102,7 +102,7 @@ async function SalesHome({ session }: { session: Awaited<ReturnType<typeof requi
       {/* To collect */}
       {outstanding.openOrderCount > 0 && (
         <Link
-          href={{ pathname: "/orders", query: { balance: "due" } }}
+          href="/collect"
           className="block rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 hover:bg-[color:var(--color-surface-2)]"
         >
           <div className="flex items-center justify-between">

@@ -98,6 +98,7 @@ export async function getOrderById(opts: {
       charges: true,
       payments: { orderBy: { paidOn: "desc" } },
       events: { orderBy: { at: "asc" } },
+      followUps: { orderBy: { at: "asc" } },
     },
   });
 }
