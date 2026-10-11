@@ -84,6 +84,7 @@ Each build phase lands with its own evidence file.
 - Phase P3 — Payments & Collect → [`docs/evidence/phase-3.md`](docs/evidence/phase-3.md).
 - Phase P4 — Dispatch → [`docs/evidence/phase-4.md`](docs/evidence/phase-4.md).
 - Phase P5 — Dashboard & Reports → [`docs/evidence/phase-5.md`](docs/evidence/phase-5.md).
+- Phase P6 — WhatsApp → [`docs/evidence/phase-6.md`](docs/evidence/phase-6.md).
 
 See spec §17 for the full phase plan.
 
