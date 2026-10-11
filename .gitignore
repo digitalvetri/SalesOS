@@ -25,3 +25,6 @@ docs/evidence/playwright-artifacts
 # Logs
 *.log
 pnpm-debug.log*
+
+# TypeScript incremental build cache
+*.tsbuildinfo
