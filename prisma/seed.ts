@@ -25,7 +25,7 @@ const USERS: Array<{
   { name: "Accountant", phoneE164: "+919840000003", role: "ACCOUNTS" },
   { name: "Naren", phoneE164: "+919840000011", role: "SALES", canReceivePayments: true, defaultEntityCode: "KFM" },
   { name: "Mallika", phoneE164: "+919840000012", role: "SALES", canReceivePayments: true, defaultEntityCode: "KI" },
-  { name: "Viji", phoneE164: "+919840000013", role: "SALES", canReceivePayments: true, defaultEntityCode: "KI", lang: "ta" },
+  { name: "Viji", phoneE164: "+919840000013", role: "SALES", canReceivePayments: true, defaultEntityCode: "KI" },
   { name: "Vignesh", phoneE164: "+919840000014", role: "SALES", canReceivePayments: true, defaultEntityCode: "KFM" },
   { name: "Dhanushya", phoneE164: "+919840000015", role: "SALES", canReceivePayments: true, defaultEntityCode: "KI" },
   { name: "Snegha", phoneE164: "+919840000016", role: "SALES", canReceivePayments: true, defaultEntityCode: "KFM" },

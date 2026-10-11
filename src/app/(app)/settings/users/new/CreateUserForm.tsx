@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/app/Toast";
 import { createUserAction } from "../actions";
 import { TempPasswordDialog } from "../_components/TempPasswordDialog";
-import type { Role, Lang } from "@/server/repo/client";
+import type { Role } from "@/server/repo/client";
 
 type EntityOpt = { id: string; code: string; name: string };
 
@@ -28,7 +28,6 @@ export function CreateUserForm({
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [role, setRole] = React.useState<Role>("SALES");
-  const [lang, setLang] = React.useState<Lang>("en");
   const [defaultEntityId, setDefaultEntityId] = React.useState<string>(entities[0]?.id ?? "");
   const [canReceive, setCanReceive] = React.useState(true);
   const [tempPassword, setTempPassword] = React.useState<string | null>(null);
@@ -46,7 +45,6 @@ export function CreateUserForm({
         name,
         phone,
         role,
-        lang,
         defaultEntityId: defaultEntityId || null,
         canReceivePayments: canReceive,
       });
@@ -73,7 +71,13 @@ export function CreateUserForm({
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="name">{t("fieldName")}</Label>
-          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            maxLength={80}
+          />
         </div>
 
         <div className="space-y-2">
@@ -95,34 +99,20 @@ export function CreateUserForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="role">{t("fieldRole")}</Label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="h-11 w-full rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-base"
-            >
-              {availableRoles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lang">{t("fieldLang")}</Label>
-            <select
-              id="lang"
-              value={lang}
-              onChange={(e) => setLang(e.target.value as Lang)}
-              className="h-11 w-full rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-base"
-            >
-              <option value="en">English</option>
-              <option value="ta">தமிழ்</option>
-            </select>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="role">{t("fieldRole")}</Label>
+          <select
+            id="role"
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+            className="h-11 w-full rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-base"
+          >
+            {availableRoles.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-2">
