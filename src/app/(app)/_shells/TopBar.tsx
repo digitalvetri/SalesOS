@@ -1,5 +1,6 @@
 import { BRAND } from "@/config/brand";
 import { LangToggle } from "@/components/app/LangToggle";
+import { NotificationBell } from "@/components/app/NotificationBell";
 import { UserMenu } from "./UserMenu";
 import type { SessionUser } from "@/server/repo/users";
 
@@ -14,6 +15,7 @@ export function TopBar({ user, title }: { user: SessionUser; title?: string }) {
       </div>
       <div className="flex items-center gap-3">
         <LangToggle />
+        <NotificationBell />
         <UserMenu user={user} />
       </div>
     </header>

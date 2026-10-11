@@ -421,6 +421,217 @@ export async function cancelOrder(input: CancelOrderInput) {
   return after;
 }
 
+// ───────── Approval / cancellation flows (P2-D) ─────────
+
+export type ApprovePriceInput = {
+  tenantId: string;
+  actorId: string;
+  orderId: string;
+  updatedAt: Date; // optimistic lock
+  note?: string | null;
+};
+
+export async function approvePrice(input: ApprovePriceInput) {
+  const before = await prisma.order.findFirst({
+    where: { tenantId: input.tenantId, id: input.orderId },
+    select: { id: true, status: true, updatedAt: true },
+  });
+  if (!before) throw new AppError("NOT_FOUND", "Order not found.");
+  if (before.status !== "PENDING_APPROVAL") {
+    throw new AppError("VALIDATION", "This order is not awaiting approval.");
+  }
+  if (before.updatedAt.getTime() !== input.updatedAt.getTime()) {
+    throw new AppError("CONFLICT", "This order was changed since you opened it. Reload.");
+  }
+  assertTransition(before.status, "CONFIRMED");
+
+  return prisma.$transaction(async (tx) => {
+    const after = await tx.order.update({
+      where: { id: input.orderId },
+      data: {
+        status: "CONFIRMED",
+        needsApproval: false,
+        approvedById: input.actorId,
+        approvedAt: new Date(),
+        approvalNote: input.note ?? null,
+      },
+    });
+    await tx.orderEvent.create({
+      data: {
+        orderId: input.orderId,
+        actorId: input.actorId,
+        type: "APPROVAL",
+        fromStatus: before.status,
+        toStatus: "CONFIRMED",
+        note: input.note ?? null,
+      },
+    });
+    await writeAudit(tx, {
+      tenantId: input.tenantId,
+      actorId: input.actorId,
+      action: "ORDER_APPROVE_PRICE",
+      entity: "Order",
+      entityId: input.orderId,
+      before: { status: before.status },
+      after: { status: "CONFIRMED" },
+    });
+    return after;
+  });
+}
+
+export type RejectPriceInput = {
+  tenantId: string;
+  actorId: string;
+  orderId: string;
+  updatedAt: Date;
+  note: string; // required — Sales needs to know why
+};
+
+export async function rejectPrice(input: RejectPriceInput) {
+  const before = await prisma.order.findFirst({
+    where: { tenantId: input.tenantId, id: input.orderId },
+    select: { id: true, status: true, updatedAt: true },
+  });
+  if (!before) throw new AppError("NOT_FOUND", "Order not found.");
+  if (before.status !== "PENDING_APPROVAL") {
+    throw new AppError("VALIDATION", "This order is not awaiting approval.");
+  }
+  if (before.updatedAt.getTime() !== input.updatedAt.getTime()) {
+    throw new AppError("CONFLICT", "This order was changed since you opened it. Reload.");
+  }
+  assertTransition(before.status, "CANCELLED");
+
+  return prisma.$transaction(async (tx) => {
+    const after = await tx.order.update({
+      where: { id: input.orderId },
+      data: {
+        status: "CANCELLED",
+        cancelReason: "PRICE",
+        cancelNote: input.note,
+      },
+    });
+    await tx.orderEvent.create({
+      data: {
+        orderId: input.orderId,
+        actorId: input.actorId,
+        type: "STATUS_CHANGE",
+        fromStatus: before.status,
+        toStatus: "CANCELLED",
+        note: `Price rejected — ${input.note}`,
+      },
+    });
+    await writeAudit(tx, {
+      tenantId: input.tenantId,
+      actorId: input.actorId,
+      action: "ORDER_REJECT_PRICE",
+      entity: "Order",
+      entityId: input.orderId,
+      before: { status: before.status },
+      after: { status: "CANCELLED", reason: "PRICE" },
+    });
+    return after;
+  });
+}
+
+export type RequestCancelInput = {
+  tenantId: string;
+  actorId: string; // SALES who owns the order
+  orderId: string;
+  reason: CancelReason;
+  note?: string | null;
+};
+
+export async function requestCancel(input: RequestCancelInput) {
+  const before = await prisma.order.findFirst({
+    where: {
+      tenantId: input.tenantId,
+      id: input.orderId,
+      salespersonId: input.actorId,
+    },
+    select: { id: true, status: true, number: true },
+  });
+  if (!before) throw new AppError("NOT_FOUND", "Order not found.");
+  if (!canCancel(before.status)) {
+    throw new AppError(
+      "VALIDATION",
+      "This order has already been dispatched or closed and cannot be cancelled.",
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.orderEvent.create({
+      data: {
+        orderId: input.orderId,
+        actorId: input.actorId,
+        type: "CANCEL_REQUEST",
+        note: `${input.reason}${input.note ? ` — ${input.note}` : ""}`,
+      },
+    });
+
+    // Notify every Owner / Admin on the tenant.
+    const approvers = await tx.user.findMany({
+      where: {
+        tenantId: input.tenantId,
+        active: true,
+        role: { in: ["OWNER", "ADMIN"] },
+      },
+      select: { id: true },
+    });
+    await tx.notification.createMany({
+      data: approvers.map((u) => ({
+        tenantId: input.tenantId,
+        userId: u.id,
+        kind: "CANCEL_REQUEST",
+        title: `Cancel request for ${before.number}`,
+        body: `Reason: ${input.reason}${input.note ? ` — ${input.note}` : ""}`,
+        link: `/orders/${input.orderId}`,
+      })),
+    });
+
+    await writeAudit(tx, {
+      tenantId: input.tenantId,
+      actorId: input.actorId,
+      action: "ORDER_CANCEL_REQUEST",
+      entity: "Order",
+      entityId: input.orderId,
+      after: { reason: input.reason, note: input.note ?? null },
+    });
+
+    return { id: input.orderId };
+  });
+}
+
+export type AddNoteInput = {
+  tenantId: string;
+  actorId: string;
+  orderId: string;
+  note: string;
+};
+
+export async function addOrderNote(input: AddNoteInput) {
+  const order = await prisma.order.findFirst({
+    where: { tenantId: input.tenantId, id: input.orderId },
+    select: { id: true },
+  });
+  if (!order) throw new AppError("NOT_FOUND", "Order not found.");
+  await prisma.orderEvent.create({
+    data: {
+      orderId: input.orderId,
+      actorId: input.actorId,
+      type: "NOTE",
+      note: input.note,
+    },
+  });
+  await writeAudit(prisma, {
+    tenantId: input.tenantId,
+    actorId: input.actorId,
+    action: "ORDER_NOTE",
+    entity: "Order",
+    entityId: input.orderId,
+    after: { note: input.note },
+  });
+}
+
 // IST day boundaries for BR-11 checks.
 function startOfISTDay(d: Date): Date {
   const istMillis = d.getTime() + (5 * 60 + 30) * 60 * 1000;
