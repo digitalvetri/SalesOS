@@ -4,8 +4,9 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     exclude: ["tests/e2e/**", "tests/unit/eslint-fixtures/**"],
+    setupFiles: ["./tests/setup.ts"],
     coverage: {
       provider: "v8",
       include: ["src/server/domain/**/*.ts"],

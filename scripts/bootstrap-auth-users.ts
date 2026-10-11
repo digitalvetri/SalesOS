@@ -12,6 +12,11 @@ import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 const PLACEHOLDER_PREFIX = "seed:";
+const AUTH_EMAIL_DOMAIN = "phone.salesos.local";
+
+function phoneToEmail(e164: string): string {
+  return `${e164.replace(/^\+/, "")}@${AUTH_EMAIL_DOMAIN}`;
+}
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,34 +41,76 @@ async function main() {
 
   console.log(`Found ${users.length} user(s) needing auth bootstrap.`);
   let created = 0;
+  let relinked = 0;
   let skipped = 0;
 
   for (const u of users) {
-    const phoneForAuth = u.phoneE164.replace(/^\+/, "");
+    const email = phoneToEmail(u.phoneE164);
     const { data, error } = await sb.auth.admin.createUser({
-      phone: phoneForAuth,
+      email,
       password,
-      phone_confirm: true,
-      user_metadata: { name: u.name, role: u.role, tenantId: u.tenantId },
+      email_confirm: true,
+      user_metadata: {
+        name: u.name,
+        role: u.role,
+        tenantId: u.tenantId,
+        phoneE164: u.phoneE164,
+      },
     });
 
-    if (error || !data.user) {
-      console.warn(`  Skipped ${u.phoneE164} (${u.name}): ${error?.message ?? "unknown"}`);
-      skipped++;
+    if (data?.user) {
+      await prisma.user.update({
+        where: { id: u.id },
+        data: { authUserId: data.user.id },
+      });
+      console.log(`  ✓ ${u.phoneE164} ${u.name} (${u.role}) → ${data.user.id}`);
+      created++;
       continue;
     }
 
-    await prisma.user.update({
-      where: { id: u.id },
-      data: { authUserId: data.user.id },
-    });
-    console.log(`  ✓ ${u.phoneE164} ${u.name} (${u.role}) → ${data.user.id}`);
-    created++;
+    // Email already exists in auth.users (e.g. Prisma was reset but Supabase Auth kept its rows).
+    // Look up the existing auth user, reset its password, and relink.
+    const existing = await findAuthUserByEmail(sb, email);
+    if (existing) {
+      const { error: pwErr } = await sb.auth.admin.updateUserById(existing.id, { password });
+      if (pwErr) {
+        console.warn(`  Could not reset password for ${u.phoneE164}: ${pwErr.message}`);
+        skipped++;
+        continue;
+      }
+      await prisma.user.update({
+        where: { id: u.id },
+        data: { authUserId: existing.id },
+      });
+      console.log(`  ↻ ${u.phoneE164} ${u.name} (${u.role}) → ${existing.id} (relinked, password reset)`);
+      relinked++;
+      continue;
+    }
+
+    console.warn(`  Skipped ${u.phoneE164} (${u.name}): ${error?.message ?? "unknown"}`);
+    skipped++;
   }
 
   await prisma.$disconnect();
-  console.log(`\nDone. Created: ${created}, skipped: ${skipped}, total scanned: ${users.length}.`);
+  console.log(
+    `\nDone. Created: ${created}, relinked: ${relinked}, skipped: ${skipped}, total scanned: ${users.length}.`,
+  );
   console.log(`Temporary password distributed via BOOTSTRAP_PASSWORD; force-reset flow lands in P1.`);
+}
+
+async function findAuthUserByEmail(
+  sb: ReturnType<typeof createClient>,
+  email: string,
+): Promise<{ id: string } | null> {
+  // Paginate until we see the email. The CLI's local Auth has a few hundred users at most.
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw error;
+    const match = data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+    if (match) return match;
+    if (data.users.length < 200) break;
+  }
+  return null;
 }
 
 main().catch((e) => {

@@ -13,11 +13,11 @@ export async function DesktopAccountsShell({
 }) {
   const t = await getTranslations();
   const items = [
-    { label: t("common.home"), icon: <Home className="h-4 w-4" />, href: "/home", active: true },
+    { label: t("common.home"), icon: <Home className="h-4 w-4" />, href: "/home" },
     { label: t("common.payments"), icon: <IndianRupee className="h-4 w-4" />, disabled: true },
     { label: t("common.collect"), icon: <IndianRupee className="h-4 w-4" />, disabled: true },
     { label: t("common.orders"), icon: <List className="h-4 w-4" />, disabled: true },
-    { label: t("common.customers"), icon: <Users className="h-4 w-4" />, disabled: true },
+    { label: t("common.customers"), icon: <Users className="h-4 w-4" />, href: "/customers" },
     { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, disabled: true },
   ];
   return (

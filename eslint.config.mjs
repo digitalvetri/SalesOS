@@ -28,9 +28,10 @@ const config = [
     files: ["src/server/repo/**/*.{ts,tsx}"],
     rules: { "no-restricted-imports": "off" },
   },
-  // Scripts and prisma side-tools don't need the strict rule set.
+  // Scripts, prisma side-tools, and integration tests may import @prisma/client
+  // directly — tests manage their own tenant lifecycle, scripts bootstrap the DB.
   {
-    files: ["scripts/**/*.{mjs,ts}", "prisma/**/*.ts"],
+    files: ["scripts/**/*.{mjs,ts}", "prisma/**/*.ts", "tests/integration/**/*.ts"],
     rules: { "no-restricted-imports": "off", "@typescript-eslint/no-explicit-any": "off" },
   },
 ];
