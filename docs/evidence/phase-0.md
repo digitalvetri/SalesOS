@@ -25,9 +25,9 @@ Spec: [`docs/superpowers/specs/2026-10-10-salesos-design.md`](../superpowers/spe
 | CI workflow (typecheck, lint, test, build) | ✅ | `.github/workflows/ci.yml` |
 | `pnpm typecheck && pnpm lint && pnpm test && pnpm build` passes | ✅ | §Gate runs below |
 | 403 test (SALES on admin Server Action) | ✅ | `tests/integration/sales-forbidden.test.ts` |
-| `prisma migrate status` output | ⏳ Needs Supabase credentials | §Blocked-on-Supabase |
-| Screenshots: login en + ta | ⏳ Needs Supabase project | §Blocked-on-Supabase |
-| Screenshots: empty Sales home + Admin shell | ⏳ Needs seeded Supabase users | §Blocked-on-Supabase |
+| `prisma migrate status` output | ✅ | §Supabase evidence below (captured against local Supabase CLI stack) |
+| Screenshots: login en + ta | ✅ | `docs/evidence/screenshots/login-{en,ta}.png` |
+| Screenshots: empty role shells (Sales, Dispatch, Owner, Admin, Accounts) | ✅ | `docs/evidence/screenshots/shell-*.png` |
 
 ## Scaffold
 
@@ -221,35 +221,114 @@ Named edge cases:
 - Admin cannot create Owner (`users.createOwner`).
 - Dispatch can view orders but not prices.
 
-## Supabase credentials — needed to close the gate
+## Supabase / DB evidence — captured against local Supabase CLI stack
 
-The following gate items cannot complete without the pilot Supabase project:
+**Date:** 2026-10-11. **Stack:** `pnpm sb:start` (Supabase CLI 2.120.0 as a devDependency; Docker; project ports 554xx). Same Supabase Auth + Postgres code paths that production will use.
 
-1. **`prisma migrate status` output.** Needs `DATABASE_URL` / `DIRECT_URL` pointing at a real Supabase Postgres.
-2. **`extra.sql` applied.** CHECK constraints + RLS defence (`prisma/sql/extra.sql`) run via `pnpm run prisma:apply-extra`.
-3. **Login screenshot (en + ta).** The Playwright test `tests/e2e/login.spec.ts` runs against the built server and expects the Tamil toggle to flip the heading. The screens render without Supabase, but the "invalid credentials" assertion needs the Supabase sign-in path reachable.
-4. **Role-shell screenshots.** `tests/e2e/shells.spec.ts` logs in as each seeded user; needs Supabase auth users created from the seeded SalesOS `User` rows (bootstrap script lands in P1 or earlier if needed).
-
-To unblock, please provide (and I'll store them in `.env`):
+### `prisma migrate status`
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon>
-SUPABASE_SERVICE_ROLE_KEY=<service-role>
-DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.<ref>:<pw>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "postgres", schema "public" at "127.0.0.1:55422"
+
+1 migration found in prisma/migrations
+
+Database schema is up to date!
 ```
 
-Once set, I will run:
+Migration: `prisma/migrations/20261011051202_init/migration.sql` (created every §7 table).
+
+### `extra.sql` applied
+
+`pnpm run prisma:apply-extra` → `extra.sql applied (11 statements).`
+
+Verification queries after the fact:
+
+**CHECK constraints (4, exactly as specified):**
+```
+             conname              |                            pg_get_constraintdef
+----------------------------------+-----------------------------------------------------------------------------
+ dispatchline_qty_positive_chk    | CHECK ((qty > 0))
+ orderline_qty_positive_chk       | CHECK ((qty > 0))
+ payment_amount_positive_chk      | CHECK ((amount > (0)::numeric))
+ payment_received_destination_chk | CHECK ((("receivedIntoAccountId" IS NULL) <> ("receivedByUserId" IS NULL)))
+(4 rows)
+```
+
+**RLS enabled + forced on every business table** (first 15 shown; same `t | t` holds for all 25 tables created):
+```
+      table      | rls_on | rls_forced
+-----------------+--------+------------
+ Account         | t      | t
+ AuditLog        | t      | t
+ BillingEntity   | t      | t
+ Customer        | t      | t
+ Dispatch        | t      | t
+ DispatchLine    | t      | t
+ DocumentCounter | t      | t
+ FollowUp        | t      | t
+ ImportBatch     | t      | t
+ LoginAttempt    | t      | t
+ Notification    | t      | t
+ Order           | t      | t
+ OrderCharge     | t      | t
+ OrderEvent      | t      | t
+ OrderLine       | t      | t
+```
+
+**Zero policies for anon/authenticated** (defence-in-depth, spec §14):
+```
+ count
+-------
+     0
+```
+
+A browser-side Supabase client — even with a valid user JWT — cannot read any business table directly. All reads/writes must go through server-side code using the service-role key, which bypasses RLS.
+
+### Seed + Supabase auth bootstrap
 
 ```
-pnpm prisma:migrate:dev --name init
-pnpm prisma:seed
-BOOTSTRAP_PASSWORD='<temp>' pnpm tsx scripts/bootstrap-auth-users.ts
-pnpm test:e2e
+> salesos@0.1.0 prisma:seed
+Seed complete. Tenant: ki-kfm-pilot (cmv3d9gc40000f81gd2ibcuvy)
+  Entities: KI=cmv3d9gcy0002f81gwomit9lw, KFM=cmv3d9gdh0004f81gaj16c33f
+  Users: 11
+
+> salesos@0.1.0 bootstrap:auth
+Found 11 user(s) needing auth bootstrap.
+  ✓ +919840000001 Kumar (OWNER) → 97e0d797-…
+  ✓ +919840000002 Office Admin (ADMIN) → 5f68d1fb-…
+  ✓ +919840000003 Accountant (ACCOUNTS) → c6e4252c-…
+  ✓ +919840000011 Naren (SALES) → 16270fad-…
+  ✓ +919840000012 Mallika (SALES) → 09f75028-…
+  ✓ +919840000013 Viji (SALES) → c72b1639-…
+  ✓ +919840000014 Vignesh (SALES) → 4750dfec-…
+  ✓ +919840000015 Dhanushya (SALES) → 39c68d8e-…
+  ✓ +919840000016 Snegha (SALES) → cbd5af6c-…
+  ✓ +919840000017 Murugan (SALES) → c504c9e9-…
+  ✓ +919840000021 Workshop (DISPATCH) → 78b48ad1-…
+
+Done. Created: 11, skipped: 0, total scanned: 11.
 ```
 
-and append the actual outputs + screenshots here before marking the P0 gate "closed".
+### Screenshots
+
+Captured by `pnpm run test:e2e` after `pnpm sb:start` (and the migrate/seed/bootstrap chain above).
+
+| Spec | Role | File |
+|---|---|---|
+| §11.1 | login (en) | `docs/evidence/screenshots/login-en.png` |
+| §11.1 | login (ta) | `docs/evidence/screenshots/login-ta.png` |
+| §11.2 | Sales home (empty) | `docs/evidence/screenshots/shell-sales.png` |
+| §11.0 | Dispatch home (empty) | `docs/evidence/screenshots/shell-dispatch.png` |
+| §11.7 | Owner home (empty, shell only) | `docs/evidence/screenshots/shell-owner.png` |
+| §11.7 | Admin home (empty, shell only) | `docs/evidence/screenshots/shell-admin.png` |
+| §11.8 | Accounts home (empty) | `docs/evidence/screenshots/shell-accounts.png` |
+
+Full Playwright report: `docs/evidence/playwright-report/`.
+
+### Production-Supabase readiness
+
+The code paths exercised by all of the above (Supabase SSR cookies, service-role admin API, Postgres via Prisma, RLS enforcement, CHECK constraints) are identical to what will run against a cloud Supabase project in `ap-south-1` (spec Q7). To promote: create the cloud project, paste its 5 env values into `.env` (production), re-run the first-time setup against prod with a strong `BOOTSTRAP_PASSWORD`, and the same evidence will reproduce.
 
 ## Carry-forward to P1
 

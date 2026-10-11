@@ -2,6 +2,7 @@
 import { headers } from "next/headers";
 import { ZodError, z } from "zod";
 import { normalizePhone, PhoneParseError } from "@/server/domain/phone";
+import { phoneToSyntheticEmail } from "@/server/auth/phoneToEmail";
 import { supabaseServer } from "@/lib/supabase/server";
 import { checkLoginRateLimit, noteLoginAttempt } from "@/server/auth/rateLimit";
 import { findUserByAuthId, touchLastLogin } from "@/server/repo/users";
@@ -40,7 +41,7 @@ export async function signInAction(raw: unknown): Promise<ActionResult<{ ok: tru
 
     const sb = await supabaseServer();
     const { data, error } = await sb.auth.signInWithPassword({
-      phone: phoneE164.replace(/^\+/, ""),
+      email: phoneToSyntheticEmail(phoneE164),
       password: parsed.password,
     });
 

@@ -39,7 +39,7 @@ BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm tsx scripts/bootstrap-auth-users.
 pnpm dev                             # http://localhost:3000
 ```
 
-Studio (DB browser) is at **http://127.0.0.1:54323**.
+Studio (DB browser) is at **http://127.0.0.1:55423**.
 Stop everything with `pnpm sb:stop`. Reset the local DB (nuclear) with `pnpm sb:reset` → re-run steps 5–7.
 
 ### Day-to-day

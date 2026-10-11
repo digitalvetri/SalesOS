@@ -24,13 +24,19 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
   }
 
   const sb = supabaseService();
-  // Supabase Auth stores phone in E.164 without the leading '+' for phone auth.
-  const phoneForAuth = input.phoneE164.replace(/^\+/, "");
+  // SalesOS presents mobile+password in the UI (spec D4) but Auth stores the user
+  // under a synthetic email `<digits>@phone.salesos.local`. See src/server/auth/phoneToEmail.ts.
+  const emailForAuth = `${input.phoneE164.replace(/^\+/, "")}@phone.salesos.local`;
   const { data, error } = await sb.auth.admin.createUser({
-    phone: phoneForAuth,
+    email: emailForAuth,
     password: input.password,
-    phone_confirm: true,
-    user_metadata: { name: input.name, role: input.role, tenantId: input.tenantId },
+    email_confirm: true,
+    user_metadata: {
+      name: input.name,
+      role: input.role,
+      tenantId: input.tenantId,
+      phoneE164: input.phoneE164,
+    },
   });
   if (error || !data.user) {
     throw new AppError("INTERNAL", "Could not create auth user.", { supabase: error?.message });

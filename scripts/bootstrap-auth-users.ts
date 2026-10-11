@@ -12,6 +12,11 @@ import { PrismaClient } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 const PLACEHOLDER_PREFIX = "seed:";
+const AUTH_EMAIL_DOMAIN = "phone.salesos.local";
+
+function phoneToEmail(e164: string): string {
+  return `${e164.replace(/^\+/, "")}@${AUTH_EMAIL_DOMAIN}`;
+}
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,12 +44,16 @@ async function main() {
   let skipped = 0;
 
   for (const u of users) {
-    const phoneForAuth = u.phoneE164.replace(/^\+/, "");
     const { data, error } = await sb.auth.admin.createUser({
-      phone: phoneForAuth,
+      email: phoneToEmail(u.phoneE164),
       password,
-      phone_confirm: true,
-      user_metadata: { name: u.name, role: u.role, tenantId: u.tenantId },
+      email_confirm: true,
+      user_metadata: {
+        name: u.name,
+        role: u.role,
+        tenantId: u.tenantId,
+        phoneE164: u.phoneE164,
+      },
     });
 
     if (error || !data.user) {
