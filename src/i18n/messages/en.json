@@ -307,7 +307,8 @@
       "entities": "Entities",
       "accounts": "Accounts",
       "targets": "Targets",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "import": "Import"
     },
     "users": {
       "listTitle": "Users",

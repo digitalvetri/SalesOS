@@ -27,6 +27,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     { href: "/settings/accounts", label: t("tabs.accounts") },
     { href: "/settings/targets", label: t("tabs.targets") },
     { href: "/settings/whatsapp", label: t("tabs.whatsapp") },
+    { href: "/settings/import", label: t("tabs.import") },
   ];
 
   return (
