@@ -77,7 +77,7 @@ export function NotificationBell() {
       <DropdownMenu.Trigger asChild>
         <button
           aria-label={`Notifications${unread > 0 ? `: ${unread} unread` : ""}`}
-          className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] text-[color:var(--color-ink-2)] hover:bg-[color:var(--color-surface)]"
+          className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-nav-border)] bg-[color:var(--color-nav-bg-2)] text-[color:var(--color-nav-ink)] hover:bg-[color:var(--color-nav-active-bg)]"
         >
           <Bell className="h-4 w-4" />
           {unread > 0 && (

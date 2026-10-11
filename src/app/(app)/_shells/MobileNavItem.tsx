@@ -27,8 +27,8 @@ export function MobileNavItem({ href, disabled, active: activeProp, icon, label 
     </>
   );
   const classes = cn(
-    "flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 py-2 text-[color:var(--color-ink-2)]",
-    active && "text-[color:var(--color-ink)]",
+    "flex min-h-[48px] min-w-[48px] flex-1 flex-col items-center justify-center gap-1 py-2 text-[color:var(--color-nav-ink-2)]",
+    active && "text-[color:var(--color-nav-accent)]",
     disabled && "pointer-events-none opacity-40",
   );
   if (href && !disabled) {

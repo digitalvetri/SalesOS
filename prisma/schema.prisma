@@ -44,6 +44,8 @@ model TenantSettings {
   waVerifyToken           String? // webhook GET hub.verify_token
   waPayToText             String? // "UPI: ki@hdfc" — payment_reminder pay-to line
   waTemplatesJson         Json?
+  // v1.1: fallback monthly target used when SalesTarget row is missing.
+  defaultMonthlyTarget    Decimal @default(0) @db.Decimal(14, 2)
 }
 
 model BillingEntity {
@@ -82,7 +84,8 @@ model User {
   tenant             Tenant        @relation(fields: [tenantId], references: [id])
   authUserId         String        @unique // Supabase auth.users.id
   name               String
-  phoneE164          String
+  email              String? // lowercase; the login identity (unique per tenant)
+  phoneE164          String        // contact phone; no longer the login identity
   role               Role
   lang               Lang          @default(en)
   defaultEntityId    String?
@@ -90,10 +93,15 @@ model User {
   canReceivePayments Boolean       @default(false) // appears in "received into" list
   createdAt          DateTime      @default(now())
   lastLoginAt        DateTime?
+  // v1.1: the mobile number the employee is told to enter at login (display only).
+  loginId            String?
+  // v1.1: when the admin last reset / set this user's password.
+  passwordSetAt      DateTime?
   ordersAsSales      Order[]       @relation("OrderSalesperson")
   targets            SalesTarget[]
 
   @@unique([tenantId, phoneE164])
+  @@unique([tenantId, email])
   @@index([tenantId, role, active])
 }
 
@@ -239,6 +247,13 @@ enum OrderSource {
   IMPORT
 }
 
+// v1.1 §2 — simplified status set.
+enum OrderStatusV2 {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
 model Order {
   id                   String        @id @default(cuid())
   tenantId             String
@@ -267,6 +282,16 @@ model Order {
   notes                String?
   source               OrderSource   @default(APP)
   importRef            String? // "VIJI!R142"
+  // v1.1 §3 — per-salesperson running number (S.No). Nullable during backfill;
+  // enforced by application code to be set when writing a new order.
+  serialNo             Int?
+  // v1.1 §3 — free text typed by the employee ("10L tilting grinder, 6\" IRG").
+  productText          String?
+  // v1.1 §3 — three-state simplified status.
+  simpleStatus         OrderStatusV2 @default(PENDING)
+  completedAt          DateTime?     @db.Date
+  // v1.1 §3 — Σ non-rejected payments, kept in sync inside each payment tx.
+  paidTotal            Decimal       @default(0) @db.Decimal(14, 2)
   createdById          String
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
@@ -278,7 +303,9 @@ model Order {
   followUps            FollowUp[]
 
   @@unique([tenantId, number])
+  @@unique([tenantId, salespersonId, serialNo])
   @@index([tenantId, status])
+  @@index([tenantId, simpleStatus])
   @@index([tenantId, salespersonId, orderDate])
   @@index([tenantId, customerId])
   @@index([tenantId, balanceDue])

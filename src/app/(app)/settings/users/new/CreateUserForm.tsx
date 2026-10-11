@@ -26,6 +26,7 @@ export function CreateUserForm({
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [role, setRole] = React.useState<Role>("SALES");
   const [defaultEntityId, setDefaultEntityId] = React.useState<string>(entities[0]?.id ?? "");
@@ -43,6 +44,7 @@ export function CreateUserForm({
     try {
       const r = await createUserAction({
         name,
+        email,
         phone,
         role,
         defaultEntityId: defaultEntityId || null,
@@ -78,6 +80,22 @@ export function CreateUserForm({
             required
             maxLength={80}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            maxLength={254}
+            placeholder="user@salesos.in"
+          />
+          <p className="text-xs text-[color:var(--color-ink-3)]">
+            Used to sign in. Must be unique.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -146,7 +164,12 @@ export function CreateUserForm({
           </span>
         </label>
 
-        <Button type="submit" gold disabled={pending || !name || !phone} className="h-11 w-full">
+        <Button
+          type="submit"
+          gold
+          disabled={pending || !name || !email || !phone}
+          className="h-11 w-full"
+        >
           {pending ? "…" : t("newUser")}
         </Button>
       </form>

@@ -378,10 +378,80 @@ export async function cancellations(s: Scope, r: Range) {
   return { count: seen.size, value: reasons.reduce((t, x) => t.plus(x.value), new Decimal(0)).toString(), reasons };
 }
 
+// ───────── Monthly history of completed orders per salesperson ─────────
+
+/**
+ * Last N months of completed-order totals (status DELIVERED or CLOSED) per
+ * salesperson, bucketed by order month in IST. Returned shape is intentionally
+ * matrix-friendly: a `months` axis (oldest first) and one row per salesperson.
+ * Pass `salespersonId` to scope to a single user (used by the Sales home view).
+ */
+export async function salespersonMonthlyHistory(
+  s: Scope,
+  opts: { months?: number; salespersonId?: string } = {},
+  now = new Date(),
+) {
+  const monthCount = opts.months ?? 6;
+  const months = last12Months(istDateString(now)).slice(-monthCount);
+  const fromDate = `${months[0]}-01`;
+
+  const rows = await prisma.$queryRaw<
+    { salespersonId: string; month: string; orders: bigint; total: Prisma.Decimal }[]
+  >`
+    SELECT "salespersonId",
+           to_char("orderDate" AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM') AS month,
+           COUNT(*)::bigint AS orders,
+           SUM(total) AS total
+    FROM "Order"
+    WHERE "tenantId" = ${s.tenantId}
+      AND status IN ('DELIVERED', 'CLOSED')
+      AND "orderDate" >= ${d(fromDate)}::date
+      AND (${s.entityId ?? null}::text IS NULL OR "entityId" = ${s.entityId ?? null})
+      AND (${opts.salespersonId ?? null}::text IS NULL OR "salespersonId" = ${opts.salespersonId ?? null})
+    GROUP BY "salespersonId", 2`;
+
+  // Users: either the single salesperson, or every active SALES user.
+  const users = opts.salespersonId
+    ? await prisma.user.findMany({
+        where: { tenantId: s.tenantId, id: opts.salespersonId },
+        select: { id: true, name: true },
+      })
+    : await prisma.user.findMany({
+        where: { tenantId: s.tenantId, role: "SALES", active: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      });
+
+  const by = new Map<string, { orders: number; value: string }>();
+  for (const r of rows) {
+    by.set(`${r.salespersonId}|${r.month}`, {
+      orders: Number(r.orders),
+      value: r.total.toString(),
+    });
+  }
+
+  const salespersons = users.map((u) => ({
+    userId: u.id,
+    name: u.name,
+    months: months.map((m) => {
+      const cell = by.get(`${u.id}|${m}`);
+      return { month: m, orders: cell?.orders ?? 0, value: cell?.value ?? "0" };
+    }),
+    // Row total across all shown months, for sort/total column.
+    totalOrders: months.reduce((n, m) => n + (by.get(`${u.id}|${m}`)?.orders ?? 0), 0),
+    totalValue: months
+      .reduce((t, m) => t.plus(by.get(`${u.id}|${m}`)?.value ?? "0"), new Decimal(0))
+      .toString(),
+  }));
+
+  return { months, salespersons };
+}
+export type SalespersonMonthlyHistory = Awaited<ReturnType<typeof salespersonMonthlyHistory>>;
+
 // ───────── Everything for §11.7 ─────────
 
 export async function adminDashboard(s: Scope, p: Period, now = new Date()) {
-  const [bookedM, collected, awaiting, cash, out, stuck, approvals, cancelReqs, leaderboard, trend, products, customers, cancels] =
+  const [bookedM, collected, awaiting, cash, out, stuck, approvals, cancelReqs, leaderboard, trend, products, customers, cancels, monthlyHistory] =
     await Promise.all([
       booked(s, p),
       collectedVerified(s, p),
@@ -396,6 +466,7 @@ export async function adminDashboard(s: Scope, p: Period, now = new Date()) {
       topProducts(s, p),
       topCustomers(s, p),
       cancellations(s, p),
+      salespersonMonthlyHistory(s, { months: 6 }, now),
     ]);
   return {
     period: p,
@@ -411,6 +482,7 @@ export async function adminDashboard(s: Scope, p: Period, now = new Date()) {
     products,
     customers,
     cancellations: cancels,
+    monthlyHistory,
   };
 }
 export type AdminDashboard = Awaited<ReturnType<typeof adminDashboard>>;

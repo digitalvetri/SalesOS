@@ -19,7 +19,9 @@
     "dashboard": "Dashboard",
     "payments": "Payments",
     "dispatch": "Dispatch",
+    "overview": "Overview",
     "customers": "Customers",
+    "employees": "Employees",
     "priceList": "Price List",
     "reports": "Reports",
     "settings": "Settings",
@@ -30,13 +32,14 @@
   "login": {
     "title": "Sign in",
     "phoneLabel": "Mobile number",
+    "emailLabel": "Email",
     "passwordLabel": "Password",
     "showPassword": "Show",
     "hidePassword": "Hide",
     "forgot": "Forgot password? Ask your admin.",
     "submit": "Sign in",
     "errors": {
-      "invalidCredentials": "Mobile number or password is wrong.",
+      "invalidCredentials": "Email or password is wrong.",
       "deactivated": "Your account is turned off. Contact your admin.",
       "rateLimited": "Too many attempts. Try again in a few minutes.",
       "unknown": "Something went wrong — reference #{ref}"

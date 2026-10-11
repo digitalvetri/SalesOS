@@ -2,13 +2,9 @@ import { getTranslations } from "next-intl/server";
 import {
   LayoutDashboard,
   List,
-  IndianRupee,
-  Users,
-  Package,
+  UserSquare2,
   Tag,
-  BarChart3,
   Settings,
-  Home,
 } from "lucide-react";
 import { TopBar } from "./TopBar";
 import { DesktopSidebar } from "./DesktopSidebar";
@@ -22,17 +18,15 @@ export async function DesktopOwnerAdminShell({
   children: React.ReactNode;
 }) {
   const t = await getTranslations();
+  // v1.1 nav: Overview, Orders, Employees, Price List, Settings.
+  // Removed per spec §1.1: Payments, Collect, Dispatch, Customers, Reports.
+  // Price List kept per owner exception (see memory v1-1-spec-and-price-list-exception.md).
   const items = [
-    { label: t("common.home"), icon: <Home className="h-4 w-4" />, href: "/home" },
-    { label: t("common.dashboard"), icon: <LayoutDashboard className="h-4 w-4" />, href: "/dashboard" },
-    { label: t("common.orders"), icon: <List className="h-4 w-4" />, href: "/orders" },
-    { label: t("common.payments"), icon: <IndianRupee className="h-4 w-4" />, href: "/payments" },
-    { label: t("common.collect"), icon: <IndianRupee className="h-4 w-4" />, href: "/collect" },
-    { label: t("common.dispatch"), icon: <Package className="h-4 w-4" />, href: "/dispatch" },
-    { label: t("common.customers"), icon: <Users className="h-4 w-4" />, href: "/customers" },
-    { label: t("common.priceList"), icon: <Tag className="h-4 w-4" />, href: "/catalogue" },
-    { label: t("common.reports"), icon: <BarChart3 className="h-4 w-4" />, href: "/reports" },
-    { label: t("common.settings"), icon: <Settings className="h-4 w-4" />, href: "/settings" },
+    { label: t("common.overview"), icon: <LayoutDashboard className="h-5 w-5" />, href: "/dashboard" },
+    { label: t("common.orders"), icon: <List className="h-5 w-5" />, href: "/orders" },
+    { label: t("common.employees"), icon: <UserSquare2 className="h-5 w-5" />, href: "/employees" },
+    { label: t("common.priceList"), icon: <Tag className="h-5 w-5" />, href: "/catalogue" },
+    { label: t("common.settings"), icon: <Settings className="h-5 w-5" />, href: "/settings" },
   ];
   return (
     <div className="flex min-h-dvh flex-col">

@@ -21,6 +21,7 @@ export {
   Role,
   Lang,
   OrderStatus,
+  OrderStatusV2,
   CancelReason,
   OrderSource,
   AccountKind,
