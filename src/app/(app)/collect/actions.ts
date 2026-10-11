@@ -4,7 +4,8 @@ import { makeServerAction } from "@/lib/serverAction";
 import { AppError } from "@/lib/errors";
 import { prisma } from "@/server/repo/client";
 import type { Session } from "@/server/auth/session";
-import { logReminder, logContact, setPromisedPaymentDate } from "@/server/services/followUpService";
+import { logContact, setPromisedPaymentDate } from "@/server/services/followUpService";
+import { sendPaymentReminder } from "@/server/services/whatsappService";
 
 // Follow-ups ride the "Record payment" permission row (§4.2): Sales on own
 // orders, Owner/Admin/Accounts on all, Dispatch never.
@@ -26,7 +27,8 @@ export const sendReminderAction = makeServerAction({
   revalidate: ["/collect", "/orders"],
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
-    return logReminder({
+    // 48 h rule + FollowUp log, then Cloud API send or wa.me fallback (§13).
+    return sendPaymentReminder({
       tenantId: session.tenantId,
       actorId: session.userId,
       actorRole: session.role,

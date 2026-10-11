@@ -121,18 +121,3 @@ export function pickGoldCard<T extends { id: string; stuck: boolean; ageDays: nu
 function oldest<T extends { id: string; ageDays: number }>(cards: T[]): T {
   return cards.reduce((a, b) => (b.ageDays > a.ageDays || (b.ageDays === a.ageDays && b.id < a.id) ? b : a));
 }
-
-/** `dispatch_update` (§13) as plain text for the wa.me fallback. */
-export function dispatchUpdateText(input: {
-  customerName: string;
-  orderNumber: string;
-  items: { description: string; qty: number }[];
-  transporter?: string | null;
-  lrNumber?: string | null;
-}): string {
-  const items = input.items.map((i) => `${i.description} ×${i.qty}`).join(", ");
-  const via = [input.transporter && `via ${input.transporter}`, input.lrNumber && `LR ${input.lrNumber}`]
-    .filter(Boolean)
-    .join(", ");
-  return `Hi ${input.customerName}, your machines for ${input.orderNumber} have been dispatched${via ? ` ${via}` : ""}: ${items}. Thank you!`;
-}

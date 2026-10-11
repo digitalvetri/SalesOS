@@ -108,6 +108,8 @@ export function NewOrderWizard({
 
   // Advance payment
   const [advanceEnabled, setAdvanceEnabled] = React.useState(false);
+  // §11.3: "Send WhatsApp confirmation", default ON.
+  const [sendConfirmation, setSendConfirmation] = React.useState(true);
   const [advance, setAdvance] = React.useState<Advance>({
     amountRaw: "",
     method: "CASH",
@@ -378,6 +380,7 @@ export function NewOrderWizard({
         charges: chargesPayload,
         notes: notes.trim() || null,
         advance: advancePayload,
+        sendConfirmation,
       });
       if (!r.ok) {
         toast.error(r.error.message);
@@ -389,7 +392,8 @@ export function NewOrderWizard({
           ? t("submittedPending", { number: r.data.number })
           : t("submitted", { number: r.data.number }),
       );
-      router.push(`/orders/${r.data.id}`);
+      // Success screen (§11.3) lives on the order page: big number, Share on WhatsApp, Done.
+      router.push(`/orders/${r.data.id}?created=1${r.data.whatsapp ? `&wa=${r.data.whatsapp}` : ""}`);
     } finally {
       setPending(false);
     }
@@ -837,6 +841,15 @@ export function NewOrderWizard({
           >
             {pending ? "…" : t("step3.confirm")}
           </Button>
+          <label className="flex items-center justify-center gap-2 text-sm text-[color:var(--color-ink-2)]">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={sendConfirmation}
+              onChange={(e) => setSendConfirmation(e.target.checked)}
+            />
+            {t("step3.sendWhatsapp")}
+          </label>
           <button
             type="button"
             onClick={() => setStep(2)}

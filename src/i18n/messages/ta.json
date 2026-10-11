@@ -135,7 +135,12 @@
     "deliveredOn": "{date} விநியோகிக்கப்பட்டது",
     "inTransit": "வழியில்",
     "photoN": "புகைப்படம் {n}",
-    "deliveryPhoto": "விநியோக புகைப்படம்"
+    "deliveryPhoto": "விநியோக புகைப்படம்",
+    "createdTitle": "ஆர்டர் உறுதி செய்யப்பட்டது",
+    "createdPending": "ஆர்டர் சேமிக்கப்பட்டது — விலை ஒப்புதலுக்காகக் காத்திருக்கிறது",
+    "confirmationSent": "உறுதிப்படுத்தல் WhatsApp இல் வாடிக்கையாளருக்கு அனுப்பப்பட்டது.",
+    "shareWhatsapp": "WhatsApp இல் பகிர்",
+    "done": "முடிந்தது"
   },
   "orderWizard": {
     "title": "புதிய ஆர்டர்",
@@ -184,7 +189,8 @@
       "confirm": "ஆர்டரை உறுதிப்படுத்து",
       "needCustomer": "முதலில் வாடிக்கையாளரை தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்.",
       "needLines": "குறைந்தது ஒரு இயந்திரம் அல்லது தனிப்பயன் உருப்படி சேர்க்கவும்.",
-      "lineErrors": "ஒவ்வொரு வரிக்கும் பெயர், எண்ணிக்கை, சரியான விலை தேவை."
+      "lineErrors": "ஒவ்வொரு வரிக்கும் பெயர், எண்ணிக்கை, சரியான விலை தேவை.",
+      "sendWhatsapp": "WhatsApp உறுதிப்படுத்தல் அனுப்பு"
     },
     "resume": {
       "title": "{time}-ல் தொடங்கிய வரைவை தொடரவா?",
@@ -300,7 +306,8 @@
       "users": "பயனர்கள்",
       "entities": "நிறுவனங்கள்",
       "accounts": "கணக்குகள்",
-      "targets": "இலக்குகள்"
+      "targets": "இலக்குகள்",
+      "whatsapp": "WhatsApp"
     },
     "users": {
       "listTitle": "பயனர்கள்",
@@ -365,6 +372,49 @@
       "colTotal": "மொத்தம்",
       "noSalespeople": "இன்னும் விற்பனையாளர்கள் இல்லை. பயனர்கள் தாவலில் உருவாக்கவும்.",
       "placeholder": "—"
+    },
+    "whatsapp": {
+      "title": "WhatsApp",
+      "statusApi": "WhatsApp Cloud API இணைக்கப்பட்டது — செய்திகள் தானாக அனுப்பப்படும்.",
+      "statusDeeplink": "இணைக்கப்படவில்லை — 'WhatsApp இல் திற' இணைப்புகள் (wa.me) மூலம் அனுப்பப்படும்.",
+      "credentials": "Meta Cloud API",
+      "phoneNumberId": "Phone number ID",
+      "businessAccountId": "Business account ID",
+      "accessToken": "Access token",
+      "appSecret": "App secret (webhook கையொப்பம்)",
+      "savedEncrypted": "•••••• சேமிக்கப்பட்டது (மறையாக்கம்) — மாற்ற தட்டச்சு செய்யவும்",
+      "clearToken": "Token ஐ நீக்கு (wa.me இணைப்புகளுக்கு மாறு)",
+      "payTo": "நினைவூட்டலில் செலுத்தும் விவரம்",
+      "templates": "Template பெயர்கள்",
+      "templatesHelp": "Meta Business Manager இல் அங்கீகரிக்கப்பட்ட பெயர்கள்; மொழிக் குறியீட்டை அமைக்கவும்.",
+      "templateLabel": {
+        "order_confirmation": "ஆர்டர் உறுதிப்படுத்தல்",
+        "payment_received": "பணம் பெறப்பட்டது",
+        "dispatch_update": "அனுப்புதல் தகவல்",
+        "payment_reminder": "பணம் நினைவூட்டல்"
+      },
+      "language": "மொழிக் குறியீடு",
+      "webhook": "Webhook",
+      "webhookUrl": "Callback URL (Meta இல் ஒட்டவும்)",
+      "verifyToken": "Verify token",
+      "notSetYet": "முதல் சேமிப்பில் உருவாகும்",
+      "regenerate": "புதிதாக உருவாக்கு",
+      "copy": "நகலெடு",
+      "copied": "நகலெடுக்கப்பட்டது.",
+      "autoReminders": "தானியங்கி பணம் நினைவூட்டல்கள்",
+      "autoEnabled": "தாமதமான ஆர்டர்களுக்கு தானாக நினைவூட்டு",
+      "everyDays": "ஒவ்வொரு … நாட்களுக்கு",
+      "maxCount": "ஒரு ஆர்டருக்கு அதிகபட்சம் … நினைவூட்டல்கள்",
+      "autoRules": "ஞாயிறு இல்லை, 10:00–19:00 IST மட்டும், வேறு நினைவூட்டலுக்குப் பின் 48 மணி நேரத்திற்குள் இல்லை. Cloud API தேவை.",
+      "save": "WhatsApp அமைப்புகளைச் சேமி",
+      "saving": "சேமிக்கிறது…",
+      "saved": "WhatsApp அமைப்புகள் சேமிக்கப்பட்டன.",
+      "testSend": "சோதனை அனுப்புதல்",
+      "testPhone": "சோதனைக்கான எண்",
+      "sendTest": "சோதனை நினைவூட்டல் அனுப்பு",
+      "testSent": "Cloud API மூலம் அனுப்பப்பட்டது ({id}).",
+      "testDeeplink": "API இணைக்கப்படவில்லை — மாற்று வழி:",
+      "openInWhatsapp": "WhatsApp இல் திற"
     }
   },
   "recordPayment": {
@@ -525,7 +575,8 @@
     "clearPromise": "தேதியை நீக்கு",
     "promiseSaved": "வாக்குறுதி தேதி சேமிக்கப்பட்டது.",
     "promiseCleared": "வாக்குறுதி தேதி நீக்கப்பட்டது.",
-    "close": "மூடு"
+    "close": "மூடு",
+    "reminderSent": "WhatsApp இல் நினைவூட்டல் அனுப்பப்பட்டது."
   },
   "dispatch": {
     "title": "அனுப்புதல் பலகை",
@@ -582,7 +633,8 @@
     "deliveredOn": "விநியோக தேதி",
     "deliveryPhoto": "விநியோக புகைப்படம் (விருப்பம்)",
     "confirmDelivered": "விநியோகம் உறுதி",
-    "close": "மூடு"
+    "close": "மூடு",
+    "updateSent": "அனுப்புதல் தகவல் WhatsApp இல் அனுப்பப்பட்டது."
   },
   "dashboard": {
     "title": "டாஷ்போர்டு",

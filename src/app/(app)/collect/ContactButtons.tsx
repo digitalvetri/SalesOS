@@ -14,8 +14,8 @@ import { sendReminderAction, logCallAction } from "./actions";
 export function ContactButtons(props: {
   phoneE164: string;
   orderIds: string[];
-  reminderHref: string; // prebuilt wa.me link with the reminder text
   reminderBlockedUntil: string | null; // ISO — all orders in cooldown
+  apiConfigured?: boolean; // Cloud API sends server-side; no tab to open
   compact?: boolean;
 }) {
   const t = useTranslations("collect");
@@ -29,9 +29,10 @@ export function ContactButtons(props: {
   }
 
   async function remind() {
-    // Open the tab synchronously so mobile browsers don't treat it as a pop-up.
-    // ("noopener" would make window.open return null, so detach the opener by hand.)
-    const tab = window.open("", "_blank");
+    // Deep-link mode: open the tab synchronously so mobile browsers don't treat
+    // it as a pop-up ("noopener" would make window.open return null, so detach
+    // the opener by hand). API mode sends server-side — no tab needed.
+    const tab = props.apiConfigured ? null : window.open("", "_blank");
     if (tab) tab.opener = null;
     setPending(true);
     try {
@@ -41,9 +42,16 @@ export function ContactButtons(props: {
         toast.error(r.error.message);
         return;
       }
-      if (tab) tab.location.href = props.reminderHref;
-      else window.location.href = props.reminderHref;
-      toast.success(t("reminderLogged"));
+      const link = r.data.results.find((x) => x.mode === "deeplink");
+      if (link && link.mode === "deeplink") {
+        // Unconfigured, or the API call failed: fall back to wa.me (§13).
+        if (tab) tab.location.href = link.href;
+        else window.location.href = link.href; // API configured but the send failed
+        toast.success(t("reminderLogged"));
+      } else {
+        tab?.close();
+        toast.success(t("reminderSent"));
+      }
       router.refresh();
     } finally {
       setPending(false);

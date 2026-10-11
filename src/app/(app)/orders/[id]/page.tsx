@@ -15,17 +15,23 @@ import { RecordPaymentSheet } from "./RecordPaymentSheet";
 import { RefundSheet } from "./RefundSheet";
 import { PaymentList, type PaymentRow } from "./PaymentList";
 import { istDateString } from "@/server/domain/payment/record";
-import { reminderAvailableAt, reminderText, waLink } from "@/server/domain/payment/collect";
+import { reminderAvailableAt } from "@/server/domain/payment/collect";
+import { getWaConfig } from "@/server/services/whatsappService";
+import { waLink } from "@/server/domain/payment/collect";
+import { templateText } from "@/server/domain/whatsapp/whatsapp";
 import { ContactButtons } from "../../collect/ContactButtons";
 import { PromiseDateSheet } from "../../collect/PromiseDateSheet";
 import Decimal from "decimal.js";
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
   const session = await requireSession();
 
   // Load the order, then verify the viewer actually has access to it.
@@ -56,6 +62,7 @@ export default async function OrderDetailPage({
     order.status !== "CANCELLED" &&
     balanceDue.greaterThan(0);
   const canFollowUp = canRecordPayment && order.status !== "CLOSED";
+  const waConfigured = canFollowUp ? (await getWaConfig(session.tenantId)).configured : false;
   const lastReminder = [...order.followUps].reverse().find((f) => f.channel === "WHATSAPP");
   const reminderBlockedUntil = reminderAvailableAt(lastReminder?.at ?? null, new Date());
   const canRefund = can(session.role, "payments.recordRefund") && balanceDue.lessThan(0);
@@ -173,8 +180,58 @@ export default async function OrderDetailPage({
       .map((f) => ({ kind: "followUp" as const, id: f.id, at: f.at, followUp: f })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
+  // §11.3 success screen: shown once after the wizard (?created=1).
+  const created = sp.created === "1";
+  const confirmationHref =
+    created && sp.wa === "link"
+      ? waLink(
+          order.customer.phoneE164,
+          templateText({
+            template: "order_confirmation",
+            name: order.customer.businessName ?? order.customer.name,
+            orderNumber: order.number,
+            items: order.lines.map((l) => `${l.description} ×${l.qty}`).join(", "),
+            total: order.total.toString(),
+            advance: Decimal.max(0, new Decimal(order.total.toString()).minus(order.balanceDue.toString())).toString(),
+            balance: Decimal.max(0, order.balanceDue.toString()).toString(),
+            deliveryDate: order.promisedDeliveryDate ? order.promisedDeliveryDate.toISOString().slice(0, 10) : null,
+            entityName: order.entity.name,
+          }),
+        )
+      : null;
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col pb-20 md:max-w-4xl">
+      {created && (
+        <section
+          className="mx-4 mt-4 rounded-[var(--radius)] border border-[color:var(--color-ok)]/40 bg-[color:var(--color-ok-bg)] p-5 text-center"
+          data-testid="order-created"
+        >
+          <p className="text-sm text-[color:var(--color-ok)]">
+            {order.status === "PENDING_APPROVAL" ? t("createdPending") : t("createdTitle")}
+          </p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{order.number}</p>
+          {sp.wa === "sent" && <p className="mt-2 text-sm">{t("confirmationSent")}</p>}
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            {confirmationHref && (
+              <a
+                href={confirmationHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-11 items-center gap-2 rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-5 text-sm font-medium"
+              >
+                {t("shareWhatsapp")}
+              </a>
+            )}
+            <Link
+              href={`/orders/${order.id}`}
+              className="inline-flex h-11 items-center rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-5 text-sm font-medium"
+            >
+              {t("done")}
+            </Link>
+          </div>
+        </section>
+      )}
       <header className="border-b border-[color:var(--color-border)] px-4 py-3">
         <Link href="/orders" className="text-sm text-[color:var(--color-ink-2)] hover:underline">
           ← {t("backToList")}
@@ -462,14 +519,7 @@ export default async function OrderDetailPage({
                   <ContactButtons
                     phoneE164={order.customer.phoneE164}
                     orderIds={[order.id]}
-                    reminderHref={waLink(
-                      order.customer.phoneE164,
-                      reminderText({
-                        customerName: order.customer.businessName ?? order.customer.name,
-                        entityName: order.entity.name,
-                        orders: [{ number: order.number, balanceDue: balanceDue.toString() }],
-                      }),
-                    )}
+                    apiConfigured={waConfigured}
                     reminderBlockedUntil={reminderBlockedUntil?.toISOString() ?? null}
                     compact
                   />

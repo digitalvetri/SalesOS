@@ -18,14 +18,13 @@ import { toast } from "@/components/app/Toast";
 import { compressAndUpload } from "@/lib/uploadImage";
 import type { BoardCard } from "@/server/repo/dispatchBoard";
 import type { BoardColumn } from "@/server/domain/dispatch/dispatch";
-import { dispatchUpdateText } from "@/server/domain/dispatch/dispatch";
-import { waLink } from "@/server/domain/payment/collect";
 import {
   startProductionAction,
   markReadyAction,
   createDispatchAction,
   markDeliveredAction,
   handOverNowAction,
+  sendDispatchUpdateAction,
 } from "./actions";
 
 const COLUMNS: BoardColumn[] = ["CONFIRMED", "IN_PRODUCTION", "READY", "DISPATCHED"];
@@ -33,12 +32,15 @@ const COLUMNS: BoardColumn[] = ["CONFIRMED", "IN_PRODUCTION", "READY", "DISPATCH
 const fmtDay = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" });
 
-export function DispatchBoard({ columns, today }: { columns: Record<BoardColumn, BoardCard[]>; today: string }) {
+const WaContext = React.createContext(false);
+
+export function DispatchBoard({ columns, today, apiConfigured = false }: { columns: Record<BoardColumn, BoardCard[]>; today: string; apiConfigured?: boolean }) {
   const t = useTranslations("dispatch");
   const goldColumn = COLUMNS.find((c) => columns[c].some((card) => card.gold)) ?? "CONFIRMED";
   const [tab, setTab] = React.useState<BoardColumn>(goldColumn);
 
   return (
+    <WaContext.Provider value={apiConfigured}>
     <div>
       <div role="tablist" aria-label={t("columnsLabel")} className="mb-4 grid grid-cols-4 gap-1 rounded-[var(--radius)] bg-[color:var(--color-surface-2)] p-1 md:hidden">
         {COLUMNS.map((c) => (
@@ -78,6 +80,7 @@ export function DispatchBoard({ columns, today }: { columns: Record<BoardColumn,
         ))}
       </div>
     </div>
+    </WaContext.Provider>
   );
 }
 
@@ -285,15 +288,34 @@ function PhotoPicker({
 
 function DispatchSheet({ card, today, gold }: { card: BoardCard; today: string; gold: boolean }) {
   const t = useTranslations("dispatch");
+  const apiConfigured = React.useContext(WaContext);
   const [open, setOpen] = React.useState(false);
 
   // §5.3 "offer a one-tap WhatsApp update": lives in the success toast, because a
   // full dispatch moves the card to another column and unmounts this sheet.
-  function onSaved(waHref: string) {
+  // The server sends via the Cloud API when configured, else returns a wa.me link.
+  function onSaved(dispatchId: string) {
     setOpen(false);
     toast.success(t("dispatchedToast", { number: card.number }), {
       duration: 15_000,
-      action: { label: t("sendWhatsapp"), onClick: () => window.open(waHref, "_blank", "noopener,noreferrer") },
+      action: {
+        label: t("sendWhatsapp"),
+        onClick: async () => {
+          const tab = apiConfigured ? null : window.open("", "_blank");
+          if (tab) tab.opener = null;
+          const r = await sendDispatchUpdateAction({ dispatchId });
+          if (!r.ok) {
+            tab?.close();
+            toast.error(r.error.message);
+          } else if (r.data.mode === "deeplink") {
+            if (tab) tab.location.href = r.data.href;
+            else window.location.href = r.data.href;
+          } else {
+            tab?.close();
+            toast.success(t("updateSent"));
+          }
+        },
+      },
     });
   }
 
@@ -315,7 +337,7 @@ function DispatchSheet({ card, today, gold }: { card: BoardCard; today: string; 
   );
 }
 
-function DispatchForm({ card, today, onSaved }: { card: BoardCard; today: string; onSaved: (waHref: string) => void }) {
+function DispatchForm({ card, today, onSaved }: { card: BoardCard; today: string; onSaved: (dispatchId: string) => void }) {
   const t = useTranslations("dispatch");
   const left = card.lines.filter((l) => l.qty > l.dispatchedQty);
   const [qty, setQty] = React.useState<Record<string, number>>(() =>
@@ -347,20 +369,7 @@ function DispatchForm({ card, today, onSaved }: { card: BoardCard; today: string
         toast.error(r.error.message);
         return;
       }
-      onSaved(
-        waLink(
-          card.customer.phoneE164,
-          dispatchUpdateText({
-            customerName: card.customer.name,
-            orderNumber: card.number,
-            items: left
-              .filter((l) => (qty[l.id] ?? 0) > 0)
-              .map((l) => ({ description: l.description, qty: qty[l.id]! })),
-            transporter: transporter.trim() || null,
-            lrNumber: lr.trim() || null,
-          }),
-        ),
-      );
+      onSaved(r.data.dispatchId);
     } finally {
       setPending(false);
     }
@@ -495,16 +504,18 @@ function DeliveredForm({ card, today, onDone }: { card: BoardCard; today: string
 }
 
 /** Dispatch role's Queue (§11.0): every actionable card, most urgent first. */
-export function DispatchQueue({ cards, today }: { cards: BoardCard[]; today: string }) {
+export function DispatchQueue({ cards, today, apiConfigured = false }: { cards: BoardCard[]; today: string; apiConfigured?: boolean }) {
   const t = useTranslations("dispatch");
   if (cards.length === 0) {
     return <p className="py-16 text-center text-base text-[color:var(--color-ink-2)]">{t("emptyQueue")}</p>;
   }
   return (
-    <ul className="space-y-3">
-      {cards.map((c) => (
-        <Card key={c.id} card={c} today={today} />
-      ))}
-    </ul>
+    <WaContext.Provider value={apiConfigured}>
+      <ul className="space-y-3">
+        {cards.map((c) => (
+          <Card key={c.id} card={c} today={today} />
+        ))}
+      </ul>
+    </WaContext.Provider>
   );
 }

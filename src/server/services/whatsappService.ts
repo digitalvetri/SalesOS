@@ -323,3 +323,58 @@ export function assertCronSecret(header: string | null) {
   const secret = process.env.CRON_SECRET;
   if (!secret || header !== `Bearer ${secret}`) throw new AppError("FORBIDDEN", "Bad cron credentials.");
 }
+
+// ───────── Dispatch update + order confirmation ─────────
+
+/** `dispatch_update` for one dispatch (§5.3 "offer a one-tap WhatsApp update"). */
+export async function sendDispatchUpdate(input: { tenantId: string; actorId: string; dispatchId: string; fetchImpl?: Fetch }): Promise<SendResult> {
+  const d = await prisma.dispatch.findFirst({
+    where: { id: input.dispatchId, order: { tenantId: input.tenantId } },
+    select: {
+      transporter: true, lrNumber: true, orderId: true,
+      lines: { select: { qty: true, orderLine: { select: { description: true } } } },
+      order: { select: { number: true, customer: { select: { name: true, businessName: true, phoneE164: true } } } },
+    },
+  });
+  if (!d) throw new AppError("NOT_FOUND", "Dispatch not found.");
+  return sendTemplate({
+    tenantId: input.tenantId, actorId: input.actorId, orderId: d.orderId, toE164: d.order.customer.phoneE164, fetchImpl: input.fetchImpl,
+    message: {
+      template: "dispatch_update",
+      name: d.order.customer.businessName ?? d.order.customer.name,
+      orderNumber: d.order.number,
+      items: d.lines.map((l) => `${l.orderLine.description} ×${l.qty}`).join(", "),
+      transporter: d.transporter,
+      lrNumber: d.lrNumber,
+    },
+  });
+}
+
+/** `order_confirmation` (§11.3 "Send WhatsApp confirmation", §13). */
+export async function sendOrderConfirmation(input: { tenantId: string; actorId: string; orderId: string; fetchImpl?: Fetch }): Promise<SendResult> {
+  const o = await prisma.order.findFirst({
+    where: { tenantId: input.tenantId, id: input.orderId },
+    select: {
+      id: true, number: true, total: true, balanceDue: true, promisedDeliveryDate: true,
+      entity: { select: { name: true } },
+      customer: { select: { name: true, businessName: true, phoneE164: true } },
+      lines: { orderBy: { sortOrder: "asc" }, select: { description: true, qty: true } },
+    },
+  });
+  if (!o) throw new AppError("NOT_FOUND", "Order not found.");
+  const total = new Decimal(o.total.toString());
+  return sendTemplate({
+    tenantId: input.tenantId, actorId: input.actorId, orderId: o.id, toE164: o.customer.phoneE164, fetchImpl: input.fetchImpl,
+    message: {
+      template: "order_confirmation",
+      name: o.customer.businessName ?? o.customer.name,
+      orderNumber: o.number,
+      items: o.lines.map((l) => `${l.description} ×${l.qty}`).join(", "),
+      total: total.toString(),
+      advance: Decimal.max(0, total.minus(o.balanceDue.toString())).toString(),
+      balance: Decimal.max(0, o.balanceDue.toString()).toString(),
+      deliveryDate: o.promisedDeliveryDate ? o.promisedDeliveryDate.toISOString().slice(0, 10) : null,
+      entityName: o.entity.name,
+    },
+  });
+}
