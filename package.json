@@ -22,6 +22,11 @@
     "prisma:apply-extra": "tsx prisma/apply-extra.ts",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:setup": "pnpm run prisma:migrate && pnpm run prisma:seed",
+    "sb:start": "supabase start",
+    "sb:stop": "supabase stop",
+    "sb:status": "supabase status",
+    "sb:reset": "supabase db reset",
+    "sb:env": "supabase status -o env",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -61,6 +66,7 @@
     "postcss": "^8.4.49",
     "prettier": "^3.3.3",
     "prisma": "6.19.3",
+    "supabase": "^2.120.0",
     "tailwindcss": "4.3.3",
     "testcontainers": "12.2.0",
     "tsx": "4.23.15",

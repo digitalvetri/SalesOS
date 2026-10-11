@@ -28,3 +28,11 @@ pnpm-debug.log*
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Pilot customer data — stays local; keep the README/.gitkeep tracked
+fixtures/*
+!fixtures/README.md
+
+# Supabase CLI local state
+supabase/.temp
+supabase/.branches
