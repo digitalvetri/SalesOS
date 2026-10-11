@@ -3,17 +3,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export type Tab = { href: string; label: string };
+export type Tab = { href: string; label: string; exact?: boolean };
 
-export function Tabs({ tabs }: { tabs: Tab[] }) {
+export function Tabs({ tabs, label = "Settings sections" }: { tabs: Tab[]; label?: string }) {
   const pathname = usePathname();
   return (
     <nav
-      aria-label="Settings sections"
+      aria-label={label}
       className="mb-6 flex gap-1 border-b border-[color:var(--color-border)]"
     >
       {tabs.map((tab) => {
-        const active = pathname.startsWith(tab.href);
+        const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}

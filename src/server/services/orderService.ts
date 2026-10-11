@@ -29,6 +29,7 @@ import {
 import { fyLabelOf } from "@/server/domain/fy";
 import { assertTransition, canCancel } from "@/server/domain/order/stateMachine";
 import { toDbString } from "@/server/domain/money";
+import { recomputeAndWriteBalance } from "@/server/services/paymentService";
 
 // Pilot setting defaults (TenantSettings). We fetch per tenant on each create so
 // changes to maxSalesDiscountPct etc. are picked up without a redeploy.
@@ -397,6 +398,9 @@ export async function cancelOrder(input: CancelOrderInput) {
         cancelNote: input.note ?? null,
       },
     });
+    // BR-09: effectiveTotal flips to 0 on cancellation, so any pending/verified
+    // payments on this order surface as refund-due (negative balanceDue).
+    await recomputeAndWriteBalance(tx, input.id);
     await tx.orderEvent.create({
       data: {
         orderId: input.id,

@@ -21,9 +21,9 @@ export async function MobileSalesShell({
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
       >
-        <MobileNavItem href="/home" active icon={<Home className="h-5 w-5" />} label={t("common.home")} />
+        <MobileNavItem href="/home" icon={<Home className="h-5 w-5" />} label={t("common.home")} />
         <MobileNavItem href="/orders" icon={<List className="h-5 w-5" />} label={t("common.orders")} />
-        <MobileNavItem disabled icon={<IndianRupee className="h-5 w-5" />} label={t("common.collect")} />
+        <MobileNavItem href="/collect" icon={<IndianRupee className="h-5 w-5" />} label={t("common.collect")} />
         <MobileNavItem disabled icon={<CircleUser className="h-5 w-5" />} label={t("common.me")} />
       </nav>
     </div>

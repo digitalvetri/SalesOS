@@ -6,11 +6,18 @@ import { assertCan, can, level } from "@/server/auth/permissions";
 import { getOrderById } from "@/server/repo/orders";
 import { prisma } from "@/server/repo/client";
 import { Badge } from "@/components/ui/badge";
-import { Money } from "@/components/app/Money";
+import { Money, formatInr } from "@/components/app/Money";
 import { StatusPill, type AnyStatus } from "@/components/app/StatusPill";
 import { OrderActions } from "./OrderActions";
 import { ApprovalActions } from "./ApprovalActions";
 import { CancelRequestButton } from "./CancelRequestButton";
+import { RecordPaymentSheet } from "./RecordPaymentSheet";
+import { RefundSheet } from "./RefundSheet";
+import { PaymentList, type PaymentRow } from "./PaymentList";
+import { istDateString } from "@/server/domain/payment/record";
+import { reminderAvailableAt, reminderText, waLink } from "@/server/domain/payment/collect";
+import { ContactButtons } from "../../collect/ContactButtons";
+import { PromiseDateSheet } from "../../collect/PromiseDateSheet";
 import Decimal from "decimal.js";
 
 export default async function OrderDetailPage({
@@ -42,6 +49,17 @@ export default async function OrderDetailPage({
   const canSeeMoney = level(session.role, "orders.viewPrices") !== "denied";
   const canApprove = can(session.role, "orders.approvePrice");
   const canCancelDirect = can(session.role, "orders.cancel");
+  const isOwn = order.salespersonId === session.userId;
+  const balanceDue = new Decimal(order.balanceDue.toString());
+  const canRecordPayment =
+    can(session.role, "payments.record", { isOwn }) &&
+    order.status !== "CANCELLED" &&
+    balanceDue.greaterThan(0);
+  const canFollowUp = canRecordPayment && order.status !== "CLOSED";
+  const lastReminder = [...order.followUps].reverse().find((f) => f.channel === "WHATSAPP");
+  const reminderBlockedUntil = reminderAvailableAt(lastReminder?.at ?? null, new Date());
+  const canRefund = can(session.role, "payments.recordRefund") && balanceDue.lessThan(0);
+  const approvalVisible = canApprove && order.status === "PENDING_APPROVAL";
   const canRequestCancel =
     level(session.role, "orders.cancel") === "ownRequest" &&
     order.salespersonId === session.userId;
@@ -67,13 +85,93 @@ export default async function OrderDetailPage({
         e.at > cancelRequest.at,
     );
 
-  // Actor names for the timeline. Load in one query since every event has actorId.
-  const actorIds = Array.from(new Set(order.events.map((e) => e.actorId)));
-  const actors = await prisma.user.findMany({
-    where: { tenantId: session.tenantId, id: { in: actorIds } },
-    select: { id: true, name: true },
-  });
+  // Names for the timeline + payment rows: event actors, payment creators and
+  // personal receivers, plus account labels. Payment has no Prisma relations to
+  // User/Account, so resolve them in two batched queries.
+  const userIds = Array.from(
+    new Set([
+      ...order.events.map((e) => e.actorId),
+      ...order.followUps.map((f) => f.byUserId),
+      ...order.payments.map((p) => p.createdById),
+      ...order.payments.flatMap((p) => (p.receivedByUserId ? [p.receivedByUserId] : [])),
+    ]),
+  );
+  const accountIds = Array.from(
+    new Set(
+      order.payments.flatMap((p) =>
+        [p.receivedIntoAccountId, p.depositedToAccountId].filter((x): x is string => Boolean(x)),
+      ),
+    ),
+  );
+  const [actors, paymentAccounts] = await Promise.all([
+    prisma.user.findMany({
+      where: { tenantId: session.tenantId, id: { in: userIds } },
+      select: { id: true, name: true },
+    }),
+    canSeeMoney
+      ? prisma.account.findMany({
+          where: { tenantId: session.tenantId, id: { in: accountIds } },
+          select: { id: true, label: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const actorName = new Map(actors.map((a) => [a.id, a.name]));
+  const accountLabel = new Map(paymentAccounts.map((a) => [a.id, a.label]));
+
+  // Record-payment sheet options: the order's entity accounts + staff who can receive.
+  const [sheetAccounts, receiveStaff, me] = canRecordPayment || canRefund
+    ? await Promise.all([
+        prisma.account.findMany({
+          where: { tenantId: session.tenantId, entityId: order.entityId, active: true },
+          orderBy: { label: "asc" },
+          select: { id: true, label: true },
+        }),
+        prisma.user.findMany({
+          where: { tenantId: session.tenantId, active: true, canReceivePayments: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: session.userId },
+          select: { canReceivePayments: true },
+        }),
+      ])
+    : [[], [], null];
+
+  const paymentRows: PaymentRow[] = canSeeMoney
+    ? order.payments.map((p) => ({
+        id: p.id,
+        receiptNo: p.receiptNo,
+        type: p.type,
+        method: p.method,
+        amount: p.amount.toString(),
+        status: p.status,
+        paidOn: p.paidOn.toISOString(),
+        into: p.receivedIntoAccountId
+          ? { kind: "account" as const, label: accountLabel.get(p.receivedIntoAccountId) ?? "—" }
+          : { kind: "person" as const, label: actorName.get(p.receivedByUserId ?? "") ?? "—" },
+        deposited: Boolean(p.depositedToAccountId),
+        referenceNo: p.referenceNo,
+        hasProof: Boolean(p.proofPath),
+        rejectReason: p.rejectReason,
+      }))
+    : [];
+
+  // Timeline = order events + payments recorded (spec §11.4 shows "Advance ₹10,000").
+  type TimelineItem =
+    | { kind: "event"; id: string; at: Date; event: (typeof order.events)[number] }
+    | { kind: "payment"; id: string; at: Date; payment: (typeof order.payments)[number] }
+    | { kind: "followUp"; id: string; at: Date; followUp: (typeof order.followUps)[number] };
+  const timeline: TimelineItem[] = [
+    ...order.events.map((e) => ({ kind: "event" as const, id: e.id, at: e.at, event: e })),
+    ...(canSeeMoney
+      ? order.payments.map((p) => ({ kind: "payment" as const, id: p.id, at: p.createdAt, payment: p }))
+      : []),
+    // Promise-date changes already appear as a NOTE event; show contacts only.
+    ...order.followUps
+      .filter((f) => f.channel !== "OTHER")
+      .map((f) => ({ kind: "followUp" as const, id: f.id, at: f.at, followUp: f })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col pb-20 md:max-w-4xl">
@@ -84,9 +182,14 @@ export default async function OrderDetailPage({
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">{order.number}</h1>
           <StatusPill status={order.status as AnyStatus} />
-          {canSeeMoney && Number(order.balanceDue) > 0 && (
+          {canSeeMoney && balanceDue.greaterThan(0) && (
             <Badge tone="warn">
               {t("balanceBadge")}: <Money value={order.balanceDue.toString()} />
+            </Badge>
+          )}
+          {canSeeMoney && balanceDue.lessThan(0) && (
+            <Badge tone="danger">
+              {t("refundDue")}: <Money value={balanceDue.abs().toString()} />
             </Badge>
           )}
           {order.needsApproval && order.status === "PENDING_APPROVAL" && (
@@ -195,33 +298,46 @@ export default async function OrderDetailPage({
               <h3 className="label-caps">{t("timeline")}</h3>
             </header>
             <ol className="divide-y divide-[color:var(--color-border)]">
-              {order.events.map((e) => (
-                <li key={e.id} className="px-4 py-3 text-sm">
+              {timeline.map((item) => {
+                const e = item.kind === "event" ? item.event : null;
+                const p = item.kind === "payment" ? item.payment : null;
+                const f = item.kind === "followUp" ? item.followUp : null;
+                return (
+                <li key={item.id} className="px-4 py-3 text-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="font-medium">
-                        {describeEvent(e.type, e.fromStatus, e.toStatus)}
+                        {e
+                          ? describeEvent(e.type, e.fromStatus, e.toStatus)
+                          : p
+                            ? t("timelinePayment", {
+                                type: t(`paymentType.${p.type}`),
+                                amount: formatInr(p.amount.toString()),
+                              })
+                            : t(`followUp.${f!.channel}`)}
                       </div>
-                      {e.note && (
+                      {(e?.note || (f?.note && (f.channel === "CALL" || f.channel === "VISIT"))) && (
                         <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
-                          {e.note}
+                          {e?.note ?? f?.note}
                         </div>
                       )}
                       <div className="mt-0.5 text-xs text-[color:var(--color-ink-3)]">
-                        {actorName.get(e.actorId) ?? "—"}
+                        {actorName.get(e ? e.actorId : p ? p.createdById : f!.byUserId) ?? "—"}
                       </div>
                     </div>
                     <time className="shrink-0 tabular-nums text-xs text-[color:var(--color-ink-3)]">
-                      {e.at.toLocaleString("en-IN", {
+                      {item.at.toLocaleString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
+                        timeZone: "Asia/Kolkata",
                       })}
                     </time>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ol>
           </section>
         </div>
@@ -244,12 +360,82 @@ export default async function OrderDetailPage({
                 <Money value={pendingPaid.toString()} muted />
               </div>
               <div className="mt-2 flex items-baseline justify-between border-t border-[color:var(--color-border)] pt-2">
-                <span className="font-medium">{t("balanceDue")}</span>
-                <Money value={order.balanceDue.toString()} size="lg" />
+                <span className="font-medium">
+                  {balanceDue.lessThan(0) ? t("refundDue") : t("balanceDue")}
+                </span>
+                <Money value={balanceDue.abs().toString()} size="lg" />
               </div>
+              {canRecordPayment && (
+                <div className="mt-4">
+                  <RecordPaymentSheet
+                    orderId={order.id}
+                    orderNumber={order.number}
+                    balanceDue={balanceDue.toString()}
+                    today={istDateString(new Date())}
+                    accounts={sheetAccounts}
+                    receiveStaff={receiveStaff.map((u) => ({ id: u.id, label: u.name }))}
+                    actor={{ id: session.userId, canReceivePayments: me?.canReceivePayments ?? false }}
+                    gold={!approvalVisible}
+                  />
+                </div>
+              )}
+              {canRefund && (
+                <div className="mt-4">
+                  <RefundSheet
+                    orderId={order.id}
+                    orderNumber={order.number}
+                    refundDue={balanceDue.abs().toString()}
+                    today={istDateString(new Date())}
+                    accounts={sheetAccounts}
+                    gold={!approvalVisible}
+                  />
+                </div>
+              )}
+              {paymentRows.length > 0 && <PaymentList payments={paymentRows} />}
             </section>
 
-            {canApprove && order.status === "PENDING_APPROVAL" && (
+            {canFollowUp && (
+              <section className="rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4">
+                <div className="label-caps mb-2">{t("collect")}</div>
+                <p className="mb-3 text-sm text-[color:var(--color-ink-2)]">
+                  {order.promisedPaymentDate
+                    ? t("promisedPayment", {
+                        date: order.promisedPaymentDate.toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        }),
+                      })
+                    : t("noPromisedPayment")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <ContactButtons
+                    phoneE164={order.customer.phoneE164}
+                    orderIds={[order.id]}
+                    reminderHref={waLink(
+                      order.customer.phoneE164,
+                      reminderText({
+                        customerName: order.customer.businessName ?? order.customer.name,
+                        entityName: order.entity.name,
+                        orders: [{ number: order.number, balanceDue: balanceDue.toString() }],
+                      }),
+                    )}
+                    reminderBlockedUntil={reminderBlockedUntil?.toISOString() ?? null}
+                    compact
+                  />
+                  <PromiseDateSheet
+                    orderId={order.id}
+                    orderNumber={order.number}
+                    current={order.promisedPaymentDate?.toISOString().slice(0, 10) ?? null}
+                    today={istDateString(new Date())}
+                    compact
+                  />
+                </div>
+              </section>
+            )}
+
+            {approvalVisible && (
               <ApprovalActions
                 orderId={order.id}
                 orderNumber={order.number}

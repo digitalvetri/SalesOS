@@ -20,11 +20,16 @@ pnpm install
 # 2. start the local Supabase stack (Postgres, Auth, Storage, Studio)
 pnpm sb:start                       # ~30s first run while images download
 
-# 3. put the printed credentials into .env.local (see .env.example for shape)
-pnpm sb:env > .env.local            # writes NEXT_PUBLIC_SUPABASE_URL/ANON_KEY, SERVICE_ROLE_KEY, DATABASE_URL/DIRECT_URL
+# 3. create .env.local from the template, then paste the keys `pnpm sb:status` prints:
+#      anon key          → NEXT_PUBLIC_SUPABASE_ANON_KEY
+#      service_role key  → SUPABASE_SERVICE_ROLE_KEY
+#    (URL/ports in .env.example already match the local stack.)
+#    Note: `pnpm sb:env` prints API_URL/ANON_KEY/DB_URL — NOT the names the app reads,
+#    so don't redirect it into .env.local. On Windows, save the file as UTF-8.
+cp .env.example .env.local
 
-# 4. generate the encryption key and append it
-node -e "console.log('APP_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('base64'))" >> .env.local
+# 4. generate the encryption key and set APP_ENCRYPTION_KEY in .env.local
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 # 5. create the Prisma baseline migration and apply CHECK + RLS extras
 pnpm prisma:migrate:dev --name init
@@ -33,7 +38,8 @@ pnpm prisma:migrate:dev --name init
 pnpm prisma:seed
 
 # 7. create Supabase auth rows for every seeded user (one shared temp password)
-BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm tsx scripts/bootstrap-auth-users.ts
+BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth
+#    Windows PowerShell:  $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm bootstrap:auth
 
 # 8. run
 pnpm dev                             # http://localhost:3000
@@ -72,6 +78,7 @@ Each build phase lands with its own evidence file.
 - Phase P0 — Foundation → [`docs/evidence/phase-0.md`](docs/evidence/phase-0.md).
 - Phase P1 — Masters → [`docs/evidence/phase-1.md`](docs/evidence/phase-1.md).
 - Phase P2 — Orders → [`docs/evidence/phase-2.md`](docs/evidence/phase-2.md).
+- Phase P3 — Payments & Collect → [`docs/evidence/phase-3.md`](docs/evidence/phase-3.md).
 
 See spec §17 for the full phase plan.
 
