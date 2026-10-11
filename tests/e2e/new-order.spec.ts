@@ -110,6 +110,11 @@ test.describe("New-order wizard — Sales creates an order under 60s (P2 gate)",
     // Lands on the order detail page.
     await page.waitForURL(/\/orders\/[^/]+$/, { timeout: 30_000 });
     await expect(page.getByText("E2E Existing Customer")).toBeVisible();
+    // §11.3 success screen: big number + "Share on WhatsApp" (wa.me fallback when
+    // the Cloud API isn't connected — the confirmation checkbox defaults ON).
+    const created = page.getByTestId("order-created");
+    await expect(created).toBeVisible();
+    await expect(created.getByRole("link", { name: /share on whatsapp|whatsapp இல் பகிர்/i })).toHaveAttribute("href", /^https:\/\/wa\.me\/\d+\?text=/);
 
     const elapsedSeconds = (Date.now() - t0) / 1000;
     console.log(`[gate] wizard completed in ${elapsedSeconds.toFixed(1)}s`);

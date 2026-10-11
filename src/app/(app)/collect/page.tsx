@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/server/auth/session";
 import { can } from "@/server/auth/permissions";
 import { getCollectView } from "@/server/repo/collect";
-import { reminderText, waLink, type CollectFilter } from "@/server/domain/payment/collect";
+import { type CollectFilter } from "@/server/domain/payment/collect";
+import { getWaConfig } from "@/server/services/whatsappService";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Money } from "@/components/app/Money";
@@ -33,6 +34,7 @@ export default async function CollectPage({ searchParams }: { searchParams: Prom
     filter,
   });
   const showSalesperson = session.role !== "SALES";
+  const waConfigured = (await getWaConfig(session.tenantId)).configured;
   const now = view.generatedAt;
 
   const ago = (at: Date) => {
@@ -84,17 +86,6 @@ export default async function CollectPage({ searchParams }: { searchParams: Prom
                     .sort((a, b) => a.getTime() - b.getTime())[0]!
                     .toISOString()
                 : null;
-            const href = waLink(
-              g.customer.phoneE164,
-              reminderText({
-                customerName: g.customer.name,
-                entityName: g.orders[0]!.entityName,
-                orders: (remindable.length > 0 ? remindable : g.orders).map((o) => ({
-                  number: o.number,
-                  balanceDue: o.balanceDue,
-                })),
-              }),
-            );
             return (
               <li
                 key={g.customer.id}
@@ -170,7 +161,7 @@ export default async function CollectPage({ searchParams }: { searchParams: Prom
                   <ContactButtons
                     phoneE164={g.customer.phoneE164}
                     orderIds={(remindable.length > 0 ? remindable : g.orders).map((o) => o.id)}
-                    reminderHref={href}
+                    apiConfigured={waConfigured}
                     reminderBlockedUntil={blockedUntil}
                   />
                 </div>

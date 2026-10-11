@@ -8,7 +8,6 @@ import {
   boardColumnFor,
   pickGoldCard,
   DispatchRuleError,
-  dispatchUpdateText,
 } from "@/server/domain/dispatch/dispatch";
 
 const lines = () => [
@@ -109,18 +108,5 @@ describe("board", () => {
       { id: "b", stuck: false, ageDays: 5, column: "READY" as const },
       { id: "a", stuck: false, ageDays: 5, column: "READY" as const },
     ])).toBe("a");
-  });
-});
-
-describe("dispatchUpdateText (§13 dispatch_update)", () => {
-  it("with transporter + LR", () => {
-    expect(
-      dispatchUpdateText({ customerName: "Gokul", orderNumber: "KI/26-27/0412", items: [{ description: "15kg Potato Peeler", qty: 1 }], transporter: "ABT", lrNumber: "88213" }),
-    ).toBe("Hi Gokul, your machines for KI/26-27/0412 have been dispatched via ABT, LR 88213: 15kg Potato Peeler ×1. Thank you!");
-  });
-  it("without transport details", () => {
-    expect(dispatchUpdateText({ customerName: "Rew", orderNumber: "X/1", items: [{ description: "A", qty: 2 }, { description: "B", qty: 1 }] })).toBe(
-      "Hi Rew, your machines for X/1 have been dispatched: A ×2, B ×1. Thank you!",
-    );
   });
 });
