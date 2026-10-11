@@ -12,13 +12,12 @@ import { upsertCustomerByPhone, mergeCustomers } from "@/server/services/custome
 config({ path: ".env.local" });
 config({ path: ".env" });
 
-// Opt-in: skip in CI (where DATABASE_URL points at a non-existent placeholder host).
-// Local run has DATABASE_URL on 127.0.0.1:55422 (Supabase CLI stack); treat that as
-// a valid signal that a reachable DB exists for these tests.
+// Opt-in: run only when DATABASE_URL points at the local Supabase CLI stack
+// (port 55422 — see supabase/config.toml) or when SB_INTEGRATION_TESTS=1 is
+// explicitly set. CI uses a placeholder `localhost:5432` that must NOT match.
 const DB_REACHABLE =
   Boolean(process.env.DATABASE_URL) &&
-  (process.env.DATABASE_URL!.includes("127.0.0.1") ||
-    process.env.DATABASE_URL!.includes("localhost") ||
+  (/:55422\b/.test(process.env.DATABASE_URL!) ||
     process.env.SB_INTEGRATION_TESTS === "1");
 
 describe.skipIf(!DB_REACHABLE)("customerService — concurrent + merge (DB-backed)", () => {
