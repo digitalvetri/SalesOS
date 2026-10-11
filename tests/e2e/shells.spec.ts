@@ -27,12 +27,22 @@ async function login(page: import("@playwright/test").Page, role: Role) {
   await page.waitForURL(/\/home$/);
 }
 
-test.describe("Role shells (empty states)", () => {
-  for (const role of ["sales", "dispatch", "owner", "admin", "accounts"] as const) {
-    test(`${role} shell renders`, async ({ page }) => {
+test.describe("Role shells", () => {
+  // Non-SALES roles still render the stub empty-state (P5 adds their dashboards).
+  // SALES role now sees the full §11.2 home (P2-E).
+  const empty = ["dispatch", "owner", "admin", "accounts"] as const;
+  for (const role of empty) {
+    test(`${role} shell renders empty state`, async ({ page }) => {
       await login(page, role);
       await expect(page.getByText(/You're signed in as/i)).toBeVisible();
       await page.screenshot({ path: `${SHOTS}/shell-${role}.png`, fullPage: true });
     });
   }
+
+  test("sales shell renders the §11.2 home", async ({ page }) => {
+    await login(page, "sales");
+    await expect(page.getByText(/Good (morning|afternoon|evening)/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: /\+ new order/i })).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/shell-sales.png`, fullPage: true });
+  });
 });

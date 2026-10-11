@@ -70,7 +70,8 @@ pnpm sb:stop                        # stop containers at end of day
 Each build phase lands with its own evidence file.
 
 - Phase P0 — Foundation → [`docs/evidence/phase-0.md`](docs/evidence/phase-0.md).
-- Phase P1 — Masters → in progress.
+- Phase P1 — Masters → [`docs/evidence/phase-1.md`](docs/evidence/phase-1.md).
+- Phase P2 — Orders → [`docs/evidence/phase-2.md`](docs/evidence/phase-2.md).
 
 See spec §17 for the full phase plan.
 
