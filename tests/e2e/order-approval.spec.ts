@@ -111,7 +111,7 @@ test.describe("Order detail — Admin approves a below-floor order", () => {
     await page.getByLabel("Mobile number").fill("9840000002"); // Office Admin
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/home$/);
+    await page.waitForURL(/\/(home|dashboard|payments)$/);
 
     await page.goto(`/orders/${orderId}`);
     await expect(page.getByText(/price approval needed/i)).toBeVisible();

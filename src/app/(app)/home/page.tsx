@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/server/auth/session";
-import { EmptyState } from "@/components/app/EmptyState";
 import { Money } from "@/components/app/Money";
 import { formatInr } from "@/lib/formatInr";
 import { StatusPill, type AnyStatus } from "@/components/app/StatusPill";
@@ -13,25 +13,16 @@ import {
   salesRecentOrders,
   salesPendingActions,
 } from "@/server/repo/salesHome";
-import type { Role } from "@/server/repo/client";
 import { getDispatchBoard } from "@/server/repo/dispatchBoard";
 import { DispatchQueue } from "../dispatch/DispatchBoard";
 
-const BANNER_KEY: Record<Exclude<Role, "SALES" | "DISPATCH">, string> = {
-  OWNER: "shell.roleBanner.owner",
-  ADMIN: "shell.roleBanner.admin",
-  ACCOUNTS: "shell.roleBanner.accounts",
-};
-
 export default async function HomePage() {
   const session = await requireSession();
-  const t = await getTranslations();
 
   if (session.role === "DISPATCH") return <DispatchHome tenantId={session.tenantId} />;
-  if (session.role !== "SALES") {
-    return <EmptyState title={t(BANNER_KEY[session.role as Exclude<Role, "SALES" | "DISPATCH">])} />;
-  }
-
+  // §11.0: Owner/Admin land on the Dashboard, Accounts on Payments.
+  if (session.role === "OWNER" || session.role === "ADMIN") redirect("/dashboard");
+  if (session.role === "ACCOUNTS") redirect("/payments");
   return <SalesHome session={session} />;
 }
 

@@ -37,9 +37,21 @@ export default async function OrdersPage({
   const sp = await searchParams;
   const t = await getTranslations("orders");
 
+  const str = (v: string | string[] | undefined) => (typeof v === "string" && v ? v : undefined);
+  const date = (v: string | string[] | undefined) => {
+    const s = str(v);
+    return s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00.000Z`) : undefined;
+  };
+  // Dashboard click-throughs (§9 "no dead-end numbers") add from/to/entity/sp/refund/cancelReq.
   const filters: OrderListFilters = {
     statuses: toStatusArray(sp.status),
     hasBalance: sp.balance === "due" ? true : sp.balance === "paid" ? false : undefined,
+    refundDue: sp.balance === "refund" || undefined,
+    cancelRequested: sp.cancelReq === "1" || undefined,
+    dateFrom: date(sp.from),
+    dateTo: date(sp.to),
+    entityId: str(sp.entity),
+    salespersonId: session.role === "SALES" ? undefined : str(sp.sp),
     search: typeof sp.q === "string" ? sp.q : undefined,
   };
 
@@ -107,8 +119,13 @@ export default async function OrdersPage({
             <option value="">{t("balanceAny")}</option>
             <option value="due">{t("balanceDue")}</option>
             <option value="paid">{t("balancePaid")}</option>
+            <option value="refund">{t("balanceRefund")}</option>
           </select>
         </label>
+        {/* Keep dashboard click-through filters when re-applying. */}
+        {(["from", "to", "entity", "sp", "cancelReq"] as const).map((k) =>
+          typeof sp[k] === "string" && sp[k] ? <input key={k} type="hidden" name={k} value={sp[k] as string} /> : null,
+        )}
         <button
           type="submit"
           className="h-10 rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-4 text-sm hover:bg-[color:var(--color-surface-2)]"
@@ -116,6 +133,17 @@ export default async function OrdersPage({
           {t("apply")}
         </button>
       </form>
+
+      {(filters.dateFrom || filters.dateTo || filters.entityId || filters.salespersonId || filters.cancelRequested) && (
+        <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">
+          {t("filteredView", {
+            range: [str(sp.from), str(sp.to)].filter(Boolean).join(" → ") || "—",
+          })}{" "}
+          <Link href="/orders" className="underline underline-offset-2">
+            {t("clearFilters")}
+          </Link>
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-sm text-[color:var(--color-ink-2)]">{t("empty")}</p>
