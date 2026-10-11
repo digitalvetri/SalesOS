@@ -15,7 +15,7 @@ test.describe("Login screen", () => {
 
   test("renders in Tamil after toggle", async ({ page, context }) => {
     await context.addCookies([
-      { name: "salesos.lang", value: "ta", path: "/", url: "http://localhost:3000" },
+      { name: "salesos.lang", value: "ta", domain: "localhost", path: "/" },
     ]);
     await page.goto("/login");
     await expect(page.getByLabel("கைபேசி எண்")).toBeVisible();
