@@ -6,8 +6,10 @@ import { AppError } from "@/lib/errors";
 import {
   adminCreateUser,
   adminUpdateUser,
+  adminUpdateUserEmail,
   adminDeactivateUser,
   adminResetPassword,
+  adminSetPassword,
   generateTempPassword,
 } from "@/server/services/userService";
 
@@ -27,6 +29,7 @@ const RoleSchema = z.enum(["OWNER", "ADMIN", "ACCOUNTS", "SALES", "DISPATCH"]);
 
 const CreateInput = z.object({
   name: z.string().min(1).max(80),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
   phone: PhoneSchema,
   role: RoleSchema,
   defaultEntityId: z.string().optional().nullable(),
@@ -39,7 +42,6 @@ export const createUserAction = makeServerAction({
   revalidate: "/settings/users",
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
-    // Admin cannot create Owner (defence in depth + §4.2 users.createOwner matrix row).
     if (parsed.role === "OWNER" && session.role !== "OWNER") {
       throw new AppError("FORBIDDEN", "Only an Owner can create another Owner.");
     }
@@ -49,13 +51,13 @@ export const createUserAction = makeServerAction({
       actorId: session.userId,
       actorRole: session.role,
       name: parsed.name,
+      email: parsed.email,
       phoneE164: parsed.phone,
       password,
       role: parsed.role,
       defaultEntityId: parsed.defaultEntityId ?? null,
       canReceivePayments: parsed.canReceivePayments,
     });
-    // Return the one-time password so the admin can copy/share it. Never stored.
     return { userId: user.id, tempPassword: password };
   },
 });
@@ -105,6 +107,48 @@ export const deactivateUserAction = makeServerAction({
       userId: parsed.userId,
     });
     return { userId: u.id, active: u.active };
+  },
+});
+
+const UpdateEmailInput = z.object({
+  userId: z.string(),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+});
+
+export const updateUserEmailAction = makeServerAction({
+  input: UpdateEmailInput,
+  action: "users.manage",
+  revalidate: "/employees",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const u = await adminUpdateUserEmail({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      userId: parsed.userId,
+      email: parsed.email,
+    });
+    return { userId: u.id, email: u.email };
+  },
+});
+
+const SetPasswordInput = z.object({
+  userId: z.string(),
+  password: z.string().min(8, "Password must be at least 8 characters.").max(100),
+});
+
+export const setPasswordAction = makeServerAction({
+  input: SetPasswordInput,
+  action: "users.manage",
+  revalidate: "/employees",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    await adminSetPassword({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      userId: parsed.userId,
+      newPassword: parsed.password,
+    });
+    return { userId: parsed.userId };
   },
 });
 

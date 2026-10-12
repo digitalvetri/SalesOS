@@ -1,285 +1,233 @@
-// §11.7 Admin dashboard. [GOLD] = "Collected (verified)" hero figure — the only
-// gold on the page. Every number links to the list that produces it (§9).
-// Owner/Admin see everything; Accounts sees the money tiles only (§4.2 👁).
+// v1.1 §5.2 — Admin Overview (responsive layout).
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import Decimal from "decimal.js";
+import {
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  Clock3,
+  Hourglass,
+  IndianRupee,
+  PackageCheck,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { requireSession } from "@/server/auth/session";
-import { can, level } from "@/server/auth/permissions";
-import { prisma } from "@/server/repo/client";
-import { adminDashboard } from "@/server/services/dashboardService";
-import { resolvePeriod, type PeriodKey } from "@/server/domain/dashboard/period";
-import { addDays } from "@/server/domain/payment/collect";
+import { can } from "@/server/auth/permissions";
+import { adminOverview } from "@/server/services/adminOverviewService";
 import { Money } from "@/components/app/Money";
-import { CountUp } from "@/components/app/CountUp";
-import { cn } from "@/lib/utils";
-import { TrendChart } from "./TrendChart";
+import { formatInr } from "@/lib/formatInr";
+import { TodayStrip } from "./_components/TodayStrip";
+import { TargetProgressBars } from "./_components/TargetProgressBars";
+import { LatestOrdersLive } from "./_components/LatestOrdersLive";
+import { BiggestBalances } from "./_components/BiggestBalances";
+import { Mini3D } from "@/components/app/three/Mini3D";
+import type { Mini3DKind } from "@/components/app/three/mini3dEngine";
 
-const PERIODS: PeriodKey[] = ["this_month", "last_month", "last_30", "this_fy"];
-type SearchParams = { [k: string]: string | string[] | undefined };
-
-function monthEnd(m: string) {
-  const [y, mo] = m.split("-").map(Number) as [number, number];
-  return new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
+function monthShort(ym: string): string {
+  const [y, m] = ym.split("-").map(Number) as [number, number];
+  const prev = new Date(Date.UTC(y, m - 2, 1));
+  return prev.toLocaleDateString("en-IN", { month: "short", timeZone: "UTC" });
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+function DeltaChip({ pct, prevLabel, onAccent }: { pct: number | null; prevLabel: string; onAccent?: boolean }) {
+  if (pct === null)
+    return (
+      <span className={onAccent ? "text-white/75" : "text-[color:var(--color-ink-3)]"}>
+        no comparison yet
+      </span>
+    );
+  const up = pct >= 0;
+  const Icon = up ? TrendingUp : TrendingDown;
+  const tone = onAccent
+    ? "bg-white/20 text-white"
+    : up
+      ? "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]"
+      : "bg-[color:var(--color-warn-bg)] text-[color:var(--color-warn)]";
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>
+        <Icon className="h-3 w-3" aria-hidden />
+        {Math.abs(pct)}%
+      </span>
+      <span className={onAccent ? "text-white/75" : "text-[color:var(--color-ink-3)]"}>
+        vs {prevLabel} (same day)
+      </span>
+    </span>
+  );
+}
+
+export default async function DashboardPage() {
   const session = await requireSession();
   if (!can(session.role, "admin.dashboard")) redirect("/home");
-  const moneyOnly = level(session.role, "admin.dashboard") === "readOnly";
 
-  const sp = await searchParams;
-  const t = await getTranslations("dashboard");
-  const periodKey = PERIODS.includes(sp.period as PeriodKey) ? (sp.period as PeriodKey) : "this_month";
-  const now = new Date();
-  const period = resolvePeriod(periodKey, now);
-  const entities = await prisma.billingEntity.findMany({
-    where: { tenantId: session.tenantId, active: true },
-    orderBy: { code: "asc" },
-    select: { id: true, code: true },
-  });
-  const entityId = entities.some((e) => e.id === sp.entity) ? (sp.entity as string) : undefined;
-  const d = await adminDashboard({ tenantId: session.tenantId, entityId }, period, now);
-
-  const q = (extra: Record<string, string | undefined>) => {
-    const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ ...(entityId ? { entity: entityId } : {}), ...extra })) if (v) p.set(k, v);
-    const s = p.toString();
-    return s ? `?${s}` : "";
-  };
-  const range = { from: period.from, to: period.to };
-  const prevLabel =
-    periodKey === "this_month" || periodKey === "last_month"
-      ? new Date(`${addDays(period.from, -1)}T00:00:00Z`).toLocaleDateString("en-IN", { month: "short", timeZone: "UTC" })
-      : t("prevPeriod");
-
-  const selectClass =
-    "h-10 rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-sm";
+  const o = await adminOverview({ tenantId: session.tenantId });
+  const prevLabel = monthShort(o.monthYm);
+  const roleLabel = session.role === "OWNER" ? "Owner" : session.role === "ACCOUNTS" ? "Accounts" : "Admin";
 
   return (
-    <div className="px-4 py-6 md:px-6">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <form method="GET" action="/dashboard" className="flex flex-wrap items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="sr-only">{t("period")}</span>
-            <select name="period" defaultValue={periodKey} className={selectClass}>
-              {PERIODS.map((p) => (
-                <option key={p} value={p}>{t(`periods.${p}`)}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs">
-            <span className="sr-only">{t("entity")}</span>
-            <select name="entity" defaultValue={entityId ?? ""} className={selectClass}>
-              <option value="">{entities.map((e) => e.code).join("+")}</option>
-              {entities.map((e) => (
-                <option key={e.id} value={e.id}>{e.code}</option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className={cn(selectClass, "px-4 hover:bg-[color:var(--color-surface-2)]")}>{t("apply")}</button>
-        </form>
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 px-4 py-5 sm:gap-5 md:px-6 md:py-7 xl:px-8">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--color-gold)]">
+            {roleLabel} · Overview
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-4xl">{o.monthLabel} at a glance</h1>
+          <p className="mt-1.5 text-sm text-[color:var(--color-ink-3)]">
+            Track your orders, payments and team performance — all in one place.
+          </p>
+        </div>
+        <div className="flex items-center gap-5">
+          <Mini3D
+            kind="growth"
+            className="hidden h-28 w-44 lg:block"
+            fallback={<BarChart3 className="h-10 w-10 text-[color:var(--color-gold)]" />}
+          />
+          <Link
+            href="/orders"
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-5 text-sm font-semibold text-[color:var(--color-ink)] shadow-[var(--shadow-1)] transition-colors hover:bg-[color:var(--color-surface-2)]"
+          >
+            All orders
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
       </header>
 
-      {/* Money tiles */}
-      <section aria-label={t("moneyTiles")} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Tile href={`/orders${q(range)}`} label={t("booked")}>
-          <CountUp value={d.booked.value} className="text-2xl font-semibold tabular-nums" />
-          <p className="text-xs text-[color:var(--color-ink-3)]">
-            {d.booked.changePct === null
-              ? t("noComparison")
-              : t("vsPrev", { sign: d.booked.changePct >= 0 ? "▲" : "▼", pct: Math.abs(d.booked.changePct), prev: prevLabel })}
-          </p>
-        </Tile>
-        <Tile href={`/payments/collected${q(range)}`} label={t("collected")} hero>
-          <span data-gold="true" className="inline-block rounded-[var(--radius)] px-2 py-0.5">
-            <CountUp value={d.collected} className="text-2xl font-semibold tabular-nums" />
-          </span>
-          <p className="text-xs text-[color:var(--color-ink-3)]">{t("collectedNote")}</p>
-        </Tile>
-        <Tile href="/payments" label={t("awaiting")}>
-          <CountUp value={d.awaiting.value} className="text-2xl font-semibold tabular-nums" />
-          <p className="text-xs text-[color:var(--color-ink-3)]">{t("payments", { count: d.awaiting.count })}</p>
-        </Tile>
-        <Tile href="/payments/cash" label={t("cashWithStaff")}>
-          <CountUp value={d.cash.value} className="text-2xl font-semibold tabular-nums" />
-          <p className="text-xs text-[color:var(--color-ink-3)]">{t("people", { count: d.cash.count })}</p>
-        </Tile>
-        <Tile href="/collect" label={t("outstanding")}>
-          <CountUp value={d.outstanding.value} className="text-2xl font-semibold tabular-nums" />
-          <p className="text-xs text-[color:var(--color-ink-3)]">
-            {t("overdueShort")} <Money value={d.outstanding.overdue} className="text-xs" />
-          </p>
-        </Tile>
+      <TodayStrip today={o.today} />
+
+      {/* KPI tiles — Payment received is the one accent element on this screen. */}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <Link
+          href={`/orders?m=${o.monthYm}`}
+          data-gold
+          className="kpi-hero relative overflow-hidden rounded-[var(--radius-lg)] p-5 sm:col-span-2 sm:p-6 lg:col-span-1"
+        >
+          <div className="relative flex items-start justify-between">
+            <div className="flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.1em] text-white/90">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+                <Wallet className="h-4 w-4" aria-hidden />
+              </span>
+              Payment received
+            </div>
+          </div>
+          <div className="relative mt-4 pr-24 text-3xl font-bold tracking-tight tabular-nums sm:pr-28 sm:text-[2.6rem] sm:leading-none">
+            <Money value={o.paymentReceived.value} className="text-3xl sm:text-[2.6rem]" />
+          </div>
+          <div className="relative mt-3 pr-24 text-xs text-white/85 sm:pr-28">
+            in {o.monthLabel} · <DeltaChip pct={o.paymentReceived.vsPrevPct} prevLabel={prevLabel} onAccent />
+          </div>
+          <Mini3D
+            kind="coin"
+            className="pointer-events-none absolute right-2 top-1/2 h-24 w-24 -translate-y-1/2 sm:h-32 sm:w-32"
+            fallback={<IndianRupee className="h-10 w-10 text-white/70" />}
+          />
+        </Link>
+
+        <KpiTile
+          href={`/orders?m=${o.monthYm}&f=completed`}
+          label="Orders completed"
+          icon={<CheckCircle2 className="h-4 w-4" aria-hidden />}
+          art={<PackageCheck className="h-full w-full" aria-hidden />}
+          art3d="parcel"
+          tone="ok"
+          value={<span className="tabular-nums">{o.ordersCompleted.count}</span>}
+          hint={
+            <>
+              <span className="tabular-nums text-[color:var(--color-ink-2)]">
+                <Money value={o.ordersCompleted.value} className="text-xs font-semibold" /> value
+              </span>
+              <span className="mt-1.5 block">
+                <DeltaChip pct={o.ordersCompleted.vsPrevPct} prevLabel={prevLabel} />
+              </span>
+            </>
+          }
+        />
+
+        <KpiTile
+          href="/orders?f=pending"
+          label="Pending orders"
+          icon={<Clock3 className="h-4 w-4" aria-hidden />}
+          art={<Hourglass className="h-full w-full" aria-hidden />}
+          art3d="hourglass"
+          tone="warn"
+          value={<span className="tabular-nums">{o.pendingOrders.count}</span>}
+          hint={
+            <>
+              <span className="tabular-nums text-[color:var(--color-ink-2)]">
+                <span className="font-semibold">{formatInr(o.pendingOrders.value)}</span> still to collect
+              </span>
+              {o.pendingOrders.extraHint && (
+                <span className="mt-1.5 block font-semibold text-[color:var(--color-warn)]">
+                  {o.pendingOrders.extraHint}
+                </span>
+              )}
+            </>
+          }
+        />
       </section>
 
-      {!moneyOnly && (
-        <>
-          <div className="mt-5 grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <Panel title={t("trendTitle")}>
-              <TrendChart
-                title={t("trendTitle")}
-                points={d.trend.map((p) => ({ ...p, href: `/orders${q({ from: `${p.month}-01`, to: monthEnd(p.month) })}` }))}
-              />
-            </Panel>
-            <Panel title={t("needsAction")}>
-              <ul className="divide-y divide-[color:var(--color-border)] text-sm">
-                <ActionRow href="/orders?status=PENDING_APPROVAL" label={t("na.approvals", { count: d.needsAction.approvals })} cta={t("review")} n={d.needsAction.approvals} />
-                <ActionRow href="/payments" label={t("na.verify", { count: d.needsAction.toVerify })} cta={t("verify")} n={d.needsAction.toVerify} />
-                <ActionRow href="/dispatch" label={t("na.stuck", { count: d.needsAction.stuck })} cta={t("view")} n={d.needsAction.stuck} />
-                <ActionRow href="/orders?cancelReq=1" label={t("na.cancel", { count: d.needsAction.cancelRequests })} cta={t("review")} n={d.needsAction.cancelRequests} />
-                <ActionRow href="/orders?balance=refund" label={t("na.refunds", { count: d.needsAction.refundsDue })} cta={t("view")} n={d.needsAction.refundsDue} />
-              </ul>
-            </Panel>
-          </div>
+      <TargetProgressBars monthLabel={o.monthLabel} rows={o.employees} pace={o.paceToday} />
 
-          <Panel title={t("salesTeam")} className="mt-4">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
-                  <tr>
-                    <th className="py-2 pr-3">{t("lb.name")}</th>
-                    <th className="py-2 pr-3 text-right">{t("lb.booked")}</th>
-                    <th className="py-2 pr-3 text-right">{t("lb.target")}</th>
-                    <th className="py-2 pr-3 text-right">%</th>
-                    <th className="py-2 pr-3 text-right">{t("lb.orders")}</th>
-                    <th className="py-2 pr-3 text-right">{t("lb.avg")}</th>
-                    <th className="py-2 text-right">{t("lb.collected")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.leaderboard.map((r) => (
-                    <tr key={r.userId} className="border-t border-[color:var(--color-border)]">
-                      <td className="py-2 pr-3">
-                        <Link href={`/orders${q({ ...range, sp: r.userId })}`} className="hover:underline">{r.name}</Link>
-                      </td>
-                      <td className="py-2 pr-3 text-right"><Money value={r.booked} /></td>
-                      <td className="py-2 pr-3 text-right"><Money value={r.target} muted /></td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{r.pct === null ? "—" : `${r.pct}%`}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{r.orders}</td>
-                      <td className="py-2 pr-3 text-right"><Money value={r.avgOrder} muted /></td>
-                      <td className="py-2 text-right"><Money value={r.collected} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <Panel title={t("aging")}>
-              <BarList
-                rows={d.outstanding.aging.map((a) => ({ label: t(`agingBucket.${a.bucket}`), value: a.amount, href: "/collect?f=overdue" }))}
-              />
-            </Panel>
-            <Panel title={t("topMachines")}>
-              <ul className="space-y-1 text-sm">
-                {d.products.byQty.length === 0 && <li className="text-[color:var(--color-ink-3)]">{t("nothingYet")}</li>}
-                {d.products.byQty.map((p) => (
-                  <li key={p.key} className="flex justify-between gap-3">
-                    <span className="truncate">{p.name}</span>
-                    <span className="tabular-nums">{p.qty}</span>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-            <Panel title={t("cancellations")}>
-              <ul className="space-y-1 text-sm">
-                {d.cancellations.reasons.length === 0 && <li className="text-[color:var(--color-ink-3)]">{t("nothingYet")}</li>}
-                {d.cancellations.reasons.map((r) => (
-                  <li key={r.reason}>
-                    <Link href={`/orders${q({ status: "CANCELLED", ...range })}`} className="flex justify-between gap-3 hover:underline">
-                      <span>{t(`reason.${r.reason}`)}</span>
-                      <span className="tabular-nums">{r.count}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-          </div>
-
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <Panel title={t("topCustomers")}>
-              <ul className="space-y-1 text-sm">
-                {d.customers.top.length === 0 && <li className="text-[color:var(--color-ink-3)]">{t("nothingYet")}</li>}
-                {d.customers.top.map((c) => (
-                  <li key={c.customerId}>
-                    <Link href={`/customers/${c.customerId}`} className="flex justify-between gap-3 hover:underline">
-                      <span className="truncate">{c.name}</span>
-                      <Money value={c.booked} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">{t("repeatCustomers", { count: d.customers.repeatCustomers })}</p>
-            </Panel>
-            <Panel title={t("topMachinesValue")}>
-              <BarList rows={d.products.byValue.map((p) => ({ label: p.name, value: p.value }))} />
-            </Panel>
-          </div>
-        </>
-      )}
+      <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-2">
+        <BiggestBalances rows={o.biggestBalances} />
+        <LatestOrdersLive initial={o.latestOrders} />
+      </div>
     </div>
   );
 }
 
-function Tile({ href, label, hero, children }: { href: string; label: string; hero?: boolean; children: React.ReactNode }) {
+const TONE = {
+  ok: {
+    tile: "bg-[color:var(--color-ok-bg)] border-[color:var(--color-ok)]/15",
+    icon: "bg-[color:var(--color-ok)] text-white",
+    label: "text-[color:var(--color-ok)]",
+    art: "text-[color:var(--color-ok)]",
+  },
+  warn: {
+    tile: "bg-[color:var(--color-warn-bg)] border-[color:var(--color-warn)]/15",
+    icon: "bg-[color:var(--color-warn)] text-white",
+    label: "text-[color:var(--color-warn)]",
+    art: "text-[color:var(--color-warn)]",
+  },
+} as const;
+
+function KpiTile({
+  href,
+  label,
+  icon,
+  art,
+  art3d,
+  tone,
+  value,
+  hint,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  art: React.ReactNode;
+  art3d: Mini3DKind;
+  tone: keyof typeof TONE;
+  value: React.ReactNode;
+  hint: React.ReactNode;
+}) {
+  const t = TONE[tone];
   return (
     <Link
       href={href}
-      className={cn(
-        "block rounded-[var(--radius)] border bg-[color:var(--color-surface)] p-4 hover:bg-[color:var(--color-surface-2)]",
-        hero ? "border-[color:var(--color-border-strong)]" : "border-[color:var(--color-border)]",
-      )}
+      className={`relative block overflow-hidden rounded-[var(--radius-lg)] border p-5 shadow-[var(--shadow-1)] transition-transform hover:-translate-y-0.5 sm:p-6 ${t.tile}`}
     >
-      <div className="label-caps">{label}</div>
-      <div className="mt-1 space-y-1">{children}</div>
+      <Mini3D
+        kind={art3d}
+        className="pointer-events-none absolute right-1 top-1/2 h-28 w-28 -translate-y-1/2 sm:h-32 sm:w-32"
+        fallback={<span className={`h-20 w-20 opacity-15 ${t.art}`}>{art}</span>}
+      />
+      <div className={`relative flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.1em] ${t.label}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full ${t.icon}`}>{icon}</span>
+        {label}
+      </div>
+      <div className="relative mt-4 text-4xl font-bold tracking-tight sm:text-[2.6rem] sm:leading-none">{value}</div>
+      <div className="relative mt-3 text-xs text-[color:var(--color-ink-3)]">{hint}</div>
     </Link>
-  );
-}
-
-function Panel({ title, className, children }: { title: string; className?: string; children: React.ReactNode }) {
-  return (
-    <section className={cn("rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4", className)}>
-      <h2 className="label-caps mb-3">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function ActionRow({ href, label, cta, n }: { href: string; label: string; cta: string; n: number }) {
-  return (
-    <li>
-      <Link href={href} className={cn("flex items-center justify-between gap-3 py-2 hover:underline", n === 0 && "text-[color:var(--color-ink-3)]")}>
-        <span>{label}</span>
-        <span className="text-xs">{cta} ›</span>
-      </Link>
-    </li>
-  );
-}
-
-/** Single-series horizontal bars: value at the tip, 4px rounded data-end, one hue. */
-function BarList({ rows }: { rows: { label: string; value: string; href?: string }[] }) {
-  const max = rows.reduce((m, r) => Decimal.max(m, r.value), new Decimal(0));
-  return (
-    <ul className="space-y-2 text-sm">
-      {rows.map((r) => {
-        const pct = max.isZero() ? 0 : new Decimal(r.value).div(max).times(100).toNumber();
-        const inner = (
-          <>
-            <div className="flex justify-between gap-3">
-              <span className="truncate">{r.label}</span>
-              <Money value={r.value} className="text-sm" />
-            </div>
-            <div className="mt-1 h-2 rounded-r-[4px]" aria-hidden>
-              <div className="h-2 rounded-r-[4px] bg-[color:var(--color-chart)]" style={{ width: `${pct}%` }} />
-            </div>
-          </>
-        );
-        return <li key={r.label}>{r.href ? <Link href={r.href} className="block hover:underline">{inner}</Link> : inner}</li>;
-      })}
-    </ul>
   );
 }

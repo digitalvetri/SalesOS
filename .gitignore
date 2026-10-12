@@ -34,6 +34,9 @@ pnpm-debug.log*
 fixtures/*
 !fixtures/README.md
 
+# Headless-browser screenshots — may contain real customer phone numbers
+screenshots/
+
 # Supabase CLI local state
 supabase/.temp
 supabase/.branches

@@ -26,12 +26,11 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     { href: "/settings/entities", label: t("tabs.entities") },
     { href: "/settings/accounts", label: t("tabs.accounts") },
     { href: "/settings/targets", label: t("tabs.targets") },
-    { href: "/settings/whatsapp", label: t("tabs.whatsapp") },
     { href: "/settings/import", label: t("tabs.import") },
   ];
 
   return (
-    <div className="px-6 py-6">
+    <div className="mx-auto w-full max-w-[1400px] min-w-0 px-4 py-6 md:px-6 xl:px-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
       </header>

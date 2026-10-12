@@ -4,10 +4,9 @@
 
 -- ───────────── CHECK constraints ─────────────
 
--- Payment: exactly one of receivedIntoAccountId / receivedByUserId is set.
+-- Payment: receivedIntoAccountId / receivedByUserId are both OPTIONAL from v1.1
+-- (v1.1 spec §3 — the "exactly one destination" CHECK is dropped).
 ALTER TABLE "Payment" DROP CONSTRAINT IF EXISTS payment_received_destination_chk;
-ALTER TABLE "Payment" ADD CONSTRAINT payment_received_destination_chk
-  CHECK ( ("receivedIntoAccountId" IS NULL) <> ("receivedByUserId" IS NULL) );
 
 -- Payment amount must be positive.
 ALTER TABLE "Payment" DROP CONSTRAINT IF EXISTS payment_amount_positive_chk;

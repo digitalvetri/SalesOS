@@ -1,68 +1,114 @@
-/* SalesOS — Sovereign design system. Tokens per spec §10.1. */
+/* SalesOS — "Teal" design system (2026-10-12 refresh of spec §10.1). Flat colours only.
+   Light tokens live in @theme (the default, see app/layout.tsx); the dark set
+   overrides them on :root[data-theme="dark"]. Token NAMES are unchanged so every
+   screen picks the new palette up automatically ("gold" = the one accent). */
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces */
-  --color-bg: #F7F6F2;
+  /* Surfaces — cool grey-teal. */
+  --color-bg: #F2F6F5;
   --color-surface: #FFFFFF;
-  --color-surface-2: #F0EEE8;
-  --color-border: #E3E0D8;
-  --color-border-strong: #CFCBC1;
+  --color-surface-2: #EEF4F3;
+  --color-border: #E1EAE8;
+  --color-border-strong: #C9D8D5;
 
-  /* Ink */
-  --color-ink: #121316;
-  --color-ink-2: #4A4C52;
-  --color-ink-3: #7D7F86;
+  /* Ink — deep slate. */
+  --color-ink: #0B1F1D;
+  --color-ink-2: #3B5250;
+  --color-ink-3: #6A7F7C;
 
-  /* The one accent */
-  --color-gold: #B08A3E;
-  --color-gold-ink: #1A1408;
-  --color-gold-soft: #F3EAD6;
+  /* The one accent (teal). */
+  --color-gold: #0F766E;
+  --color-gold-ink: #FFFFFF;
+  --color-gold-soft: #E2F3F0;
 
-  /* Status (muted — never compete with gold) */
-  --color-ok: #2F6B4F;
-  --color-ok-bg: #E6F0EA;
-  --color-warn: #8A5A12;
-  --color-warn-bg: #F6ECDA;
-  --color-danger: #9B2C2C;
-  --color-danger-bg: #F6E3E3;
-  --color-info: #2D4F7C;
-  --color-info-bg: #E4EBF4;
-  /* Chart mark (single-series magnitude). Validated: dataviz six checks, light + dark. */
-  --color-chart: #2A78D6;
+  /* Status */
+  --color-ok: #0F766E;
+  --color-ok-bg: #E6F5F2;
+  --color-warn: #C2410C;
+  --color-warn-bg: #FFF3E8;
+  --color-warn-fill: #EE8A2B; /* bars/dots only — text uses --color-warn */
+  --color-danger: #C2302F;
+  --color-danger-bg: #FDECEC;
+  --color-info: #2459C9;
+  --color-info-bg: #E7EEFC;
+  --color-chart: #14897C;
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
+  /* Nav chrome */
+  --color-nav-bg: #FFFFFF;
+  --color-nav-bg-2: #EEF4F4;
+  --color-nav-active-bg: #E3F4F2;
+  --color-nav-ink: #0E1A1B;
+  --color-nav-ink-2: #3D5254;
+  --color-nav-ink-3: #7A8C8E;
+  --color-nav-border: #DCE7E7;
+  --color-nav-accent: #0F766E;
 
-  --shadow-1: 0 1px 2px rgba(18, 19, 22, 0.06);
-  --shadow-2: 0 6px 24px rgba(18, 19, 22, 0.08);
+  /* Solid accent fill (primary buttons, hero tile, logo). White text on it is AA. */
+  --color-accent: #0F766E;
+  --color-accent-hover: #115E59;
+  /* Hero KPI tile + sidebar (dark teal, per the Overview mockup). */
+  --color-hero: #0E4F49;
+  --color-sidebar-bg: #0C3B37;
+  --color-sidebar-hover: #12504B;
+  --color-sidebar-active-bg: #13756B;
+  --color-sidebar-ink: #EAF6F3;
+  --color-sidebar-ink-2: #A9D0CA;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+
+  --shadow-1: 0 1px 2px rgba(11, 31, 29, 0.05), 0 1px 3px rgba(11, 31, 29, 0.05);
+  --shadow-2: 0 12px 32px -8px rgba(11, 31, 29, 0.12);
+
+  --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Dark theme — explicit opt-in for Owner/Admin desktop (toggle in profile). */
+/* Dark — opt-in from the profile menu (light is the default). */
 :root[data-theme="dark"] {
-  --color-bg: #0E0F11;
-  --color-surface: #16171A;
-  --color-surface-2: #1C1E22;
-  --color-border: #2A2C31;
-  --color-border-strong: #3A3D44;
-  --color-ink: #F2F1EE;
-  --color-ink-2: #B7B8BD;
-  --color-ink-3: #85878E;
-  --color-gold: #C9A25A;
-  --color-gold-ink: #16120A;
-  --color-gold-soft: #2B2416;
-  --color-ok: #7FC3A0;
-  --color-ok-bg: #16261E;
-  --color-warn: #E0B26A;
-  --color-warn-bg: #2A2114;
-  --color-danger: #E39191;
-  --color-danger-bg: #2C1818;
-  --color-info: #93B4E0;
-  --color-info-bg: #172131;
-  --color-chart: #3987E5;
+  color-scheme: dark;
+  --color-bg: #0B1314;
+  --color-surface: #111C1E;
+  --color-surface-2: #172628;
+  --color-border: #1F3235;
+  --color-border-strong: #2A4245;
+  --color-ink: #E7F2F2;
+  --color-ink-2: #A9C2C3;
+  --color-ink-3: #739193;
+  --color-gold: #2DD4BF;
+  --color-gold-ink: #FFFFFF;
+  --color-gold-soft: #0F2A2A;
+  --color-ok: #34D399;
+  --color-ok-bg: #0B2A26;
+  --color-warn: #FBBF24;
+  --color-warn-bg: #2A2210;
+  --color-warn-fill: #F59E0B;
+  --color-danger: #F87171;
+  --color-danger-bg: #2E1418;
+  --color-info: #60A5FA;
+  --color-info-bg: #0F2140;
+  --color-chart: #14B8A6;
+
+  --color-nav-bg: #0D1718;
+  --color-nav-bg-2: #152325;
+  --color-nav-active-bg: #0F2A2A;
+  --color-nav-ink: #E7F2F2;
+  --color-nav-ink-2: #A9C2C3;
+  --color-nav-ink-3: #6B8587;
+  --color-nav-border: #1A2B2D;
+  --color-nav-accent: #2DD4BF;
+  --color-accent: #0F766E;
+  --color-accent-hover: #0D9488;
+  --color-hero: #0F3F3B;
+  --color-sidebar-bg: #0D1718;
+  --color-sidebar-hover: #152325;
+  --color-sidebar-active-bg: #0F4C47;
+  --color-sidebar-ink: #E7F2F2;
+  --color-sidebar-ink-2: #8FB0AE;
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-2: 0 20px 50px -16px rgba(0, 0, 0, 0.75);
 }
 
 /* Theme-specific icons in menus */
@@ -115,13 +161,43 @@ body {
   color: var(--color-ink-3);
 }
 
-/* The single gold element on each screen marks itself with data-gold. */
+/* The single accent element on each screen marks itself with data-gold
+   (spec §10.4 "one gold element" rule — the accent is now solid teal). */
 [data-gold] {
-  background: var(--color-gold);
+  background: var(--color-accent);
   color: var(--color-gold-ink);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 [data-gold]:hover {
+  background: var(--color-accent-hover);
   box-shadow: 0 0 0 4px var(--color-gold-soft);
+}
+
+/* Overview hero tile: the accent element, rendered in the deeper hero teal. */
+[data-gold].kpi-hero {
+  background: var(--color-hero);
+}
+[data-gold].kpi-hero:hover {
+  background: var(--color-hero);
+  box-shadow: var(--shadow-2);
+}
+
+/* Shared card surface. */
+.surface-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+/* Room for the phone bottom bar + iOS home indicator. */
+.pb-bottom-nav {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+  .pb-bottom-nav {
+    padding-bottom: 0;
+  }
 }
 
 /* Respect reduced motion — spec §10.6 */

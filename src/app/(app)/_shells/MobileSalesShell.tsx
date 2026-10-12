@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { Home, List, IndianRupee, CircleUser } from "lucide-react";
-import { TopBar } from "./TopBar";
-import { MobileNavItem } from "./MobileNavItem";
+import { LayoutDashboard, List } from "lucide-react";
+import { AppShell } from "./AppShell";
 import type { SessionUser } from "@/server/repo/users";
 
 export async function MobileSalesShell({
@@ -12,20 +11,14 @@ export async function MobileSalesShell({
   children: React.ReactNode;
 }) {
   const t = await getTranslations();
+  // v1.1 §4.1 — Employee nav is just Overview + Orders.
+  const items = [
+    { label: t("common.overview"), icon: <LayoutDashboard className="h-5 w-5" />, href: "/home" },
+    { label: t("common.orders"), icon: <List className="h-5 w-5" />, href: "/orders" },
+  ];
   return (
-    <div className="flex min-h-dvh flex-col">
-      <TopBar user={user} />
-      <main className="flex-1 pb-20">{children}</main>
-      <nav
-        role="navigation"
-        aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
-      >
-        <MobileNavItem href="/home" icon={<Home className="h-5 w-5" />} label={t("common.home")} />
-        <MobileNavItem href="/orders" icon={<List className="h-5 w-5" />} label={t("common.orders")} />
-        <MobileNavItem href="/collect" icon={<IndianRupee className="h-5 w-5" />} label={t("common.collect")} />
-        <MobileNavItem disabled icon={<CircleUser className="h-5 w-5" />} label={t("common.me")} />
-      </nav>
-    </div>
+    <AppShell user={user} items={items}>
+      {children}
+    </AppShell>
   );
 }

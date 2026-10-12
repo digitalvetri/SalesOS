@@ -6,6 +6,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/config.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Self-contained server bundle for the Docker image (Coolify).
+  output: "standalone",
   // typedRoutes stays off until all shells link to real pages (P2+).
   async headers() {
     return [

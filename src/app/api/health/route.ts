@@ -6,9 +6,8 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ ok: true, db: "up" });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, db: "down", error: (e as Error).message },
-      { status: 503 },
-    );
+    // Log details server-side only; the public response stays generic.
+    console.error("[health] db check failed", e);
+    return NextResponse.json({ ok: false, db: "down" }, { status: 503 });
   }
 }

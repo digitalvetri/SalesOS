@@ -1,10 +1,11 @@
-// Supabase SSR requires middleware to keep the auth cookies fresh across requests.
-// Session gating is enforced inside the `(app)` layout — this middleware stays
+// Next 16 "proxy" (formerly middleware). Supabase SSR needs it to keep the auth
+// cookies fresh across requests.
+// Session gating is enforced inside the `(app)` layout — this proxy stays
 // permissive and only refreshes tokens.
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

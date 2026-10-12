@@ -32,8 +32,9 @@ export async function markRead(opts: {
   userId: string;
   id: string;
 }) {
-  await prisma.notification.update({
-    where: { id: opts.id },
+  // Scope to the caller: never touch another user's (or tenant's) notification.
+  await prisma.notification.updateMany({
+    where: { id: opts.id, tenantId: opts.tenantId, userId: opts.userId, readAt: null },
     data: { readAt: new Date() },
   });
 }

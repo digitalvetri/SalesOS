@@ -13,6 +13,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     const { kind } = await params;
     const session = await requireSession();
     // §4.2 "Export reports": Owner/Admin/Accounts full, Sales own, Dispatch none.
+    // v1.1 §7: employees can't download Excel.
+    if (session.role === "SALES" || session.role === "DISPATCH") {
+      throw new AppError("FORBIDDEN", "Excel downloads are for the office team.");
+    }
     assertCan(session.role, "reports.export", { isOwn: true });
     if (!REPORTS.includes(kind as ReportKind)) throw new AppError("NOT_FOUND", "Unknown report.");
 

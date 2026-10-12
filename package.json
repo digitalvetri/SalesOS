@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && pnpm run lint:fixtures",
@@ -21,10 +21,11 @@
     "prisma:migrate:dev": "dotenv run -f .env.local -- prisma migrate dev && pnpm run prisma:apply-extra",
     "prisma:apply-extra": "dotenv run -f .env.local -- tsx prisma/apply-extra.ts",
     "prisma:seed": "dotenv run -f .env.local -- tsx prisma/seed.ts",
-    "prisma:seed:demo": "dotenv run -f .env.local -- tsx prisma/seed-demo.ts",
+    "prisma:seed:demo": "dotenv run -f .env.local -- tsx prisma/seed-demo.ts && dotenv run -f .env.local -- node scripts/v1-1-backfill.mjs --commit",
     "bootstrap:auth": "dotenv run -f .env.local -- tsx scripts/bootstrap-auth-users.ts",
     "auth:reset-passwords": "dotenv run -f .env.local -- tsx scripts/bootstrap-auth-users.ts --reset-all",
     "db:setup": "pnpm run prisma:migrate && pnpm run prisma:seed",
+    "db:deploy": "prisma migrate deploy && tsx prisma/apply-extra.ts",
     "sb:start": "supabase start",
     "sb:stop": "supabase stop",
     "sb:status": "supabase status",
@@ -53,6 +54,7 @@
     "server-only": "^0.0.1",
     "sonner": "2.0.8",
     "tailwind-merge": "^2.5.0",
+    "three": "^0.186.1",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -63,6 +65,7 @@
     "@types/node": "26.6.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/three": "^0.186.0",
     "@typescript-eslint/eslint-plugin": "^8.14.0",
     "@typescript-eslint/parser": "^8.14.0",
     "@vitest/coverage-v8": "^5.0.3",
@@ -79,5 +82,13 @@
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vitest": "5.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
   }
 }

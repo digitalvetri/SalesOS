@@ -4,12 +4,12 @@ import { supabaseService } from "@/lib/supabase/service";
 import { prisma, type Role, type Lang } from "@/server/repo/client";
 import { AppError } from "@/lib/errors";
 import { writeAudit } from "@/server/repo/audit";
-import { phoneToSyntheticEmail } from "@/server/auth/phoneToEmail";
 
 export type AdminCreateUserInput = {
   tenantId: string;
   actorId: string; // the admin/owner doing the creation
   actorRole: Role;
+  email: string;
   phoneE164: string;
   password: string;
   name: string;
@@ -20,22 +20,27 @@ export type AdminCreateUserInput = {
 };
 
 export async function adminCreateUser(input: AdminCreateUserInput) {
-  // Defence in depth (duplicates assertCan on the action): only Owner can create Owner.
   if (input.role === "OWNER" && input.actorRole !== "OWNER") {
     throw new AppError("FORBIDDEN", "Only an Owner can create another Owner.");
   }
 
-  const existing = await prisma.user.findUnique({
+  const email = input.email.trim().toLowerCase();
+  const existingEmail = await prisma.user.findFirst({
+    where: { tenantId: input.tenantId, email },
+  });
+  if (existingEmail) {
+    throw new AppError("CONFLICT", "A user with this email already exists.");
+  }
+  const existingPhone = await prisma.user.findUnique({
     where: { tenantId_phoneE164: { tenantId: input.tenantId, phoneE164: input.phoneE164 } },
   });
-  if (existing) {
+  if (existingPhone) {
     throw new AppError("CONFLICT", "A user with this mobile number already exists.");
   }
 
   const sb = supabaseService();
-  const emailForAuth = phoneToSyntheticEmail(input.phoneE164);
   const { data, error } = await sb.auth.admin.createUser({
-    email: emailForAuth,
+    email,
     password: input.password,
     email_confirm: true,
     user_metadata: {
@@ -54,6 +59,7 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
       tenantId: input.tenantId,
       authUserId: data.user.id,
       name: input.name,
+      email,
       phoneE164: input.phoneE164,
       role: input.role,
       lang: input.lang ?? "en",
@@ -68,7 +74,7 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
     action: "USER_CREATE",
     entity: "User",
     entityId: user.id,
-    after: { phoneE164: user.phoneE164, name: user.name, role: user.role },
+    after: { email: user.email, phoneE164: user.phoneE164, name: user.name, role: user.role },
   });
 
   return user;
@@ -87,6 +93,17 @@ export type AdminUpdateUserInput = {
   active?: boolean;
 };
 
+
+/** Only an Owner may change another Owner's login (email / password).
+ *  Stops an Admin from taking over the Owner account. */
+async function assertMayManageLogin(tenantId: string, actorId: string, target: { id: string; role: string }) {
+  if (target.role !== "OWNER" || target.id === actorId) return;
+  const actor = await prisma.user.findFirst({ where: { tenantId, id: actorId }, select: { role: true } });
+  if (actor?.role !== "OWNER") {
+    throw new AppError("FORBIDDEN", "Only an Owner can change an Owner's login.");
+  }
+}
+
 export async function adminUpdateUser(input: AdminUpdateUserInput) {
   const before = await prisma.user.findFirst({
     where: { tenantId: input.tenantId, id: input.userId },
@@ -100,6 +117,18 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
   // Admin can't demote an Owner.
   if (before.role === "OWNER" && input.role && input.role !== "OWNER" && input.actorRole !== "OWNER") {
     throw new AppError("FORBIDDEN", "Only an Owner can change an Owner's role.");
+  }
+  // Deactivating an Owner goes through the same rules as adminDeactivateUser.
+  if (input.active === false && before.role === "OWNER") {
+    if (input.actorRole !== "OWNER") {
+      throw new AppError("FORBIDDEN", "Only an Owner can deactivate another Owner.");
+    }
+    const otherActiveOwners = await prisma.user.count({
+      where: { tenantId: input.tenantId, role: "OWNER", active: true, id: { not: input.userId } },
+    });
+    if (otherActiveOwners === 0) {
+      throw new AppError("CONFLICT", "You can't turn off the last active Owner.");
+    }
   }
 
   const after = await prisma.user.update({
@@ -197,6 +226,60 @@ export async function adminDeactivateUser(opts: {
   return after;
 }
 
+/** Update a user's login email on both Supabase auth and the DB row.
+ *  Changing the Supabase email requires the service-role client. If the new
+ *  email is already in use (in the DB or in auth), the update is refused. */
+export async function adminUpdateUserEmail(opts: {
+  tenantId: string;
+  actorId: string;
+  userId: string;
+  email: string;
+}) {
+  const email = opts.email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new AppError("VALIDATION", "Enter a valid email address.");
+  }
+  const user = await prisma.user.findFirst({
+    where: { tenantId: opts.tenantId, id: opts.userId },
+  });
+  if (!user) throw new AppError("NOT_FOUND", "User not found.");
+  await assertMayManageLogin(opts.tenantId, opts.actorId, user);
+
+  const dupe = await prisma.user.findFirst({
+    where: { tenantId: opts.tenantId, email, id: { not: opts.userId } },
+    select: { id: true },
+  });
+  if (dupe) throw new AppError("CONFLICT", "Another user already has that email.");
+
+  const sb = supabaseService();
+  const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
+    email,
+    email_confirm: true,
+  });
+  if (error) {
+    throw new AppError("INTERNAL", "Could not update email on auth provider.", {
+      supabase: error.message,
+    });
+  }
+
+  const after = await prisma.user.update({
+    where: { id: opts.userId },
+    data: { email },
+  });
+
+  await writeAudit(prisma, {
+    tenantId: opts.tenantId,
+    actorId: opts.actorId,
+    action: "USER_UPDATE",
+    entity: "User",
+    entityId: opts.userId,
+    before: { email: user.email },
+    after: { email: after.email },
+  });
+
+  return after;
+}
+
 export async function adminResetPassword(opts: {
   tenantId: string;
   actorId: string;
@@ -207,6 +290,7 @@ export async function adminResetPassword(opts: {
     where: { tenantId: opts.tenantId, id: opts.userId },
   });
   if (!user) throw new AppError("NOT_FOUND", "User not found.");
+  await assertMayManageLogin(opts.tenantId, opts.actorId, user);
 
   const sb = supabaseService();
   const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
@@ -220,6 +304,41 @@ export async function adminResetPassword(opts: {
     tenantId: opts.tenantId,
     actorId: opts.actorId,
     action: "USER_PASSWORD_RESET",
+    entity: "User",
+    entityId: opts.userId,
+  });
+}
+
+/** Admin sets a specific password for a user. Supabase requires ≥6 chars.
+ *  Separate from adminResetPassword's random-password flow — this one is
+ *  for "I want this user's password to be X" scenarios. */
+export async function adminSetPassword(opts: {
+  tenantId: string;
+  actorId: string;
+  userId: string;
+  newPassword: string;
+}) {
+  if (opts.newPassword.length < 8) {
+    throw new AppError("VALIDATION", "Password must be at least 8 characters.");
+  }
+  const user = await prisma.user.findFirst({
+    where: { tenantId: opts.tenantId, id: opts.userId },
+  });
+  if (!user) throw new AppError("NOT_FOUND", "User not found.");
+  await assertMayManageLogin(opts.tenantId, opts.actorId, user);
+
+  const sb = supabaseService();
+  const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
+    password: opts.newPassword,
+  });
+  if (error) {
+    throw new AppError("INTERNAL", "Could not set password.", { supabase: error.message });
+  }
+
+  await writeAudit(prisma, {
+    tenantId: opts.tenantId,
+    actorId: opts.actorId,
+    action: "USER_PASSWORD_SET",
     entity: "User",
     entityId: opts.userId,
   });

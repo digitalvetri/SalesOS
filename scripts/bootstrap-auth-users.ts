@@ -81,7 +81,8 @@ async function main() {
     if (data?.user) {
       await prisma.user.update({
         where: { id: u.id },
-        data: { authUserId: data.user.id },
+        // Login looks users up by User.email, so keep it in step with the auth email.
+        data: { authUserId: data.user.id, email: u.email ?? email },
       });
       console.log(`  ✓ ${u.phoneE164} ${u.name} (${u.role}) → ${data.user.id}`);
       created++;
@@ -100,7 +101,7 @@ async function main() {
       }
       await prisma.user.update({
         where: { id: u.id },
-        data: { authUserId: existing.id },
+        data: { authUserId: existing.id, email: u.email ?? email },
       });
       console.log(`  ↻ ${u.phoneE164} ${u.name} (${u.role}) → ${existing.id} (relinked, password reset)`);
       relinked++;

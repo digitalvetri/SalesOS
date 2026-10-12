@@ -1,14 +1,21 @@
 "use client";
 import * as React from "react";
 
-// Dev-only. Counts [data-gold] nodes in the DOM; shows a red badge if the count ≠ 1.
+// Dev-only. Counts visible [data-gold] nodes; shows a red badge if the count ≠ 1.
 // Attribute (not prop) keeps SSR/client consistent — one gold element per screen (spec §10.4).
 export function GoldAudit() {
   const [count, setCount] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
-    const update = () => setCount(document.querySelectorAll("[data-gold]").length);
+    // Count only rendered, non-hidden nodes: a screen may ship a desktop and a
+    // phone variant of its gold action (one is display:none), and an open modal
+    // aria-hides the page behind it.
+    const update = () =>
+      setCount(
+        Array.from(document.querySelectorAll("[data-gold]")).filter((el) => el.getClientRects().length > 0 && !el.closest("[aria-hidden='true']"))
+          .length,
+      );
     update();
     const obs = new MutationObserver(update);
     obs.observe(document.body, { subtree: true, childList: true, attributes: true });

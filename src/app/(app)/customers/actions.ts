@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { makeServerAction } from "@/lib/serverAction";
 import { AppError } from "@/lib/errors";
+import { prisma } from "@/server/repo/client";
 import { normalizePhone, PhoneParseError } from "@/server/domain/phone";
 import {
   upsertCustomerByPhone,
@@ -76,7 +77,15 @@ const UpdateInput = z.object({
 export const updateCustomerAction = makeServerAction({
   input: UpdateInput,
   action: "customers.manage",
-  resolveOwnership: () => ({ isOwn: true }),
+  // "Own" for SALES = a customer they have at least one order with.
+  async resolveOwnership(parsed, session) {
+    if (!session) return { isOwn: false };
+    const mine = await prisma.order.findFirst({
+      where: { tenantId: session.tenantId, customerId: parsed.id, salespersonId: session.userId },
+      select: { id: true },
+    });
+    return { isOwn: mine !== null };
+  },
   revalidate: "/customers",
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");

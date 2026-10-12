@@ -45,7 +45,12 @@ describe.skipIf(!DB_READY)("P4 — dispatch flow + Dispatch-role DTO", () => {
   let customerId = "";
   let bank = "";
   let seq = 0;
-  const today = () => new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+  // IST calendar date (the app's day boundary) — a UTC date is a day behind
+  // between 00:00 and 05:30 IST and made this test flaky overnight.
+  const today = () =>
+    new Date(
+      new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()) + "T00:00:00.000Z",
+    );
 
   beforeAll(async () => {
     tenantId = (await prisma.tenant.create({
@@ -81,7 +86,7 @@ describe.skipIf(!DB_READY)("P4 — dispatch flow + Dispatch-role DTO", () => {
 
   async function order(opts: { status?: "CONFIRMED" | "READY"; daysOld?: number; promisedInDays?: number } = {}) {
     seq += 1;
-    const day = (n: number) => new Date(Date.now() + n * 86_400_000);
+    const day = (n: number) => new Date(today().getTime() + n * 86_400_000); // IST date ± n days
     return prisma.order.create({
       data: {
         tenantId, number: `D/26-27/${String(seq).padStart(4, "0")}`, entityId, customerId, salespersonId: salesId,

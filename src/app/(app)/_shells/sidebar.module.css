@@ -1,0 +1,82 @@
+/* Sidebar 3D motion — flat colours only (no gradients). The global
+   prefers-reduced-motion rule in globals.css turns all of this off. */
+
+/* ───────── Logo: periodic 3D flip ───────── */
+.logo {
+  perspective: 400px;
+  display: inline-flex;
+}
+.logoMark {
+  display: inline-flex;
+  transform-style: preserve-3d;
+  animation: logoFlip 7s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes logoFlip {
+  0%, 78% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+/* ───────── Nav items ───────── */
+.nav {
+  perspective: 700px;
+}
+.item {
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+  /* Flip in one after another on first paint (--i is set inline). */
+  animation: itemIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+}
+@keyframes itemIn {
+  from {
+    opacity: 0;
+    transform: rotateX(-75deg) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.item:hover,
+.item:focus-visible {
+  transform: translateZ(18px) rotateY(-10deg) translateX(3px);
+  box-shadow: 0 8px 0 -3px rgba(0, 0, 0, 0.28);
+}
+
+/* Active item: a raised slab with a solid "extruded" edge. */
+.active {
+  transform: translateZ(10px);
+  box-shadow:
+    0 5px 0 0 #0a2f2c,
+    0 14px 22px -10px rgba(0, 0, 0, 0.55);
+}
+.active:hover,
+.active:focus-visible {
+  transform: translateZ(20px) rotateY(-8deg) translateX(2px);
+  box-shadow:
+    0 7px 0 0 #0a2f2c,
+    0 18px 26px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Icon: spins in 3D on hover; floats gently when active. */
+.icon {
+  display: inline-flex;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.item:hover .icon,
+.item:focus-visible .icon {
+  transform: rotateY(360deg) translateZ(8px);
+}
+.active .icon {
+  animation: iconFloat 3.2s ease-in-out infinite;
+}
+@keyframes iconFloat {
+  0%, 100% { transform: translateZ(6px) rotateX(0deg); }
+  50% { transform: translateZ(12px) rotateX(14deg); }
+}

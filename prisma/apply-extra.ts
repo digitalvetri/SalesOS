@@ -1,4 +1,4 @@
-// Applies prisma/sql/extra.sql to the database that DATABASE_URL points at.
+// Applies prisma/sql/extra.sql to the database at DIRECT_URL (or DATABASE_URL).
 // Run after `prisma migrate deploy` (or `migrate dev`). Idempotent.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,8 @@ const sqlPath = path.resolve(path.dirname(__filename), "sql/extra.sql");
 
 async function main() {
   const sql = readFileSync(sqlPath, "utf8");
-  const prisma = new PrismaClient();
+  // Prefer the direct (non-pooled) connection for DDL; fall back to DATABASE_URL.
+  const prisma = new PrismaClient({ datasourceUrl: process.env.DIRECT_URL ?? process.env.DATABASE_URL });
   try {
     // $executeRawUnsafe accepts the full file as one statement block because the file uses DO $$ … $$.
     // We split on top-level ';' outside of $$ blocks to be safe:

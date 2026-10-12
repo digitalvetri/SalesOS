@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { LOCALE } from "@/i18n/locale";
@@ -10,10 +10,11 @@ import { cookies } from "next/headers";
 import { THEME_COOKIE } from "@/config/theme";
 import "./globals.css";
 
-const inter = Inter({
+const sans = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans-brand",
   display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -25,16 +26,16 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#F7F6F2",
+  themeColor: "#0C3B37",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const messages = await getMessages();
-  // Dark theme is an explicit opt-in (§10.1, Owner/Admin profile toggle).
+  // Light is the default theme; dark is an opt-in from the profile menu.
   const dark = (await cookies()).get(THEME_COOKIE)?.value === "dark";
 
   return (
-    <html lang={LOCALE} className={inter.variable} {...(dark ? { "data-theme": "dark" } : {})}>
+    <html lang={LOCALE} className={sans.variable} {...(dark ? { "data-theme": "dark" } : {})}>
       <body>
         <NextIntlClientProvider locale={LOCALE} messages={messages}>
           {children}
