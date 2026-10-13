@@ -4,6 +4,7 @@
 // columns: Prisma reads/writes them as UTC-midnight Dates, so a filter bound
 // must be UTC midnight of the IST date — an IST-shifted instant such as
 // 2026-09-30T18:30Z is truncated to 2026-09-30 and pulls in the wrong day.
+import { customerLabelOf } from "@/lib/orderDisplay";
 import Decimal from "decimal.js";
 import { addDays, daysBetween } from "@/server/domain/payment/collect";
 import { istDateString } from "@/server/domain/payment/record";
@@ -110,8 +111,9 @@ export function formatOrderDate(ymd: string, today?: string): string {
  * Customer row may carry a different one). Blank → "—".
  */
 export function displayCustomerName(sheetRow: unknown, customerName: string | null | undefined): string {
-  const fromSheet = readSheetRow(sheetRow)?.customer?.trim();
-  if (fromSheet) return fromSheet;
+  const row = readSheetRow(sheetRow);
+  // Same rule as the orders list (customerLabelOf): the cleaned name the import read from the row.
+  if (row) return customerLabelOf(row, customerName ?? "");
   const own = customerName?.trim();
   return own ? own : "—";
 }

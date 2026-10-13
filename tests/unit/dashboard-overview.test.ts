@@ -95,9 +95,10 @@ describe("displayCustomerName", () => {
   it("prefers the sheet's customer name for imported orders", () => {
     expect(displayCustomerName(sheet("Ravi Traders"), "DEALER NAME")).toBe("Ravi Traders");
   });
-  it("falls back to the customer record, then to an em dash", () => {
-    expect(displayCustomerName(sheet("  "), "KUMAR")).toBe("KUMAR");
-    expect(displayCustomerName(sheet(null), "KUMAR")).toBe("KUMAR");
+  it("imported row with no name → em dash (a shared dealer record may carry another name); app orders → the customer record", () => {
+    expect(displayCustomerName(sheet("  "), "KUMAR")).toBe("—");
+    expect(displayCustomerName(sheet(null), "KUMAR")).toBe("—");
+    expect(displayCustomerName({ ...(sheet("9698458539") as object), name: null }, "x")).toBe("—");
     expect(displayCustomerName(null, "KUMAR")).toBe("KUMAR");
     expect(displayCustomerName({ unrelated: true }, " ")).toBe("—");
     expect(displayCustomerName(null, null)).toBe("—");
