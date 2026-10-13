@@ -49,8 +49,9 @@ export function PeriodBar({ period, years, months }: { period: Period; years: nu
 
 // ───────── KPI tiles ─────────
 
-function Change({ pct: p, label }: { pct: number | null; label: string }) {
-  if (p === null) return <span className="text-[color:var(--color-ink-3)]">no {label} figures to compare</span>;
+function Change({ pct: p, label, onDark = false }: { pct: number | null; label: string; onDark?: boolean }) {
+  const muted = onDark ? "text-white/80" : "text-[color:var(--color-ink-3)]";
+  if (p === null) return <span className={muted}>no {label} figures to compare</span>;
   const up = p >= 0;
   const Icon = up ? TrendingUp : TrendingDown;
   return (
@@ -63,7 +64,7 @@ function Change({ pct: p, label }: { pct: number | null; label: string }) {
         <Icon className="h-3 w-3" aria-hidden />
         {Math.abs(p)}%
       </span>
-      <span className="text-[color:var(--color-ink-3)]">vs {label}</span>
+      <span className={muted}>vs {label}</span>
     </span>
   );
 }
@@ -107,7 +108,7 @@ export function PeriodKpis({
     <section aria-label="Key figures" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
       <Tile href={ordersHref} tone="hero" icon={<Wallet className="h-4 w-4" aria-hidden />} label="Money received" value={formatInr(t.received)}>
         <div>payments received {word}</div>
-        <div><Change pct={changeOf(t.received, prev.received)} label={prevLabel} /></div>
+        <div><Change pct={changeOf(t.received, prev.received)} label={prevLabel} onDark /></div>
       </Tile>
       <Tile href={ordersHref} icon={<PackagePlus className="h-4 w-4" aria-hidden />} label="Orders booked" value={t.orders}>
         <div className="font-semibold">{formatInr(t.value)} sales value</div>
@@ -344,7 +345,7 @@ export function TeamMonthGrid({
                         href={`/orders?sp=${r.id}&m=${m}`}
                         title={c ? `${c.orders} orders · ${formatInr(c.value)}` : "No orders"}
                         className={`block rounded-md px-1.5 py-1.5 tabular-nums hover:ring-1 hover:ring-[color:var(--color-accent)] ${m === selected ? "ring-1 ring-[color:var(--color-gold)]" : ""}`}
-                        style={{ backgroundColor: shade ? `rgba(31, 111, 181, ${shade})` : undefined }}
+                        style={{ backgroundColor: shade ? `rgba(45, 106, 79, ${shade})` : undefined }}
                       >
                         <span className="block text-[13px] font-semibold">{v ? compactInr(v) : "—"}</span>
                         <span className="block text-[10px] text-[color:var(--color-ink-3)]">{c?.orders ? `${c.orders} ord` : ""}</span>

@@ -1,112 +1,113 @@
-/* Kumaar Industries — "Steel Grey Industrial" design system (2026-10-13). Flat colours only,
-   no gradients, no purple. Built from the logo: blue #1F6FB5, red #D7262E, navy/graphite.
+/* Kumaar Industries — "Forest & White" design system (2026-10-13). Flat colours only,
+   no gradients, no purple. White pages, deep forest-green sidebar + money tile, forest
+   green for actions; logo red only for pending / money to collect.
    Light tokens live in @theme (the default, see app/layout.tsx); the dark set overrides
    them on :root[data-theme="dark"]. Token NAMES are unchanged so every screen picks the
-   palette up automatically ("gold" = the one accent = logo blue). */
+   palette up automatically ("gold" = the one accent = forest green). */
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces — light steel grey. */
-  --color-bg: #F2F3F5;
+  /* Surfaces — white. */
+  --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-surface-2: #F4F5F7;
-  --color-border: #DFE2E6;
-  --color-border-strong: #C7CCD3;
+  --color-surface-2: #F3F8F5;
+  --color-border: #E3ECE6;
+  --color-border-strong: #CBDACF;
 
-  /* Ink — graphite. */
-  --color-ink: #1B1F24;
-  --color-ink-2: #3E4650;
-  --color-ink-3: #6B7480;
+  /* Ink — deep green-black. */
+  --color-ink: #13241B;
+  --color-ink-2: #3A4D42;
+  --color-ink-3: #5D6F64;
 
-  /* The one accent (logo blue). */
-  --color-gold: #1F6FB5;
+  /* The one accent (forest green). */
+  --color-gold: #2D6A4F;
   --color-gold-ink: #FFFFFF;
-  --color-gold-soft: #E7F0FA;
+  --color-gold-soft: #E7F3EC;
 
-  /* Status — completed = logo blue, pending / to collect = logo red. */
-  --color-ok: #1F6FB5;
-  --color-ok-bg: #E7F0FA;
+  /* Status — completed = green, pending / to collect = logo red. */
+  --color-ok: #2D6A4F;
+  --color-ok-bg: #E7F3EC;
   --color-warn: #C21F27;
   --color-warn-bg: #FBE9EA;
   --color-warn-fill: #D7262E; /* bars/dots only — text uses --color-warn */
   --color-danger: #B3141C;
   --color-danger-bg: #FBE4E5;
-  --color-info: #1F6FB5;
-  --color-info-bg: #E7F0FA;
-  --color-chart: #1F6FB5;
+  --color-info: #2D6A4F;
+  --color-info-bg: #E7F3EC;
+  --color-chart: #2D6A4F;
 
   /* Nav chrome */
   --color-nav-bg: #FFFFFF;
-  --color-nav-bg-2: #F4F5F7;
-  --color-nav-active-bg: #E7F0FA;
-  --color-nav-ink: #1B1F24;
-  --color-nav-ink-2: #3E4650;
-  --color-nav-ink-3: #7C8590;
-  --color-nav-border: #DFE2E6;
-  --color-nav-accent: #1F6FB5;
+  --color-nav-bg-2: #F3F8F5;
+  --color-nav-active-bg: #E7F3EC;
+  --color-nav-ink: #13241B;
+  --color-nav-ink-2: #3A4D42;
+  --color-nav-ink-3: #6E8277;
+  --color-nav-border: #E3ECE6;
+  --color-nav-accent: #2D6A4F;
 
-  /* Solid accent fill (primary buttons, logo). White text on it is AA. */
-  --color-accent: #1F6FB5;
-  --color-accent-hover: #185C97;
-  /* Hero KPI tile + sidebar — machine-steel graphite. */
-  --color-hero: #2B3138;
-  --color-sidebar-bg: #2B3138;
-  --color-sidebar-hover: #353C44;
-  --color-sidebar-active-bg: #3E4650;
-  --color-sidebar-ink: #F1F3F5;
-  --color-sidebar-ink-2: #B9C0C8;
+  /* Solid accent fill (primary buttons). White text on it is AA. */
+  --color-accent: #2D6A4F;
+  --color-accent-hover: #245A42;
+  /* Hero KPI tile + sidebar — deep forest green. */
+  --color-hero: #1B4332;
+  --color-sidebar-bg: #1B4332;
+  --color-sidebar-hover: #24563F;
+  --color-sidebar-active-bg: #2D6A4F;
+  --color-sidebar-ink: #EEF6F1;
+  --color-sidebar-ink-2: #B5CFBE;
 
   --radius-sm: 10px;
   --radius: 14px;
   --radius-lg: 20px;
 
-  --shadow-1: 0 1px 2px rgba(27, 31, 36, 0.05), 0 1px 3px rgba(27, 31, 36, 0.06);
-  --shadow-2: 0 12px 32px -8px rgba(27, 31, 36, 0.14);
+  --shadow-1: 0 1px 2px rgba(19, 36, 27, 0.05), 0 1px 3px rgba(19, 36, 27, 0.06);
+  --shadow-2: 0 12px 32px -8px rgba(19, 36, 27, 0.14);
 
   --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Dark — graphite (opt-in from the profile menu; light is the default). */
+/* Dark — deep forest (opt-in from the profile menu; light is the default). */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #16191D;
-  --color-surface: #1F2328;
-  --color-surface-2: #262B31;
-  --color-border: #2E343C;
-  --color-border-strong: #3A414A;
-  --color-ink: #E8ECF1;
-  --color-ink-2: #B4BDC8;
-  --color-ink-3: #8C96A3;
-  --color-gold: #4C9BEA;
+  --color-bg: #0F1A14;
+  --color-surface: #15231B;
+  --color-surface-2: #1B2C22;
+  --color-border: #24392C;
+  --color-border-strong: #2F4A39;
+  --color-ink: #E6F0EA;
+  --color-ink-2: #AFC5B7;
+  --color-ink-3: #82998B;
+  --color-gold: #52B788;
   --color-gold-ink: #FFFFFF;
-  --color-gold-soft: #16304F;
-  --color-ok: #6DB0F2;
-  --color-ok-bg: #132A44;
+  --color-gold-soft: #173326;
+  --color-ok: #74C69D;
+  --color-ok-bg: #173326;
   --color-warn: #FF7A80;
   --color-warn-bg: #3A1A1F;
   --color-warn-fill: #F0525A;
   --color-danger: #FF6B70;
   --color-danger-bg: #3A1519;
-  --color-info: #6DB0F2;
-  --color-info-bg: #132A44;
-  --color-chart: #4C9BEA;
+  --color-info: #74C69D;
+  --color-info-bg: #173326;
+  --color-chart: #52B788;
 
-  --color-nav-bg: #111417;
-  --color-nav-bg-2: #1B1F24;
-  --color-nav-active-bg: #16304F;
-  --color-nav-ink: #E8ECF1;
-  --color-nav-ink-2: #B4BDC8;
-  --color-nav-ink-3: #7F8994;
-  --color-nav-border: #23282F;
-  --color-nav-accent: #4C9BEA;
-  --color-accent: #1F6FB5;
-  --color-accent-hover: #2A80CC;
-  --color-hero: #262B31;
-  --color-sidebar-bg: #0F1114;
-  --color-sidebar-hover: #1A1E23;
-  --color-sidebar-active-bg: #262B31;
-  --color-sidebar-ink: #E8ECF1;
-  --color-sidebar-ink-2: #9AA3AE;
+  --color-nav-bg: #0B140F;
+  --color-nav-bg-2: #142019;
+  --color-nav-active-bg: #173326;
+  --color-nav-ink: #E6F0EA;
+  --color-nav-ink-2: #AFC5B7;
+  --color-nav-ink-3: #7A9183;
+  --color-nav-border: #1C2D23;
+  --color-nav-accent: #52B788;
+  --color-accent: #2D6A4F;
+  --color-accent-hover: #40916C;
+  --color-hero: #1B4332;
+  --color-sidebar-bg: #0B140F;
+  --color-sidebar-hover: #142019;
+  --color-sidebar-active-bg: #1B4332;
+  --color-sidebar-ink: #E6F0EA;
+  --color-sidebar-ink-2: #93AD9D;
 
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   --shadow-2: 0 20px 50px -16px rgba(0, 0, 0, 0.75);

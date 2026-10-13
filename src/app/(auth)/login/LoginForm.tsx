@@ -68,7 +68,7 @@ export function LoginForm() {
               type="email"
               autoComplete="email"
               required
-              placeholder="you@salesos.in"
+              placeholder="you@gmail.com"
               className="h-12 pl-11"
             />
           </div>

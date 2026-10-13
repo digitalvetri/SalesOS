@@ -1,6 +1,6 @@
-# Kumaar Industries brand + "Steel Grey Industrial" theme — design
+# Kumaar Industries brand + "Forest & White" theme — design
 
-Date: 2026-10-13 · Chosen by the client from 13 mock-ups (theme 2, logo reading A).
+Date: 2026-10-13 · Logo reading A chosen from 4. Theme: first "Steel Grey Industrial" (rejected after seeing it live: "very bad"), then **G1 · Forest & White** chosen from 4 green-and-white mock-ups.
 
 ## Brand
 - Name everywhere: **Kumaar Industries** (`src/config/brand.ts`; short name "Kumaar" for the installed-app label).
@@ -13,11 +13,12 @@ Date: 2026-10-13 · Chosen by the client from 13 mock-ups (theme 2, logo reading
 ## Theme tokens (`src/app/globals.css`) — names unchanged
 | Role | Light | Dark |
 |---|---|---|
-| Page / surface / surface-2 | #F2F3F5 / #FFFFFF / #F4F5F7 | #16191D / #1F2328 / #262B31 |
-| Ink 1-3 | #1B1F24 / #3E4650 / #6B7480 | #E8ECF1 / #B4BDC8 / #8C96A3 |
-| Accent (buttons, links, selected, completed) | #1F6FB5 | #4C9BEA |
+| Page / surface / surface-2 | #FFFFFF / #FFFFFF / #F3F8F5 | #0F1A14 / #15231B / #1B2C22 |
+| Ink 1-3 | #13241B / #3A4D42 / #5D6F64 | #E6F0EA / #AFC5B7 / #82998B |
+| Accent (buttons, links, selected, completed) | #2D6A4F | #52B788 |
 | Pending / to collect (warn) | #C21F27 on #FBE9EA, bars #D7262E | #FF7A80 on #3A1A1F |
-| Sidebar + hero (money) tile | #2B3138 | #0F1114 / #262B31 |
+| Sidebar + hero (money) tile | #1B4332 | #0B140F / #1B4332 |
 
-Rules kept: flat colours only, no gradients, no purple. Charts: sales = blue, received = red.
-3D sidebar city and dashboard 3D icons recoloured to steel / blue / red (gold coin unchanged).
+Rules kept: flat colours only, no gradients, no purple. Logo keeps its own blue/red (white badge on green).
+Charts: sales = green, received = red. 3D sidebar city and dashboard 3D icons in forest greens (gold coin unchanged).
+Login page: deep forest (#10261B) with light-green accents.

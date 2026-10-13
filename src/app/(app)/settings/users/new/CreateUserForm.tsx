@@ -91,7 +91,7 @@ export function CreateUserForm({
             onChange={(e) => setEmail(e.target.value)}
             required
             maxLength={254}
-            placeholder="user@salesos.in"
+            placeholder="name@gmail.com"
           />
           <p className="text-xs text-[color:var(--color-ink-3)]">
             Used to sign in. Must be unique.
