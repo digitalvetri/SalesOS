@@ -337,7 +337,7 @@ export async function commitOrderDetailsImport(
         promisedDeliveryDate: o.deliveryDate ? new Date(`${o.deliveryDate}T00:00:00.000Z`) : null,
         cancelNote: o.cancelNote,
       });
-    });
+    }, { timeout: 60_000, maxWait: 20_000 }); // the import may run over a slow remote link
     summary.ordersCreated++;
     if (paid.greaterThan(0)) summary.paymentsCreated++;
   }
