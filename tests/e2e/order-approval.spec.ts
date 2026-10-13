@@ -9,7 +9,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 const PASSWORD = process.env.SEED_PASSWORD_ADMIN ?? "";
 const DB_READY =
-  Boolean(process.env.DATABASE_URL) && /:55422\b/.test(process.env.DATABASE_URL ?? "");
+  Boolean(process.env.DATABASE_URL) && /:55433\b/.test(process.env.DATABASE_URL ?? "");
 
 test.describe("Order detail — Admin approves a below-floor order", () => {
   test.skip(!PASSWORD || !DB_READY, "Set SEED_PASSWORD_ADMIN + local Supabase stack to run");

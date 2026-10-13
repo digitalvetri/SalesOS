@@ -1,10 +1,11 @@
 "use server";
 import { headers } from "next/headers";
 import { ZodError, z } from "zod";
-import { supabaseServer } from "@/lib/supabase/server";
 import { prisma } from "@/server/repo/client";
 import { checkLoginRateLimit, noteLoginAttempt } from "@/server/auth/rateLimit";
-import { findUserByAuthId, touchLastLogin } from "@/server/repo/users";
+import { touchLastLogin } from "@/server/repo/users";
+import { verifyPassword, verifyAgainstDummy } from "@/server/auth/password";
+import { createSession } from "@/server/auth/session";
 import { AppError, isAppError } from "@/lib/errors";
 import type { ActionResult } from "@/lib/serverAction";
 
@@ -32,39 +33,24 @@ export async function signInAction(raw: unknown): Promise<ActionResult<{ ok: tru
       throw new AppError("RATE_LIMITED", "Too many attempts. Try again in a few minutes.");
     }
 
-    // Find the user by email first so we can authenticate against whatever email
-    // Supabase stores for them (which may differ from User.email during a
-    // migration window — Supabase email is the ground truth for auth).
+    // Email is the login identity (unique per tenant; one tenant per deploy).
     const user = await prisma.user.findFirst({
       where: { email },
-      select: { id: true, active: true, authUserId: true },
+      select: { id: true, active: true, passwordHash: true },
     });
-
-    const sb = await supabaseServer();
-    const { data, error } = await sb.auth.signInWithPassword({
-      email,
-      password: parsed.password,
-    });
-
-    if (error || !data.user) {
+    const ok = user ? await verifyPassword(parsed.password, user.passwordHash) : await verifyAgainstDummy(parsed.password);
+    if (!user || !ok) {
       await noteLoginAttempt({ phoneE164: email, ip, success: false });
       throw new AppError("INVALID_CREDENTIALS", "Email or password is wrong.");
     }
-
-    const sessionUser = user ? await findUserByAuthId(data.user.id) : null;
-    if (!sessionUser) {
-      await sb.auth.signOut();
-      await noteLoginAttempt({ phoneE164: email, ip, success: false });
-      throw new AppError("INVALID_CREDENTIALS", "Email or password is wrong.");
-    }
-    if (!sessionUser.active) {
-      await sb.auth.signOut();
+    if (!user.active) {
       await noteLoginAttempt({ phoneE164: email, ip, success: false });
       throw new AppError("DEACTIVATED", "Your account is turned off. Contact your admin.");
     }
 
+    await createSession(user.id, { ip, userAgent: hdrs.get("user-agent") ?? undefined });
     await noteLoginAttempt({ phoneE164: email, ip, success: true });
-    await touchLastLogin(sessionUser.id);
+    await touchLastLogin(user.id);
     return { ok: true, data: { ok: true } };
   } catch (e) {
     if (e instanceof ZodError) {

@@ -11,7 +11,7 @@ config({ path: ".env" });
 
 const DB_REACHABLE =
   Boolean(process.env.DATABASE_URL) &&
-  (/:55422\b/.test(process.env.DATABASE_URL!) ||
+  (/:55433\b/.test(process.env.DATABASE_URL!) ||
     process.env.SB_INTEGRATION_TESTS === "1");
 
 describe.skipIf(!DB_REACHABLE)("orderService.createOrder — concurrent counter (BR-04)", () => {

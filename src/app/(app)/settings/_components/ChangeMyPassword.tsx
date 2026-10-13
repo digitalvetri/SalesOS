@@ -74,8 +74,7 @@ export function ChangeMyPassword() {
         {pending ? "…" : "Change password"}
       </Button>
       <p className="text-[11px] text-[color:var(--color-ink-3)]">
-        Supabase requires 8+ characters. Your current sessions on other devices
-        stay active until they expire.
+        At least 8 characters. Changing it signs you out on your other devices.
       </p>
     </form>
   );

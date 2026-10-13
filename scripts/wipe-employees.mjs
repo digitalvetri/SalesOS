@@ -3,14 +3,10 @@
 //
 // Dry run by default. Pass --commit to actually wipe.
 import { PrismaClient } from "@prisma/client";
-import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 
 const COMMIT = process.argv.includes("--commit");
 const prisma = new PrismaClient();
-const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const activeOwners = await prisma.user.findMany({
   where: { role: "OWNER", active: true },
@@ -97,14 +93,7 @@ const delUsers = await prisma.user.deleteMany({
 });
 console.log(`  deleted ${delUsers.count} User rows`);
 
-// 6. Delete Supabase auth users.
-let authDeleted = 0;
-for (const u of toDelete) {
-  const r = await sb.auth.admin.deleteUser(u.authUserId);
-  if (r.error) console.error(`  WARN  supabase deleteUser(${u.email}): ${r.error.message}`);
-  else authDeleted++;
-}
-console.log(`  deleted ${authDeleted} Supabase auth users`);
+// Their login sessions are removed with the User rows (ON DELETE CASCADE).
 
 console.log(`\nDone. ${toDelete.length} employees removed. Only the OWNER remains.`);
 await prisma.$disconnect();

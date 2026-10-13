@@ -12,7 +12,7 @@ const PASSWORD = process.env.SEED_PASSWORD_SALES ?? "";
 // Local Supabase stack signal. The actual DATABASE_URL env is loaded by
 // Playwright's parent shell (same as how we run the suite locally).
 const DB_READY =
-  Boolean(process.env.DATABASE_URL) && /:55422\b/.test(process.env.DATABASE_URL ?? "");
+  Boolean(process.env.DATABASE_URL) && /:55433\b/.test(process.env.DATABASE_URL ?? "");
 
 test.describe("New-order wizard — Sales creates an order under 60s (P2 gate)", () => {
   test.skip(!PASSWORD || !DB_READY, "Set SEED_PASSWORD_SALES + local Supabase stack to run");

@@ -1,11 +1,12 @@
-// Private Supabase Storage buckets (payment proofs P3, dispatch photos P4).
-// Server-only: the browser never holds a storage credential; it posts the
-// compressed image to an API route and views it through a short-lived
-// signed URL (spec P3: "private Supabase Storage with signed URLs").
+// Private file storage for payment proofs (P3) and dispatch photos (P4), on
+// the server's disk (UPLOAD_DIR; a Docker volume in production). The browser
+// never gets a direct file URL: it uploads through an API route and views
+// images through an API route that checks permissions and streams the file.
 import "server-only";
-import { supabaseService } from "@/lib/supabase/service";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { AppError } from "@/lib/errors";
-import { PROOF_MAX_BYTES, PROOF_MIME_TYPES, type ProofMime } from "@/server/domain/payment/record";
+import type { ProofMime } from "@/server/domain/payment/record";
 
 export const BUCKETS = {
   paymentProofs: "payment-proofs",
@@ -13,47 +14,38 @@ export const BUCKETS = {
 } as const;
 export type Bucket = (typeof BUCKETS)[keyof typeof BUCKETS];
 
-const SIGNED_URL_TTL_SECONDS = 60;
-const ready = new Map<Bucket, Promise<void>>();
+const ROOT = path.resolve(process.env.UPLOAD_DIR ?? path.join(process.cwd(), ".uploads"));
 
-// Local stacks create buckets from supabase/config.toml; hosted projects get
-// them on first upload. Memoised per server instance.
-function ensureBucket(bucket: Bucket): Promise<void> {
-  let p = ready.get(bucket);
-  if (!p) {
-    p = (async () => {
-      const storage = supabaseService().storage;
-      const { data } = await storage.getBucket(bucket);
-      if (data) return;
-      const { error } = await storage.createBucket(bucket, {
-        public: false,
-        fileSizeLimit: PROOF_MAX_BYTES,
-        allowedMimeTypes: [...PROOF_MIME_TYPES],
-      });
-      if (error && !/already exists/i.test(error.message)) throw error;
-    })().catch((e) => {
-      ready.delete(bucket);
-      throw e;
-    });
-    ready.set(bucket, p);
+/** Resolve bucket/key under ROOT, refusing anything that escapes it (../). */
+function filePath(bucket: Bucket, key: string): string {
+  const full = path.resolve(ROOT, bucket, key);
+  if (!full.startsWith(path.join(ROOT, bucket) + path.sep)) {
+    throw new AppError("VALIDATION", "Invalid file path.");
   }
-  return p;
+  return full;
 }
 
-export async function uploadImage(bucket: Bucket, path: string, body: ArrayBuffer, contentType: ProofMime) {
-  await ensureBucket(bucket);
-  const { error } = await supabaseService().storage.from(bucket).upload(path, body, { contentType, upsert: false });
-  if (error) {
-    console.error(`[storage.upload ${bucket}]`, error);
+export async function uploadImage(bucket: Bucket, key: string, body: ArrayBuffer, contentType: ProofMime) {
+  const full = filePath(bucket, key);
+  try {
+    await mkdir(path.dirname(full), { recursive: true });
+    await writeFile(full, Buffer.from(body), { flag: "wx" }); // never overwrite
+    await writeFile(`${full}.type`, contentType);
+  } catch (e) {
+    console.error(`[storage.upload ${bucket}]`, e);
     throw new AppError("INTERNAL", "Could not upload the photo. Try again.");
   }
 }
 
-export async function signedImageUrl(bucket: Bucket, path: string): Promise<string> {
-  const { data, error } = await supabaseService().storage.from(bucket).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
-  if (error || !data) {
-    console.error(`[storage.sign ${bucket}]`, error);
+export async function readImage(bucket: Bucket, key: string): Promise<{ body: Buffer; contentType: string }> {
+  const full = filePath(bucket, key);
+  try {
+    const [body, contentType] = await Promise.all([
+      readFile(full),
+      readFile(`${full}.type`, "utf8").catch(() => "application/octet-stream"),
+    ]);
+    return { body, contentType };
+  } catch {
     throw new AppError("NOT_FOUND", "Photo not found.");
   }
-  return data.signedUrl;
 }

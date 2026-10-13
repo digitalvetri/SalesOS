@@ -13,11 +13,11 @@ config({ path: ".env.local" });
 config({ path: ".env" });
 
 // Opt-in: run only when DATABASE_URL points at the local Supabase CLI stack
-// (port 55422 — see supabase/config.toml) or when SB_INTEGRATION_TESTS=1 is
+// (port 55433 — see supabase/config.toml) or when SB_INTEGRATION_TESTS=1 is
 // explicitly set. CI uses a placeholder `localhost:5432` that must NOT match.
 const DB_REACHABLE =
   Boolean(process.env.DATABASE_URL) &&
-  (/:55422\b/.test(process.env.DATABASE_URL!) ||
+  (/:55433\b/.test(process.env.DATABASE_URL!) ||
     process.env.SB_INTEGRATION_TESTS === "1");
 
 describe.skipIf(!DB_REACHABLE)("customerService — concurrent + merge (DB-backed)", () => {

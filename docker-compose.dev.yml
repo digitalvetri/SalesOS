@@ -1,0 +1,19 @@
+# Local PostgreSQL for development (replaces the Supabase CLI stack).
+#   pnpm db:up   → start   ·   pnpm db:down → stop (data kept in the volume)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: salesos
+    ports:
+      - "55433:5432"
+    volumes:
+      - salesos-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      retries: 20
+volumes:
+  salesos-pg:

@@ -9,55 +9,32 @@ If this README disagrees with the spec, the spec wins.
 
 ### Prereqs
 - Node ≥ 20.11, pnpm 10
-- **Docker Desktop running** (powers the local Supabase stack)
+- **Docker Desktop running** (local PostgreSQL)
 
 ### First-time flow
 
 ```bash
-# 1. deps
 pnpm install
-
-# 2. start the local Supabase stack (Postgres, Auth, Storage, Studio)
-pnpm sb:start                       # ~30s first run while images download
-
-# 3. create .env.local from the template, then paste the keys `pnpm sb:status` prints:
-#      anon key          → NEXT_PUBLIC_SUPABASE_ANON_KEY
-#      service_role key  → SUPABASE_SERVICE_ROLE_KEY
-#    (URL/ports in .env.example already match the local stack.)
-#    Note: `pnpm sb:env` prints API_URL/ANON_KEY/DB_URL — NOT the names the app reads,
-#    so don't redirect it into .env.local. On Windows, save the file as UTF-8.
-cp .env.example .env.local
-
-# 4. generate the encryption key and set APP_ENCRYPTION_KEY in .env.local
+pnpm db:up                                   # PostgreSQL 16 on localhost:55433
+cp .env.example .env.local                   # then set APP_ENCRYPTION_KEY:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-# 5. create the Prisma baseline migration and apply CHECK + RLS extras
-pnpm prisma:migrate:dev --name init
-
-# 6. seed tenant / entities / accounts / users
-pnpm prisma:seed
-
-# 6b. (optional) demo orders, payments, dispatches so dashboards look real
-pnpm prisma:seed:demo
-
-# 7. create Supabase auth rows for every seeded user (one shared temp password)
-BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth
-#    Windows PowerShell:  $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm bootstrap:auth
-#    Already bootstrapped and forgot the password? Reset everyone's:
-#      $env:BOOTSTRAP_PASSWORD="Pick-a-temp-password"; pnpm auth:reset-passwords
-
-# 8. run
-pnpm dev                             # http://localhost:3000
+pnpm prisma:migrate                          # migrations + prisma/sql/extra.sql
+pnpm prisma:seed                             # tenant, entities, demo users
+pnpm prisma:seed:demo                        # (optional) demo orders/payments
+BOOTSTRAP_PASSWORD='Pick-a-temp-password' pnpm bootstrap:auth   # give users a login
+pnpm dev                                     # http://localhost:3000
 ```
 
-Studio (DB browser) is at **http://127.0.0.1:55423**.
-Stop everything with `pnpm sb:stop`. Reset the local DB (nuclear) with `pnpm sb:reset` → re-run steps 5–7.
+Login is email + password, handled by the app itself (scrypt password hashes,
+database sessions — see `src/server/auth/`). Seeded users log in as
+`<phone digits>@phone.salesos.local`. Change anyone's login with
+`pnpm set-login <current-email-or-+91phone> <new-email> <new-password>`.
 
 ### Day-to-day
 
 ```bash
-pnpm sb:start && pnpm dev           # bring the stack up and start Next
-pnpm sb:stop                        # stop containers at end of day
+pnpm db:up && pnpm dev     # start database + app
+pnpm db:down               # stop the database (data kept)
 ```
 
 ## Scripts
@@ -70,8 +47,8 @@ pnpm sb:stop                        # stop containers at end of day
 | `pnpm lint` | ESLint + fixture test (proves `@prisma/client` import rule fires) |
 | `pnpm test` | Vitest (unit + integration) |
 | `pnpm test:e2e` | Playwright |
-| `pnpm sb:start` / `sb:stop` / `sb:status` / `sb:reset` | Local Supabase stack lifecycle |
-| `pnpm sb:env` | Print current local Supabase creds in `.env` format |
+| `pnpm db:up` / `db:down` | Start / stop local PostgreSQL (Docker) |
+| `pnpm db:deploy` | Production: migrations + extra.sql from the shell env |
 | `pnpm prisma:migrate:dev` | Create/update DB (dev) + apply `extra.sql` |
 | `pnpm prisma:migrate` | Deploy migrations (CI/prod) + apply `extra.sql` |
 | `pnpm prisma:seed` | Seed tenant + users |

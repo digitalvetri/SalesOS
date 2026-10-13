@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
 import { prisma } from "@/server/repo/client";
-import { BUCKETS, signedImageUrl } from "@/server/storage/buckets";
+import { BUCKETS, readImage } from "@/server/storage/buckets";
 import { AppError, appErrorStatus, isAppError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -22,8 +22,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const i = new URL(req.url).searchParams.get("i") ?? "0";
     const path = i === "delivery" ? d.deliveryProofPath : d.photoPaths[Number(i)];
     if (!path) throw new AppError("NOT_FOUND", "Photo not found.");
-    const url = await signedImageUrl(BUCKETS.dispatchPhotos, path);
-    return NextResponse.redirect(url, { status: 302, headers: { "Cache-Control": "no-store" } });
+    const img = await readImage(BUCKETS.dispatchPhotos, path);
+    return new NextResponse(new Uint8Array(img.body), {
+      headers: { "Content-Type": img.contentType, "Cache-Control": "private, no-store" },
+    });
   } catch (e) {
     if (isAppError(e)) {
       return NextResponse.json({ ok: false, error: { code: e.code, message: e.userMessage } }, { status: appErrorStatus(e.code) });

@@ -1,137 +1,42 @@
-// Creates Supabase auth users for every seeded SalesOS user whose authUserId is a
-// `seed:…` placeholder, then updates authUserId to the real Supabase uid.
-//
-// Prerequisites:
-//   - DATABASE_URL / DIRECT_URL (Supabase pooled + direct)
-//   - NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-//   - BOOTSTRAP_PASSWORD env var (any string; use once, communicate to each user, force reset)
+// Gives every user without a password (e.g. freshly seeded) a login:
+//   - email: keeps User.email, or uses <phone digits>@phone.salesos.local if empty
+//   - password: BOOTSTRAP_PASSWORD (temporary; tell each user, admin can reset later)
 //
 // Usage:
-//   BOOTSTRAP_PASSWORD='A-strong-temporary-password' pnpm tsx scripts/bootstrap-auth-users.ts
-//
-// --reset-all (or `pnpm auth:reset-passwords`): also resets the password of users that
-// were bootstrapped earlier. Without it they keep their old password — local dev only.
+//   BOOTSTRAP_PASSWORD='A-strong-temporary-password' pnpm bootstrap:auth
+// --reset-all (or `pnpm auth:reset-passwords`): also resets users who already
+// have a password. Signs them out everywhere.
 import { PrismaClient } from "@prisma/client";
-import { createClient } from "@supabase/supabase-js";
+import { hashPassword, PASSWORD_MIN_LENGTH } from "../src/server/auth/password";
 
-const PLACEHOLDER_PREFIX = "seed:";
-const AUTH_EMAIL_DOMAIN = "phone.salesos.local";
-
-function phoneToEmail(e164: string): string {
-  return `${e164.replace(/^\+/, "")}@${AUTH_EMAIL_DOMAIN}`;
-}
+const syntheticEmail = (e164: string) => `${e164.replace(/^\+/, "")}@phone.salesos.local`;
 
 async function main() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const password = process.env.BOOTSTRAP_PASSWORD;
-
-  if (!url || !serviceKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+  if (!password || password.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`BOOTSTRAP_PASSWORD is required (at least ${PASSWORD_MIN_LENGTH} characters).`);
   }
-  if (!password) {
-    throw new Error("BOOTSTRAP_PASSWORD is required (temporary password shared with each user).");
-  }
-
+  const resetAll = process.argv.includes("--reset-all");
   const prisma = new PrismaClient();
-  const sb = createClient(url, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  if (process.argv.includes("--reset-all")) {
-    const linked = await prisma.user.findMany({
-      where: { NOT: { authUserId: { startsWith: PLACEHOLDER_PREFIX } } },
+  try {
+    const users = await prisma.user.findMany({
+      where: resetAll ? {} : { passwordHash: null },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
     });
-    let reset = 0;
-    for (const u of linked) {
-      const { error } = await sb.auth.admin.updateUserById(u.authUserId, { password });
-      if (error) {
-        console.warn(`  Could not reset password for ${u.phoneE164} (${u.name}): ${error.message}`);
-        continue;
-      }
-      console.log(`  ↻ ${u.phoneE164} ${u.name} (${u.role}) password reset`);
-      reset++;
+    console.log(`Found ${users.length} user(s) to ${resetAll ? "reset" : "bootstrap"}.`);
+    const hash = await hashPassword(password);
+    for (const u of users) {
+      const email = u.email ?? syntheticEmail(u.phoneE164);
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: u.id }, data: { email, passwordHash: hash, passwordSetAt: new Date() } }),
+        prisma.session.deleteMany({ where: { userId: u.id } }),
+      ]);
+      console.log(`  ✓ ${u.name} (${u.role}) → ${email}`);
     }
-    console.log(`Reset ${reset} of ${linked.length} existing login(s).`);
+    console.log("Done. Temporary password = BOOTSTRAP_PASSWORD (not printed).");
+  } finally {
+    await prisma.$disconnect();
   }
-
-  const users = await prisma.user.findMany({
-    where: { authUserId: { startsWith: PLACEHOLDER_PREFIX } },
-  });
-
-  console.log(`Found ${users.length} user(s) needing auth bootstrap.`);
-  let created = 0;
-  let relinked = 0;
-  let skipped = 0;
-
-  for (const u of users) {
-    const email = phoneToEmail(u.phoneE164);
-    const { data, error } = await sb.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        name: u.name,
-        role: u.role,
-        tenantId: u.tenantId,
-        phoneE164: u.phoneE164,
-      },
-    });
-
-    if (data?.user) {
-      await prisma.user.update({
-        where: { id: u.id },
-        // Login looks users up by User.email, so keep it in step with the auth email.
-        data: { authUserId: data.user.id, email: u.email ?? email },
-      });
-      console.log(`  ✓ ${u.phoneE164} ${u.name} (${u.role}) → ${data.user.id}`);
-      created++;
-      continue;
-    }
-
-    // Email already exists in auth.users (e.g. Prisma was reset but Supabase Auth kept its rows).
-    // Look up the existing auth user, reset its password, and relink.
-    const existing = await findAuthUserByEmail(sb, email);
-    if (existing) {
-      const { error: pwErr } = await sb.auth.admin.updateUserById(existing.id, { password });
-      if (pwErr) {
-        console.warn(`  Could not reset password for ${u.phoneE164}: ${pwErr.message}`);
-        skipped++;
-        continue;
-      }
-      await prisma.user.update({
-        where: { id: u.id },
-        data: { authUserId: existing.id, email: u.email ?? email },
-      });
-      console.log(`  ↻ ${u.phoneE164} ${u.name} (${u.role}) → ${existing.id} (relinked, password reset)`);
-      relinked++;
-      continue;
-    }
-
-    console.warn(`  Skipped ${u.phoneE164} (${u.name}): ${error?.message ?? "unknown"}`);
-    skipped++;
-  }
-
-  await prisma.$disconnect();
-  console.log(
-    `\nDone. Created: ${created}, relinked: ${relinked}, skipped: ${skipped}, total scanned: ${users.length}.`,
-  );
-  console.log(`Temporary password distributed via BOOTSTRAP_PASSWORD; force-reset flow lands in P1.`);
-}
-
-async function findAuthUserByEmail(
-  sb: ReturnType<typeof createClient>,
-  email: string,
-): Promise<{ id: string } | null> {
-  // Paginate until we see the email. The CLI's local Auth has a few hundred users at most.
-  for (let page = 1; page <= 20; page++) {
-    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw error;
-    const match = data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-    if (match) return match;
-    if (data.users.length < 200) break;
-  }
-  return null;
 }
 
 main().catch((e) => {

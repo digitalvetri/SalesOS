@@ -12,7 +12,7 @@ mkdirSync(SHOTS, { recursive: true });
 const SALES_PASSWORD = process.env.SEED_PASSWORD_SALES ?? "";
 const ACCOUNTS_PASSWORD = process.env.SEED_PASSWORD_ACCOUNTS ?? process.env.SEED_PASSWORD_ADMIN ?? "";
 const DB_READY =
-  Boolean(process.env.DATABASE_URL) && /:55422\b/.test(process.env.DATABASE_URL ?? "");
+  Boolean(process.env.DATABASE_URL) && /:55433\b/.test(process.env.DATABASE_URL ?? "");
 const PROOF = "docs/evidence/screenshots/login-en.png"; // any real image works as a "UPI screenshot"
 
 async function login(browser: Browser, baseURL: string, phone: string, password: string, mobile: boolean) {

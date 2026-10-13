@@ -40,3 +40,6 @@ screenshots/
 # Supabase CLI local state
 supabase/.temp
 supabase/.branches
+
+# Local photo uploads (UPLOAD_DIR default)
+.uploads/

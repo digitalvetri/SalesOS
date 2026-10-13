@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
 import { prisma } from "@/server/repo/client";
-import { BUCKETS, signedImageUrl } from "@/server/storage/buckets";
+import { BUCKETS, readImage } from "@/server/storage/buckets";
 import { AppError, appErrorStatus, isAppError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -21,8 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     assertCan(session.role, "orders.viewPrices", {
       isOwn: payment.order.salespersonId === session.userId,
     });
-    const url = await signedImageUrl(BUCKETS.paymentProofs, payment.proofPath);
-    return NextResponse.redirect(url, { status: 302, headers: { "Cache-Control": "no-store" } });
+    const img = await readImage(BUCKETS.paymentProofs, payment.proofPath);
+    return new NextResponse(new Uint8Array(img.body), {
+      headers: { "Content-Type": img.contentType, "Cache-Control": "private, no-store" },
+    });
   } catch (e) {
     if (isAppError(e)) {
       return NextResponse.json(

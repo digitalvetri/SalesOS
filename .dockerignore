@@ -12,3 +12,4 @@ fixtures
 docs/evidence/screenshots
 *.log
 *.tsbuildinfo
+.uploads

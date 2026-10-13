@@ -9,7 +9,7 @@ const SHOTS = "docs/evidence/screenshots";
 mkdirSync(SHOTS, { recursive: true });
 
 const PASSWORD = process.env.SEED_PASSWORD_DISPATCH ?? process.env.SEED_PASSWORD_ADMIN ?? "";
-const DB_READY = Boolean(process.env.DATABASE_URL) && /:55422\b/.test(process.env.DATABASE_URL ?? "");
+const DB_READY = Boolean(process.env.DATABASE_URL) && /:55433\b/.test(process.env.DATABASE_URL ?? "");
 const PHOTO = "docs/evidence/screenshots/login-en.png";
 
 test.describe("Dispatch board — partial dispatch → delivered → closed", () => {

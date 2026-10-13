@@ -5,7 +5,8 @@ import { makeServerAction } from "@/lib/serverAction";
 import { AppError } from "@/lib/errors";
 import { prisma } from "@/server/repo/client";
 import { writeAudit } from "@/server/repo/audit";
-import { supabaseService } from "@/lib/supabase/service";
+import { hashPassword } from "@/server/auth/password";
+import { revokeUserSessions } from "@/server/auth/session";
 
 // ─── Default monthly target ─────────────────────────────────────────
 
@@ -53,24 +54,12 @@ export const changeMyPasswordAction = makeServerAction({
   action: "settings.manage",
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
-    const user = await prisma.user.findFirst({
-      where: { tenantId: session.tenantId, id: session.userId },
-      select: { authUserId: true },
-    });
-    if (!user) throw new AppError("NOT_FOUND", "User not found.");
-    const sb = supabaseService();
-    const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
-      password: parsed.newPassword,
-    });
-    if (error) {
-      throw new AppError("INTERNAL", "Could not update password.", {
-        supabase: error.message,
-      });
-    }
     await prisma.user.update({
       where: { id: session.userId },
-      data: { passwordSetAt: new Date() },
+      data: { passwordHash: await hashPassword(parsed.newPassword), passwordSetAt: new Date() },
     });
+    // Sign out other devices; this browser stays signed in.
+    await revokeUserSessions(session.userId, { keepCurrent: true });
     await writeAudit(prisma, {
       tenantId: session.tenantId,
       actorId: session.userId,

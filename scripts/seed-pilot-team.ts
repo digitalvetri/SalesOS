@@ -3,7 +3,7 @@
 //
 // Dry run by default. Pass --commit to actually create.
 import { PrismaClient } from "@prisma/client";
-import { createClient } from "@supabase/supabase-js";
+import { hashPassword } from "../src/server/auth/password";
 import "dotenv/config";
 
 const COMMIT = process.argv.includes("--commit");
@@ -38,9 +38,6 @@ const PILOT_TEAM = [
 ];
 
 const prisma = new PrismaClient();
-const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const tenant = await prisma.tenant.findFirst({ select: { id: true, name: true } });
 if (!tenant) throw new Error("No tenant found");
@@ -74,21 +71,11 @@ console.log("\n=== Committing ===");
 let created = 0;
 for (const row of plan) {
   if (row.action.startsWith("SKIP")) continue;
-  // Create Supabase auth user
-  const authRes = await sb.auth.admin.createUser({
-    email: row.email,
-    password: PASSWORD,
-    email_confirm: true,
-    user_metadata: { name: row.name, role: row.role, tenantId: tenant.id, phoneE164: row.phoneE164 },
-  });
-  if (authRes.error || !authRes.data.user) {
-    console.error(`  FAIL ${row.email}: ${authRes.error?.message ?? "unknown"}`);
-    continue;
-  }
   await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      authUserId: authRes.data.user.id,
+      passwordHash: await hashPassword(PASSWORD),
+      passwordSetAt: new Date(),
       name: row.name,
       email: row.email,
       phoneE164: row.phoneE164,

@@ -12,11 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-ci
       DATABASE_URL: postgresql://u:p@localhost:5432/dummy
       DIRECT_URL: postgresql://u:p@localhost:5432/dummy
-      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-for-ci
       APP_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
     steps:

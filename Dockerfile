@@ -18,23 +18,22 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_* values are inlined into the browser bundle at build time —
-# pass them as build args (Coolify: mark them "Build Variable").
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+# NEXT_PUBLIC_APP_URL is inlined at build time (Coolify: "Build Variable").
 ARG NEXT_PUBLIC_APP_URL
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 RUN pnpm build
 
 FROM node:22-bookworm-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g prisma@6.19.3 && npm cache clean --force
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
+    UPLOAD_DIR=/app/data/uploads
 WORKDIR /app
-RUN groupadd -g 1001 app && useradd -u 1001 -g app -m app
+RUN groupadd -g 1001 app && useradd -u 1001 -g app -m app \
+  && mkdir -p /app/data/uploads && chown -R app:app /app/data
+# Uploaded photos live here — mount a volume on /app/data to keep them across deploys.
+VOLUME ["/app/data"]
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/prisma ./prisma

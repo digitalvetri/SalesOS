@@ -19,7 +19,7 @@ config({ path: ".env" });
 
 const DB_READY =
   Boolean(process.env.DATABASE_URL) &&
-  (/:55422\b/.test(process.env.DATABASE_URL!) || process.env.SB_INTEGRATION_TESTS === "1");
+  (/:55433\b/.test(process.env.DATABASE_URL!) || process.env.SB_INTEGRATION_TESTS === "1");
 
 type Call = { url: string; init: RequestInit };
 let wamid = 0; // unique across fakes, like real wamids

@@ -82,10 +82,11 @@ model User {
   id                 String        @id @default(cuid())
   tenantId           String
   tenant             Tenant        @relation(fields: [tenantId], references: [id])
-  authUserId         String        @unique // Supabase auth.users.id
+  authUserId         String?       @unique // legacy Supabase auth id (unused since own auth)
+  passwordHash       String? // scrypt hash (see src/server/auth/password.ts); null = cannot log in
   name               String
   email              String? // lowercase; the login identity (unique per tenant)
-  phoneE164          String        // contact phone; no longer the login identity
+  phoneE164          String // contact phone; no longer the login identity
   role               Role
   lang               Lang          @default(en)
   defaultEntityId    String?
@@ -99,6 +100,7 @@ model User {
   passwordSetAt      DateTime?
   ordersAsSales      Order[]       @relation("OrderSalesperson")
   targets            SalesTarget[]
+  sessions           Session[]
 
   @@unique([tenantId, phoneE164])
   @@unique([tenantId, email])
@@ -406,11 +408,11 @@ model Payment {
   note                  String?
   createdById           String
   createdAt             DateTime      @default(now())
+  // SQL CHECK (extra.sql): exactly one of receivedIntoAccountId / receivedByUserId is set
 
   @@unique([tenantId, receiptNo])
   @@index([tenantId, status])
   @@index([tenantId, receivedByUserId, depositedOn])
-  // SQL CHECK (extra.sql): exactly one of receivedIntoAccountId / receivedByUserId is set
 }
 
 // ───────────── Dispatch ─────────────
@@ -549,5 +551,21 @@ model IdempotencyKey {
   createdAt  DateTime @default(now())
   expiresAt  DateTime
 
+  @@index([expiresAt])
+}
+
+// Login sessions (own auth). The cookie holds a random token; only its SHA-256
+// hash is stored, so a database leak can't be replayed as a login.
+model Session {
+  id         String   @id // sha256(token), hex
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
   @@index([expiresAt])
 }

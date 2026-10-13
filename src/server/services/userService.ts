@@ -1,6 +1,7 @@
-// Admin-only user management via Supabase service-role client.
-// Called by Server Actions in Settings → Users.
-import { supabaseService } from "@/lib/supabase/service";
+// Admin-only user management (own auth: scrypt password hashes + DB sessions).
+// Called by Server Actions in Settings → Users and Employees.
+import { hashPassword, PASSWORD_MIN_LENGTH } from "@/server/auth/password";
+import { revokeUserSessions } from "@/server/auth/session";
 import { prisma, type Role, type Lang } from "@/server/repo/client";
 import { AppError } from "@/lib/errors";
 import { writeAudit } from "@/server/repo/audit";
@@ -38,26 +39,16 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
     throw new AppError("CONFLICT", "A user with this mobile number already exists.");
   }
 
-  const sb = supabaseService();
-  const { data, error } = await sb.auth.admin.createUser({
-    email,
-    password: input.password,
-    email_confirm: true,
-    user_metadata: {
-      name: input.name,
-      role: input.role,
-      tenantId: input.tenantId,
-      phoneE164: input.phoneE164,
-    },
-  });
-  if (error || !data.user) {
-    throw new AppError("INTERNAL", "Could not create auth user.", { supabase: error?.message });
+  if (input.password.length < PASSWORD_MIN_LENGTH) {
+    throw new AppError("VALIDATION", `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
   }
+  const passwordHash = await hashPassword(input.password);
 
   const user = await prisma.user.create({
     data: {
       tenantId: input.tenantId,
-      authUserId: data.user.id,
+      passwordHash,
+      passwordSetAt: new Date(),
       name: input.name,
       email,
       phoneE164: input.phoneE164,
@@ -144,6 +135,7 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
       ...(input.active !== undefined && { active: input.active }),
     },
   });
+  if (input.active === false) await revokeUserSessions(input.userId);
 
   await writeAudit(prisma, {
     tenantId: input.tenantId,
@@ -212,6 +204,7 @@ export async function adminDeactivateUser(opts: {
     where: { id: opts.userId },
     data: { active: false },
   });
+  await revokeUserSessions(opts.userId);
 
   await writeAudit(prisma, {
     tenantId: opts.tenantId,
@@ -226,9 +219,7 @@ export async function adminDeactivateUser(opts: {
   return after;
 }
 
-/** Update a user's login email on both Supabase auth and the DB row.
- *  Changing the Supabase email requires the service-role client. If the new
- *  email is already in use (in the DB or in auth), the update is refused. */
+/** Update a user's login email. Refused if another user already has it. */
 export async function adminUpdateUserEmail(opts: {
   tenantId: string;
   actorId: string;
@@ -250,17 +241,6 @@ export async function adminUpdateUserEmail(opts: {
     select: { id: true },
   });
   if (dupe) throw new AppError("CONFLICT", "Another user already has that email.");
-
-  const sb = supabaseService();
-  const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
-    email,
-    email_confirm: true,
-  });
-  if (error) {
-    throw new AppError("INTERNAL", "Could not update email on auth provider.", {
-      supabase: error.message,
-    });
-  }
 
   const after = await prisma.user.update({
     where: { id: opts.userId },
@@ -292,13 +272,12 @@ export async function adminResetPassword(opts: {
   if (!user) throw new AppError("NOT_FOUND", "User not found.");
   await assertMayManageLogin(opts.tenantId, opts.actorId, user);
 
-  const sb = supabaseService();
-  const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
-    password: opts.newPassword,
+  await prisma.user.update({
+    where: { id: opts.userId },
+    data: { passwordHash: await hashPassword(opts.newPassword), passwordSetAt: new Date() },
   });
-  if (error) {
-    throw new AppError("INTERNAL", "Could not reset password.", { supabase: error.message });
-  }
+  // Old password no longer valid anywhere: sign the user out on every device.
+  await revokeUserSessions(opts.userId);
 
   await writeAudit(prisma, {
     tenantId: opts.tenantId,
@@ -309,7 +288,7 @@ export async function adminResetPassword(opts: {
   });
 }
 
-/** Admin sets a specific password for a user. Supabase requires ≥6 chars.
+/** Admin sets a specific password for a user (min 8 chars).
  *  Separate from adminResetPassword's random-password flow — this one is
  *  for "I want this user's password to be X" scenarios. */
 export async function adminSetPassword(opts: {
@@ -327,13 +306,12 @@ export async function adminSetPassword(opts: {
   if (!user) throw new AppError("NOT_FOUND", "User not found.");
   await assertMayManageLogin(opts.tenantId, opts.actorId, user);
 
-  const sb = supabaseService();
-  const { error } = await sb.auth.admin.updateUserById(user.authUserId, {
-    password: opts.newPassword,
+  await prisma.user.update({
+    where: { id: opts.userId },
+    data: { passwordHash: await hashPassword(opts.newPassword), passwordSetAt: new Date() },
   });
-  if (error) {
-    throw new AppError("INTERNAL", "Could not set password.", { supabase: error.message });
-  }
+  // Old password no longer valid anywhere: sign the user out on every device.
+  await revokeUserSessions(opts.userId);
 
   await writeAudit(prisma, {
     tenantId: opts.tenantId,
