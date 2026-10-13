@@ -102,11 +102,11 @@ function baseScene(fov = 30, camPos: [number, number, number] = [0, 0.6, 6]) {
   const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 50);
   camera.position.set(...camPos);
   camera.lookAt(0, 0, 0);
-  scene.add(new THREE.HemisphereLight("#ffffff", "#0b3b37", 1.2));
+  scene.add(new THREE.HemisphereLight("#ffffff", "#1b1f24", 1.2));
   const key = new THREE.DirectionalLight("#ffffff", 2.2);
   key.position.set(3, 5, 4);
   scene.add(key);
-  const rim = new THREE.DirectionalLight("#5eead4", 1.2);
+  const rim = new THREE.DirectionalLight("#9cc9f5", 1.2);
   rim.position.set(-4, 2, -3);
   scene.add(rim);
   const trash: { dispose(): void }[] = [];
@@ -180,9 +180,9 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
   // Teal parcel with flaps and a green check badge, slowly turning.
   parcel() {
     const { scene, camera, track, dispose } = baseScene(30, [0, 1.6, 6.4]);
-    const boxMat = track(new THREE.MeshStandardMaterial({ color: "#5FB3A8", roughness: 0.6, flatShading: true }));
-    const flapMat = track(new THREE.MeshStandardMaterial({ color: "#7CC7BD", roughness: 0.6, flatShading: true }));
-    const tapeMat = track(new THREE.MeshStandardMaterial({ color: "#E7F2F2", roughness: 0.5 }));
+    const boxMat = track(new THREE.MeshStandardMaterial({ color: "#4F8FCB", roughness: 0.6, flatShading: true }));
+    const flapMat = track(new THREE.MeshStandardMaterial({ color: "#7FB0DE", roughness: 0.6, flatShading: true }));
+    const tapeMat = track(new THREE.MeshStandardMaterial({ color: "#EEF2F6", roughness: 0.5 }));
     const g = new THREE.Group();
     const body = new THREE.Mesh(track(new RoundedBoxGeometry(1.8, 1.4, 1.8, 3, 0.06)), boxMat);
     g.add(body);
@@ -202,7 +202,7 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
     g.add(hingeA, hingeB);
     const badge = new THREE.Mesh(
       track(new THREE.CircleGeometry(0.46, 48)),
-      track(new THREE.MeshBasicMaterial({ map: track(glyphTexture("✓", "#0F766E", "#FFFFFF")) })),
+      track(new THREE.MeshBasicMaterial({ map: track(glyphTexture("✓", "#1F6FB5", "#FFFFFF")) })),
     );
     badge.position.set(0.55, 0.15, 0.93);
     g.add(badge);
@@ -227,11 +227,11 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
   // Glass hourglass: sand drains top → bottom, then the whole thing flips.
   hourglass() {
     const { scene, camera, track, dispose } = baseScene(30, [0, 0.3, 6.4]);
-    const frameMat = track(new THREE.MeshStandardMaterial({ color: "#C2410C", roughness: 0.5, metalness: 0.2 }));
+    const frameMat = track(new THREE.MeshStandardMaterial({ color: "#B3141C", roughness: 0.5, metalness: 0.2 }));
     const glassMat = track(
-      new THREE.MeshStandardMaterial({ color: "#FDE7D3", transparent: true, opacity: 0.35, roughness: 0.1, depthWrite: false }),
+      new THREE.MeshStandardMaterial({ color: "#FBE4E5", transparent: true, opacity: 0.35, roughness: 0.1, depthWrite: false }),
     );
-    const sandMat = track(new THREE.MeshStandardMaterial({ color: "#EE8A2B", roughness: 0.8, flatShading: true }));
+    const sandMat = track(new THREE.MeshStandardMaterial({ color: "#E5484D", roughness: 0.8, flatShading: true }));
     const g = new THREE.Group();
     const capGeo = track(new THREE.CylinderGeometry(0.95, 0.95, 0.16, 40));
     const capTop = new THREE.Mesh(capGeo, frameMat);
@@ -286,10 +286,10 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
   // A tilted monitor showing bars that grow and a rising arrow.
   growth() {
     const { scene, camera, track, dispose } = baseScene(28, [0, 0.4, 7]);
-    const caseMat = track(new THREE.MeshStandardMaterial({ color: "#0E4F49", roughness: 0.4, metalness: 0.2 }));
-    const screenMat = track(new THREE.MeshStandardMaterial({ color: "#0A3A36", roughness: 0.6 }));
-    const barMat = track(new THREE.MeshStandardMaterial({ color: "#2DD4BF", emissive: "#14897C", emissiveIntensity: 0.4, roughness: 0.4 }));
-    const arrowMat = track(new THREE.MeshStandardMaterial({ color: "#A7F3D0", emissive: "#5EEAD4", emissiveIntensity: 0.8 }));
+    const caseMat = track(new THREE.MeshStandardMaterial({ color: "#2B3138", roughness: 0.4, metalness: 0.2 }));
+    const screenMat = track(new THREE.MeshStandardMaterial({ color: "#1B1F24", roughness: 0.6 }));
+    const barMat = track(new THREE.MeshStandardMaterial({ color: "#4C9BEA", emissive: "#1F6FB5", emissiveIntensity: 0.4, roughness: 0.4 }));
+    const arrowMat = track(new THREE.MeshStandardMaterial({ color: "#FF8A8F", emissive: "#D7262E", emissiveIntensity: 0.8 }));
     const g = new THREE.Group();
     g.add(new THREE.Mesh(track(new RoundedBoxGeometry(3.4, 2.3, 0.35, 4, 0.14)), caseMat));
     const screen = new THREE.Mesh(track(new THREE.PlaneGeometry(3.0, 1.9)), screenMat);

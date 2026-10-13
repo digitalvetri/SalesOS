@@ -45,17 +45,17 @@ export function InstallApp() {
   if (installed) {
     return (
       <p className="flex items-center gap-2 text-sm font-semibold text-[color:var(--color-ok)]">
-        <CheckCircle2 className="h-4 w-4" aria-hidden /> SalesOS is installed on this device.
+        <CheckCircle2 className="h-4 w-4" aria-hidden /> The app is installed on this device.
       </p>
     );
   }
   if (!secure) {
-    return <p className="text-sm text-[color:var(--color-ink-3)]">Installing needs the secure (https://) address of SalesOS.</p>;
+    return <p className="text-sm text-[color:var(--color-ink-3)]">Installing needs the secure (https://) address.</p>;
   }
   if (ios) {
     return (
       <ol className="space-y-2 text-sm text-[color:var(--color-ink-2)]">
-        <li className="flex items-center gap-2">1. Open SalesOS in <b>Safari</b>.</li>
+        <li className="flex items-center gap-2">1. Open this page in <b>Safari</b>.</li>
         <li className="flex items-center gap-2">2. Tap <Share className="h-4 w-4" aria-label="Share" /> <b>Share</b>.</li>
         <li className="flex items-center gap-2">3. Tap <SquarePlus className="h-4 w-4" aria-hidden /> <b>Add to Home Screen</b>.</li>
       </ol>
@@ -63,11 +63,11 @@ export function InstallApp() {
   }
   return prompt ? (
     <Button gold onClick={install} className="w-full">
-      <Download className="mr-2 h-4 w-4" aria-hidden /> Install SalesOS
+      <Download className="mr-2 h-4 w-4" aria-hidden /> Install the app
     </Button>
   ) : (
     <p className="text-sm text-[color:var(--color-ink-2)]">
-      Use your browser menu → <b>Install SalesOS</b> (or <b>Add to Home screen</b> on Android).
+      Use your browser menu → <b>Install Kumaar Industries</b> (or <b>Add to Home screen</b> on Android).
     </p>
   );
 }

@@ -1,5 +1,4 @@
-import { BRAND } from "@/config/brand";
-import { LogoMark } from "@/components/app/Logo";
+import { LogoMark, Wordmark } from "@/components/app/Logo";
 import { NotificationBell } from "@/components/app/NotificationBell";
 import { UserMenu } from "./UserMenu";
 import type { SessionUser } from "@/server/repo/users";
@@ -11,7 +10,7 @@ export function TopBar({ user }: { user: SessionUser }) {
       {/* Brand on phones only — the side nav carries it from 768 px up. */}
       <div className="flex items-center gap-2 md:hidden">
         <LogoMark size={32} />
-        <span className="text-base font-bold tracking-tight">{BRAND.name}</span>
+        <Wordmark className="text-sm" />
       </div>
       <p className="hidden truncate text-base text-[color:var(--color-nav-ink-3)] md:block">
         Hi <span className="font-semibold text-[color:var(--color-nav-ink)]">{firstName}</span> 👋

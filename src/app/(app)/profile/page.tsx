@@ -44,7 +44,7 @@ export default async function ProfilePage() {
         <section id="install" className="surface-card p-5 md:col-span-2">
           <h2 className="mb-1 text-base font-semibold">Install the app</h2>
           <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-            Put SalesOS on your phone or computer like a normal app — opens full screen from its own icon.
+            Put the Kumaar Industries app on your phone or computer like a normal app — opens full screen from its own icon.
           </p>
           <InstallApp />
         </section>

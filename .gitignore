@@ -47,3 +47,4 @@ supabase/.branches
 # Import dry-run reports (contain customer data)
 import-report*.xlsx
 scripts/.tmp/
+.superpowers/

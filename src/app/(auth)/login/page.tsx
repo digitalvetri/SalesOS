@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { BarChart3, Check, IndianRupee, TrendingUp } from "lucide-react";
-import { LogoMark } from "@/components/app/Logo";
+import { LogoMark, Wordmark } from "@/components/app/Logo";
 import { getSession } from "@/server/auth/session";
 import { LoginForm } from "./LoginForm";
 import { Parallax } from "./Parallax";
@@ -34,8 +34,11 @@ export default async function LoginPage() {
         {/* Brand + 3D scene. On phones it sits above the card, smaller. */}
         <section className="flex flex-col gap-4 lg:gap-6">
           <div className="flex items-center gap-2.5">
-            <LogoMark size={40} />
-            <span className={s.wordmark}>{BRAND.name}</span>
+            <LogoMark size={46} tile />
+            <span className="flex flex-col">
+              <Wordmark onDark className="text-xl" />
+              <span className="mt-1.5 text-[11px] font-semibold text-[#FF8A8F]">{BRAND.tagline}</span>
+            </span>
           </div>
 
           <div className={s.stage} aria-hidden>
@@ -91,7 +94,7 @@ export default async function LoginPage() {
               <span className={s.accentText}>effortlessly.</span>
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-[color:var(--color-ink-2)]">
-              {BRAND.tagline} — one view across KI &amp; KFM, from the first enquiry to the
+              {BRAND.product} — one view across KI &amp; KFM, from the first enquiry to the
               balance clear.
             </p>
           </div>

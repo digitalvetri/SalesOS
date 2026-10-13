@@ -344,7 +344,7 @@ export function TeamMonthGrid({
                         href={`/orders?sp=${r.id}&m=${m}`}
                         title={c ? `${c.orders} orders · ${formatInr(c.value)}` : "No orders"}
                         className={`block rounded-md px-1.5 py-1.5 tabular-nums hover:ring-1 hover:ring-[color:var(--color-accent)] ${m === selected ? "ring-1 ring-[color:var(--color-gold)]" : ""}`}
-                        style={{ backgroundColor: shade ? `rgba(15, 118, 110, ${shade})` : undefined }}
+                        style={{ backgroundColor: shade ? `rgba(31, 111, 181, ${shade})` : undefined }}
                       >
                         <span className="block text-[13px] font-semibold">{v ? compactInr(v) : "—"}</span>
                         <span className="block text-[10px] text-[color:var(--color-ink-3)]">{c?.orders ? `${c.orders} ord` : ""}</span>

@@ -38,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
       status: 200,
       headers: {
         "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "content-disposition": `attachment; filename="SalesOS-${kind}-${from}_to_${to}.xlsx"`,
+        "content-disposition": `attachment; filename="Kumaar-${kind}-${from}_to_${to}.xlsx"`,
         "cache-control": "no-store",
       },
     });

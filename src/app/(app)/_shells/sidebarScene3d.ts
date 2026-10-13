@@ -5,8 +5,8 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
-const TEAL = ["#0F766E", "#14897C", "#1BA394", "#2DD4BF"];
-const AMBER = "#F59E0B";
+const TEAL = ["#1F6FB5", "#2A80CC", "#5B6773", "#8A96A3"]; // logo blue + steel
+const AMBER = "#D7262E"; // logo red
 
 export function startSidebarScene(host: HTMLElement, opts: { animate: boolean }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
@@ -19,11 +19,11 @@ export function startSidebarScene(host: HTMLElement, opts: { animate: boolean })
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
 
   // ── Lights ──
-  scene.add(new THREE.HemisphereLight("#d9fffa", "#06302c", 1.1));
+  scene.add(new THREE.HemisphereLight("#eaf2fb", "#1b1f24", 1.1));
   const sun = new THREE.DirectionalLight("#ffffff", 1.6);
   sun.position.set(4, 9, 6);
   scene.add(sun);
-  const glow = new THREE.PointLight("#2DD4BF", 6, 9, 2);
+  const glow = new THREE.PointLight("#4C9BEA", 6, 9, 2);
   glow.position.set(0, 2.2, 0);
   scene.add(glow);
 
@@ -35,11 +35,11 @@ export function startSidebarScene(host: HTMLElement, opts: { animate: boolean })
   // ── Platform ──
   const platform = new THREE.Mesh(
     track(new RoundedBoxGeometry(4.4, 0.24, 4.4, 4, 0.12)),
-    track(new THREE.MeshStandardMaterial({ color: "#0E4F49", roughness: 0.7, metalness: 0.1, flatShading: true })),
+    track(new THREE.MeshStandardMaterial({ color: "#353C44", roughness: 0.7, metalness: 0.1, flatShading: true })),
   );
   platform.position.y = -0.12;
   world.add(platform);
-  const grid = new THREE.GridHelper(4.0, 8, "#2DD4BF", "#1B6B63");
+  const grid = new THREE.GridHelper(4.0, 8, "#4C9BEA", "#454E58");
   (grid.material as THREE.Material).transparent = true;
   (grid.material as THREE.Material).opacity = 0.35;
   grid.position.y = 0.005;
@@ -82,7 +82,7 @@ export function startSidebarScene(host: HTMLElement, opts: { animate: boolean })
   ]);
   const tubeGeo = track(new THREE.TubeGeometry(curve, 120, 0.07, 10, false));
   const arrowMat = track(
-    new THREE.MeshStandardMaterial({ color: "#5EEAD4", emissive: "#2DD4BF", emissiveIntensity: 0.9, roughness: 0.3 }),
+    new THREE.MeshStandardMaterial({ color: "#9CC9F5", emissive: "#4C9BEA", emissiveIntensity: 0.9, roughness: 0.3 }),
   );
   const tube = new THREE.Mesh(tubeGeo, arrowMat);
   world.add(tube);
@@ -115,7 +115,7 @@ export function startSidebarScene(host: HTMLElement, opts: { animate: boolean })
   pGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const points = new THREE.Points(
     pGeo,
-    track(new THREE.PointsMaterial({ color: "#5EEAD4", size: 0.05, transparent: true, opacity: 0.8, depthWrite: false })),
+    track(new THREE.PointsMaterial({ color: "#9CC9F5", size: 0.05, transparent: true, opacity: 0.8, depthWrite: false })),
   );
   world.add(points);
 

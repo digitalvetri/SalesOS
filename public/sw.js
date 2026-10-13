@@ -1,7 +1,7 @@
-// SalesOS service worker — makes the app installable and keeps static files handy.
+// Kumaar Industries app service worker — makes the app installable and keeps static files handy.
 // Pages, data and Server Actions always go to the network (never cached), so
 // figures are never stale; with no connection a page shows /offline.html.
-const VERSION = "salesos-v1";
+const VERSION = "kumaar-v2";
 const PRECACHE = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

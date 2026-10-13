@@ -52,14 +52,14 @@
 .active {
   transform: translateZ(10px);
   box-shadow:
-    0 5px 0 0 #0a2f2c,
+    0 5px 0 0 #1b1f24,
     0 14px 22px -10px rgba(0, 0, 0, 0.55);
 }
 .active:hover,
 .active:focus-visible {
   transform: translateZ(20px) rotateY(-8deg) translateX(2px);
   box-shadow:
-    0 7px 0 0 #0a2f2c,
+    0 7px 0 0 #1b1f24,
     0 18px 26px -10px rgba(0, 0, 0, 0.6);
 }
 

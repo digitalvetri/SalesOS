@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/config/brand";
-import { LogoMark } from "@/components/app/Logo";
+import { LogoMark, Wordmark } from "@/components/app/Logo";
 import s3d from "./sidebar.module.css";
 import { SidebarScene } from "./SidebarScene";
 
@@ -35,12 +35,10 @@ export function SideNav({ items }: { items: NavItem[] }) {
       >
         <span className={s3d.logo}>
           <span className={s3d.logoMark}>
-            <LogoMark size={36} />
+            <LogoMark size={40} tile />
           </span>
         </span>
-        <span className="hidden text-xl font-bold tracking-tight text-[color:var(--color-sidebar-ink)] xl:inline">
-          {BRAND.name}
-        </span>
+        <Wordmark onDark className="hidden text-lg xl:flex" />
       </Link>
 
       <nav aria-label="Primary" className={cn("flex flex-col gap-1.5 px-3 py-4 xl:px-4", s3d.nav)}>
