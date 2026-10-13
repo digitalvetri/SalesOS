@@ -2,7 +2,12 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth/session";
 import { assertCan } from "@/server/auth/permissions";
-import { listOrdersV2, listOrderMonths, type OrderV2Filters } from "@/server/repo/ordersV2";
+import {
+  listOrdersV2,
+  listOrderMonths,
+  countOrdersBySalesperson,
+  type OrderV2Filters,
+} from "@/server/repo/ordersV2";
 import { prisma } from "@/server/repo/client";
 import { OrderSheet } from "./_components/sheet/OrderSheet";
 
@@ -38,7 +43,7 @@ export default async function OrdersPage({
 
   const effectiveSalespersonId = salespersonScope ?? spFilter ?? undefined;
 
-  const [rows, months, employees] = await Promise.all([
+  const [rows, months, salesUsers, counts] = await Promise.all([
     listOrdersV2({
       tenantId: session.tenantId,
       salespersonId: effectiveSalespersonId,
@@ -55,7 +60,37 @@ export default async function OrdersPage({
           select: { id: true, name: true },
         })
       : Promise.resolve([]),
+    mode === "admin"
+      ? countOrdersBySalesperson({
+          tenantId: session.tenantId,
+          month,
+          status,
+          search: search || undefined,
+        })
+      : Promise.resolve(null),
   ]);
+
+  // Employee picker: every active SALES user, plus anyone else who has orders
+  // in this view (or is the selected one) so the chips always add up to "All".
+  let employees: Array<{ id: string; name: string; count: number }> | undefined;
+  if (mode === "admin" && counts) {
+    const known = new Set(salesUsers.map((u) => u.id));
+    const extraIds = [
+      ...Object.keys(counts.bySalesperson),
+      ...(spFilter ? [spFilter] : []),
+    ].filter((id) => !known.has(id));
+    const extras = extraIds.length
+      ? await prisma.user.findMany({
+          where: { tenantId: session.tenantId, id: { in: [...new Set(extraIds)] } },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : [];
+    employees = [...salesUsers, ...extras].map((u) => ({
+      ...u,
+      count: counts.bySalesperson[u.id] ?? 0,
+    }));
+  }
 
   return (
     <OrderSheet
@@ -65,8 +100,9 @@ export default async function OrdersPage({
       activeMonth={month}
       activeStatus={status ?? "all"}
       search={search}
-      employees={mode === "admin" ? employees : undefined}
-      activeSalesperson={spFilter}
+      employees={employees}
+      allCount={counts?.all}
+      activeSalesperson={employees?.some((e) => e.id === spFilter) ? spFilter : null}
     />
   );
 }

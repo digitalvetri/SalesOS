@@ -135,8 +135,9 @@ describe("parseSheet — the VIJI sheet", () => {
       amount: "24000", advance: "10000", balance: "14000", status: "CONFIRMED", route: "KUMARESH GPAY", flags: [],
     });
   });
-  it("phone in the customer column → Unknown (last 4), NO_NAME; formula + NILL", () => {
-    expect(by("VIJI!R4")).toMatchObject({ customerName: "Unknown (3210)", phone: "9876543210", amount: "70500", advance: "0", balance: "70500", status: "DELIVERED" });
+  it("phone in the customer column → no name (left empty), NO_NAME; formula + NILL", () => {
+    // ADV NILL + BAL 70500 (a formula with a cached result) → nothing paid yet.
+    expect(by("VIJI!R4")).toMatchObject({ customerName: "", phone: "9876543210", amount: "70500", advance: "0", balance: "70500", paid: "0", status: "DELIVERED" });
     expect(by("VIJI!R4").flags).toContain("NO_NAME");
   });
   it("multi-row order: continuation appends the line and carries the amount from the last row", () => {
@@ -146,8 +147,8 @@ describe("parseSheet — the VIJI sheet", () => {
     expect(by("VIJI!R7")).toMatchObject({ date: "2026-01-07", status: "CLOSED" });
     expect(by("VIJI!R7").flags).toContain("DATE_SWAPPED");
   });
-  it("typo date → previous order's date + DATE_GUESSED; 'cancelled' → CANCELLED with note", () => {
-    expect(by("VIJI!R8")).toMatchObject({ date: "2026-01-07", status: "CANCELLED", cancelNote: "cancelled - price" });
+  it("typo date 31.02 → the block's month (31 Jan) + DATE_GUESSED; STATUS 'cancelled' → CANCELLED with note", () => {
+    expect(by("VIJI!R8")).toMatchObject({ date: "2026-01-31", status: "CANCELLED", cancelNote: "cancelled - price" });
     expect(by("VIJI!R8").flags).toContain("DATE_GUESSED");
   });
   it("reconciliation: computed vs stated TOTAL per month", () => {
@@ -197,7 +198,7 @@ describe("edge rows", () => {
     });
     expect(r.orders).toHaveLength(1);
     expect(r.orders[0]!.flags).toEqual(expect.arrayContaining(["NO_NAME", "NO_PHONE", "BALANCE_MISMATCH"]));
-    expect(r.orders[0]!.customerName).toBe("Unknown");
+    expect(r.orders[0]!.customerName).toBe("");
     expect(r.reconciliation).toEqual([{ sheet: "X", month: "2026-03", computed: "1000", stated: null, diffPct: null }]);
   });
   it("continuation with no open order is dropped", () => {

@@ -1,6 +1,7 @@
 // Dispatch-role read models (§4.2: Dispatch views orders with NO prices,
 // §11.10 board). Explicit select shapes only — never spread a full Order row
 // here; tests/integration/dispatch-dto.test.ts snapshots the JSON keys.
+import { realPhone } from "@/lib/orderDisplay";
 import { prisma, type Prisma } from "./client";
 import {
   BOARD_COLUMNS,
@@ -52,7 +53,7 @@ export type DispatchOrderDto = {
   orderDate: string;
   promisedDeliveryDate: string | null;
   notes: string | null;
-  customer: { name: string; phoneE164: string; city: string | null };
+  customer: { name: string; phoneE164: string | null; city: string | null };
   salespersonName: string;
   lines: { id: string; description: string; qty: number; dispatchedQty: number }[];
   dispatches: {
@@ -78,7 +79,7 @@ export function toDispatchDto(o: Row): DispatchOrderDto {
     notes: o.notes,
     customer: {
       name: o.customer.businessName ?? o.customer.name,
-      phoneE164: o.customer.phoneE164,
+      phoneE164: realPhone(o.customer.phoneE164),
       city: o.customer.city,
     },
     salespersonName: o.salesperson.name,

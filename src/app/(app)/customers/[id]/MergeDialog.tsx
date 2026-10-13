@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/app/Toast";
 import { mergeCustomersAction } from "../actions";
 
-type Other = { id: string; name: string; phoneE164: string };
+type Other = { id: string; name: string; phoneE164: string | null };
 
 export function MergeDialog({
   survivor,
   others,
 }: {
-  survivor: { id: string; name: string; phoneE164: string };
+  survivor: { id: string; name: string; phoneE164: string | null };
   others: Other[];
 }) {
   const t = useTranslations("customers.merge");
@@ -28,7 +28,7 @@ export function MergeDialog({
     const q = filter.trim().toLowerCase();
     const base = q
       ? others.filter(
-          (o) => o.name.toLowerCase().includes(q) || o.phoneE164.includes(q),
+          (o) => o.name.toLowerCase().includes(q) || (o.phoneE164 ?? "").includes(q),
         )
       : others;
     return base.slice(0, 20);
@@ -104,7 +104,7 @@ export function MergeDialog({
                 <div className="flex-1 text-sm">
                   <div className="font-medium">{o.name}</div>
                   <div className="text-xs text-[color:var(--color-ink-3)] tabular-nums">
-                    {o.phoneE164}
+                    {o.phoneE164 ?? "—"}
                   </div>
                 </div>
               </label>
@@ -128,7 +128,7 @@ export function MergeDialog({
               onClick={confirm}
               disabled={!sourceId || pending}
             >
-              {pending ? "…" : t("confirm")}
+              {pending ? "â¦" : t("confirm")}
             </Button>
           </div>
         </DialogPrimitive.Content>

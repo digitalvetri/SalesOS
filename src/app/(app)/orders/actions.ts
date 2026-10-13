@@ -111,7 +111,7 @@ export const createOrderAction = makeServerAction({
         console.error("[whatsapp.order_confirmation]", e);
         return null;
       });
-      whatsapp = r?.mode === "api" ? "sent" : "link";
+      whatsapp = r === null ? null : r.mode === "api" ? "sent" : "link";
     }
     return { ...result.value, replay: result.kind === "replay", whatsapp };
   },

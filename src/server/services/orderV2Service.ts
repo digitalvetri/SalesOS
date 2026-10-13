@@ -120,7 +120,7 @@ export type InsertOrderV2Args = {
   customerId: string;
   entity: { id: string; code: string };
   orderDate: Date;
-  productText: string;
+  productText: string | null; // null when the sheet row had no product
   total: Decimal;
   advance: Decimal;
   paymentMethod?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
@@ -130,6 +130,11 @@ export type InsertOrderV2Args = {
   legacyStatus?: "CONFIRMED" | "DELIVERED" | "CANCELLED";
   completedAt?: Date | null;
   importRef?: string | null;
+  totalMissing?: boolean; // the sheet had no amount (total 0, shown blank)
+  sheetRow?: Prisma.InputJsonValue | null; // the sheet row as typed
+  promisedDeliveryDate?: Date | null;
+  paymentNote?: string | null; // e.g. the sheet's ACC DETAILS
+  cancelNote?: string | null;
 };
 
 /** Order row + S.No + v1.0 number + optional advance payment + audit, inside `tx`.
@@ -162,6 +167,10 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
       simpleStatus: a.simpleStatus ?? "PENDING",
       completedAt: a.completedAt ?? null,
       importRef: a.importRef ?? null,
+      totalMissing: a.totalMissing ?? false,
+      ...(a.sheetRow ? { sheetRow: a.sheetRow } : {}),
+      promisedDeliveryDate: a.promisedDeliveryDate ?? null,
+      cancelNote: a.cancelNote ?? null,
       subtotal: a.total.toFixed(2),
       chargesTotal: "0.00",
       discount: "0.00",
@@ -169,7 +178,7 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
       balanceDue: balance.toFixed(2),
       paidTotal: a.advance.toFixed(2),
       serialNo,
-      productText: a.productText,
+      productText: a.productText || null,
       notes: a.note ?? null,
       createdById: a.actorId,
     },
@@ -191,6 +200,7 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
         method: a.paymentMethod ?? "UPI",
         amount: a.advance.toFixed(2),
         paidOn: a.orderDate,
+        note: a.paymentNote ?? null,
         status: "VERIFIED",
         verifiedById: a.actorId,
         verifiedAt: new Date(),
@@ -375,9 +385,15 @@ export async function updateOrderFieldsV2(input: {
           data.subtotal = newTotal.toFixed(2);
           data.total = newTotal.toFixed(2);
           data.balanceDue = computeBalance(newTotal, paid).toFixed(2);
+          data.totalMissing = false; // the price has now been filled in
         }
         if (customerName) {
           await tx.customer.update({ where: { id: current.customerId }, data: { name: customerName } });
+          // Imported orders show the name from their sheet row — keep it in step with the edit.
+          const { sheetRow } = await tx.order.findUniqueOrThrow({ where: { id: input.orderId }, select: { sheetRow: true } });
+          if (sheetRow && typeof sheetRow === "object" && !Array.isArray(sheetRow)) {
+            data.sheetRow = { ...(sheetRow as Prisma.JsonObject), customer: customerName };
+          }
         }
         return tx.order.update({ where: { id: input.orderId }, data });
       },

@@ -35,7 +35,7 @@ function DeltaChip({ pct, prevLabel, onAccent }: { pct: number | null; prevLabel
   if (pct === null)
     return (
       <span className={onAccent ? "text-white/75" : "text-[color:var(--color-ink-3)]"}>
-        no comparison yet
+        no {prevLabel} figures to compare
       </span>
     );
   const up = pct >= 0;
@@ -157,6 +157,9 @@ export default async function DashboardPage() {
               <span className="tabular-nums text-[color:var(--color-ink-2)]">
                 <span className="font-semibold">{formatInr(o.pendingOrders.value)}</span> still to collect
               </span>
+              <span className="block text-[color:var(--color-ink-3)]">
+                across {o.pendingOrders.collectCount} {o.pendingOrders.collectCount === 1 ? "order" : "orders"} with a balance
+              </span>
               {o.pendingOrders.extraHint && (
                 <span className="mt-1.5 block font-semibold text-[color:var(--color-warn)]">
                   {o.pendingOrders.extraHint}
@@ -167,7 +170,13 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <TargetProgressBars monthLabel={o.monthLabel} rows={o.employees} pace={o.paceToday} />
+      <TargetProgressBars
+        monthLabel={o.monthLabel}
+        rows={o.employees}
+        team={o.team}
+        pace={o.paceToday}
+        canSetTargets={can(session.role, "targets.set")}
+      />
 
       <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-2">
         <BiggestBalances rows={o.biggestBalances} />

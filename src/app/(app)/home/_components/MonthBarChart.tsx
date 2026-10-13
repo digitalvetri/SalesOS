@@ -1,7 +1,8 @@
 "use client";
 // v1.1 §4.2 — "Last 6 months — achieved vs target".
-// Simple SVG; one bar per month, dashed horizontal line = target. Clicking a
-// bar navigates to the orders sheet filtered to that month.
+// Simple SVG; one bar per month, a dashed tick over each bar = that month's
+// own target (months without a target get no tick). Clicking a bar navigates
+// to the orders sheet filtered to that month.
 import Link from "next/link";
 import Decimal from "decimal.js";
 import { formatInr } from "@/lib/formatInr";
@@ -12,15 +13,13 @@ const H = 160;
 
 export function MonthBarChart({
   rows,
-  target,
 }: {
-  rows: Array<{ ym: string; label: string; achieved: string }>;
-  target: string; // decimal
+  // target "0" = no target that month (no marker, no "met" colour).
+  rows: Array<{ ym: string; label: string; achieved: string; target: string }>;
 }) {
-  const t = new Decimal(target);
   const max = rows.reduce(
-    (m, r) => Decimal.max(m, new Decimal(r.achieved)),
-    t.greaterThan(0) ? t.times(1.1) : new Decimal(0),
+    (m, r) => Decimal.max(m, new Decimal(r.achieved), new Decimal(r.target).times(1.1)),
+    new Decimal(0),
   );
   const maxN = max.isZero() ? new Decimal(1) : max;
   const w = rows.length * BAR_W + (rows.length - 1) * GAP;
@@ -29,9 +28,10 @@ export function MonthBarChart({
     return Math.max(2, Math.round(new Decimal(v).div(maxN).times(H - 24).toNumber()));
   }
 
-  const targetY = t.greaterThan(0)
-    ? Math.round(H - 10 - new Decimal(target).div(maxN).times(H - 24).toNumber())
-    : null;
+  function targetY(v: string): number | null {
+    const t = new Decimal(v);
+    return t.greaterThan(0) ? Math.round(H - 10 - t.div(maxN).times(H - 24).toNumber()) : null;
+  }
 
   return (
     <div className="w-full overflow-x-auto">
@@ -50,7 +50,9 @@ export function MonthBarChart({
           const x = i * (BAR_W + GAP);
           const h = barHeight(r.achieved);
           const y = H - 10 - h;
+          const t = new Decimal(r.target);
           const met = t.greaterThan(0) && new Decimal(r.achieved).greaterThanOrEqualTo(t);
+          const ty = targetY(r.target);
           return (
             <g key={r.ym}>
               <Link href={`/orders?m=${r.ym}`}>
@@ -72,6 +74,19 @@ export function MonthBarChart({
               >
                 {r.label.split(" ")[0]}
               </text>
+              {ty !== null && (
+                <line
+                  x1={x}
+                  y1={ty}
+                  x2={x + BAR_W}
+                  y2={ty}
+                  stroke="var(--color-ink-2)"
+                  strokeDasharray="4 3"
+                  strokeWidth={1.5}
+                >
+                  <title>{`Target ${formatInr(r.target)}`}</title>
+                </line>
+              )}
               {new Decimal(r.achieved).greaterThan(0) && (
                 <text
                   x={x + BAR_W / 2}
@@ -85,28 +100,6 @@ export function MonthBarChart({
             </g>
           );
         })}
-        {/* Target line */}
-        {targetY !== null && (
-          <>
-            <line
-              x1={0}
-              y1={targetY}
-              x2={w}
-              y2={targetY}
-              stroke="var(--color-ink-2)"
-              strokeDasharray="4 4"
-              strokeWidth={1}
-            />
-            <text
-              x={w - 2}
-              y={targetY - 4}
-              textAnchor="end"
-              className="fill-[color:var(--color-ink-2)] text-[10px] tabular-nums"
-            >
-              target {formatInr(target)}
-            </text>
-          </>
-        )}
       </svg>
     </div>
   );

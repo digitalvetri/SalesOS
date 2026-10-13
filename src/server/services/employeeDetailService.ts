@@ -1,15 +1,22 @@
 // v1.1 §5.5 — per-employee monthly history for the detail page.
+// Each month row = orders whose IST `orderDate` falls in that month
+// (non-cancelled): count, booked, how many of them are now completed, their
+// remaining balance; payment received = payments with `paidOn` in that month
+// (non-rejected, refunds subtracted). Target "0" = no target set.
 import Decimal from "decimal.js";
 import { prisma, type Prisma } from "@/server/repo/client";
 import { achievedPct } from "@/server/domain/v1_1/achieved";
 import { istYearMonth } from "@/server/domain/fy";
+import { averageOrderValue, dateOnly, hasTarget } from "@/server/domain/dashboard/overview";
 
 export type EmployeeMonthRow = {
   ym: string;
   label: string; // "Oct 26"
   orders: number;
   booked: string;
-  target: string;
+  avgOrder: string; // over orders that have an amount (sheet rows without one excluded)
+  target: string; // "0" = no target set
+  hasTarget: boolean;
   pct: number | null;
   completed: number;
   paymentReceived: string;
@@ -89,20 +96,26 @@ export async function employeeDetail(opts: {
     ymList.push(addMonths(currentYm, -i));
   }
 
-  // Aggregate booked + completed per month in one SQL pass.
+  const fromDate = dateOnly(`${ymList[0]!}-01`);
+  const toDate = dateOnly(`${addMonths(currentYm, 1)}-01`);
+
+  // Aggregate booked + completed per month in one SQL pass. orderDate is a
+  // date column, so to_char needs no time-zone shift.
   const stats = await prisma.$queryRaw<
-    { month: string; orders: bigint; booked: Prisma.Decimal; completed: bigint; balance: Prisma.Decimal }[]
+    { month: string; orders: bigint; priced: bigint; booked: Prisma.Decimal; completed: bigint; balance: Prisma.Decimal }[]
   >`
-    SELECT to_char("orderDate" AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM') AS month,
+    SELECT to_char("orderDate", 'YYYY-MM') AS month,
            COUNT(*)::bigint AS orders,
+           COUNT(*) FILTER (WHERE NOT "totalMissing")::bigint AS priced,
            COALESCE(SUM(total), 0) AS booked,
            COUNT(*) FILTER (WHERE "simpleStatus" = 'COMPLETED')::bigint AS completed,
-           COALESCE(SUM("balanceDue"), 0) AS balance
+           COALESCE(SUM(GREATEST("balanceDue", 0)), 0) AS balance
     FROM "Order"
     WHERE "tenantId" = ${opts.tenantId}
       AND "salespersonId" = ${opts.userId}
       AND "simpleStatus" <> 'CANCELLED'
-      AND "orderDate" >= ${new Date(Date.UTC(Number(ymList[0]!.slice(0, 4)), Number(ymList[0]!.slice(5)) - 1, 1))}
+      AND "orderDate" >= ${fromDate}::date
+      AND "orderDate" < ${toDate}::date
     GROUP BY 1
   `;
   const statsBy = new Map(
@@ -110,6 +123,7 @@ export async function employeeDetail(opts: {
       r.month,
       {
         orders: Number(r.orders),
+        priced: Number(r.priced),
         booked: r.booked.toString(),
         completed: Number(r.completed),
         balance: r.balance.toString(),
@@ -117,16 +131,17 @@ export async function employeeDetail(opts: {
     ]),
   );
 
-  // Payment received per month.
+  // Payment received per month (by paidOn; refunds subtract).
   const payRows = await prisma.$queryRaw<{ month: string; s: Prisma.Decimal }[]>`
-    SELECT to_char(p."paidOn" AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM') AS month,
-           COALESCE(SUM(p.amount), 0) AS s
+    SELECT to_char(p."paidOn", 'YYYY-MM') AS month,
+           COALESCE(SUM(CASE WHEN p.type = 'REFUND' THEN -p.amount ELSE p.amount END), 0) AS s
     FROM "Payment" p JOIN "Order" o ON o.id = p."orderId"
     WHERE o."tenantId" = ${opts.tenantId}
       AND o."salespersonId" = ${opts.userId}
       AND p.status <> 'REJECTED'
       AND o."simpleStatus" <> 'CANCELLED'
-      AND p."paidOn" >= ${new Date(Date.UTC(Number(ymList[0]!.slice(0, 4)), Number(ymList[0]!.slice(5)) - 1, 1))}::date
+      AND p."paidOn" >= ${fromDate}::date
+      AND p."paidOn" < ${toDate}::date
     GROUP BY 1
   `;
   const payBy = new Map(payRows.map((r) => [r.month, r.s.toString()]));
@@ -150,16 +165,19 @@ export async function employeeDetail(opts: {
   );
 
   const months: EmployeeMonthRow[] = ymList.map((ym) => {
-    const s = statsBy.get(ym) ?? { orders: 0, booked: "0", completed: 0, balance: "0" };
-    const target = targetBy.get(ym) ?? defaultTarget;
+    const s = statsBy.get(ym) ?? { orders: 0, priced: 0, booked: "0", completed: 0, balance: "0" };
+    const rawTarget = targetBy.get(ym) ?? defaultTarget;
+    const real = hasTarget(rawTarget);
     const pay = payBy.get(ym) ?? "0";
     return {
       ym,
       label: monthShortLabel(ym),
       orders: s.orders,
       booked: s.booked,
-      target,
-      pct: achievedPct(s.booked, target),
+      avgOrder: averageOrderValue(s.booked, s.priced),
+      target: real ? rawTarget : "0",
+      hasTarget: real,
+      pct: real ? achievedPct(s.booked, rawTarget) : null,
       completed: s.completed,
       paymentReceived: pay,
       balance: s.balance,

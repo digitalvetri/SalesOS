@@ -1,21 +1,32 @@
 // Import of the KI/KFM "ORDER DETAILS.xlsx" workbook (v1.1 data model):
 //   - one sheet per salesperson  → that employee's orders (S.No, paid, status)
 //   - "PRICE LIST …" sheet       → product catalogue (categories by name keywords)
-//   - excluded sheets            → skipped (e.g. MURUGAN, TURBO ORDER)
+//   - excluded sheets            → skipped (e.g. TURBO ORDER)
 //
 // planOrderDetailsImport() is pure (no DB) and powers the dry-run report;
 // commitOrderDetailsImport() writes it. Idempotent: every order carries
 // importRef = "<SHEET>!R<row>", so re-running skips what is already there.
 //
 // Business rules agreed with the client (2026-10-13):
-//   - BAL "NILL" → fully paid; BAL number → paid = total − balance.
-//   - BAL blank  → fully unpaid (paid 0) and Pending.
-//   - No amount  → Pending with a ₹1 placeholder total and a note to fix it.
-//   - Employees  → <sheet name>@gmail.com, temporary password set by the caller.
+//   - Exactly what the sheet says: an empty phone / amount / name stays empty
+//     (no placeholders); the row as typed is kept on the order (Order.sheetRow).
+//   - Paid comes from TOTAL / ADV / BAL (see orderBook.ts). When ADV and BAL are
+//     both empty the sheet doesn't say → `unrecordedPayment` decides; the client's
+//     rule is PAID_IF_DELIVERED (paid when STATUS says delivered/completed).
+//   - Completed = delivered/closed and nothing left to pay; cancelled stays cancelled.
+//   - Employees → <sheet name>@gmail.com, temporary password set by the caller.
 import ExcelJS from "exceljs";
 import Decimal from "decimal.js";
-import { prisma } from "@/server/repo/client";
-import { parseOrderBook, type ParsedOrder, type RawCell, type SheetGrid } from "@/server/domain/import/orderBook";
+import { prisma, type Prisma } from "@/server/repo/client";
+import {
+  parseOrderBook,
+  type MonthTotal,
+  type ParsedOrder,
+  type RawCell,
+  type SheetGrid,
+  type SkippedRow,
+} from "@/server/domain/import/orderBook";
+import type { SheetRow } from "@/server/domain/import/sheetRow";
 import { categoryFor } from "@/server/domain/import/productCategories";
 import { parsePriceListWorkbook, commitPriceList, type ParseResult as PriceParse } from "@/server/services/priceListImport";
 import { insertOrderV2Tx } from "@/server/services/orderV2Service";
@@ -23,24 +34,32 @@ import { hashPassword } from "@/server/auth/password";
 
 export type PaymentMethod = "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
 
+/** What to record when a row has neither ADV nor BAL. */
+export type UnrecordedPayment = "UNPAID" | "PAID_IF_ACCOUNT" | "PAID_IF_DELIVERED";
+
 export type PlannedEmployee = { sheet: string; name: string; email: string; orders: number };
 
 export type PlannedOrder = {
   ref: string;
   sheet: string;
   date: string; // YYYY-MM-DD
-  customerName: string;
+  customerName: string; // "" when the row has no name
   phone: string | null; // 10-digit Indian mobile, or null
-  productText: string;
-  total: string;
+  altPhone: string | null;
+  productText: string; // "" when the row has no product
+  total: string; // "0.00" when totalMissing
+  totalMissing: boolean;
   paid: string;
   balance: string;
+  paymentRecorded: boolean; // false = ADV and BAL were empty in the sheet
   status: "PENDING" | "COMPLETED" | "CANCELLED";
   method: PaymentMethod;
   entityCode: "KI" | "KFM";
-  note: string | null;
-  priceMissing: boolean;
+  note: string | null; // the sheet's comments / remarks
+  cancelNote: string | null;
+  deliveryDate: string | null;
   flags: string[];
+  sheetRow: SheetRow;
 };
 
 export type ImportPlan = {
@@ -48,13 +67,15 @@ export type ImportPlan = {
   orders: PlannedOrder[];
   products: PriceParse | null;
   excludedSheets: string[];
+  reconciliation: MonthTotal[];
+  skipped: SkippedRow[];
 };
 
 export type PlanOptions = {
   excludeSheets: string[]; // case-insensitive sheet names to skip
   latest: string; // YYYY-MM-DD — no order date may be later (today, IST)
   emailDomain?: string; // default gmail.com
-  placeholderTotal?: string; // default "1"
+  unrecordedPayment?: UnrecordedPayment; // default UNPAID
 };
 
 // ───────────────────────── reading ─────────────────────────
@@ -102,57 +123,60 @@ export function paymentMethodFor(route: string | null): PaymentMethod {
   if (/cheque|chq/.test(r)) return "CHEQUE";
   if (/g\s*\.?\s*pay|upi|phone\s*pe|paytm|scanner/.test(r)) return "UPI";
   if (/cash/.test(r)) return "CASH";
-  if (/\bacc|a\/c|bank|neft|rtgs|imps|\bkfm\b|\bki\b/.test(r)) return "BANK_TRANSFER";
+  if (/\bacc|a\/c|bank|neft|rtgs|imps|\bkfm\b|\bki\b|\bca\b|\bcac\b/.test(r)) return "BANK_TRANSFER";
   return "UPI";
 }
 
-const entityFor = (route: string | null): "KI" | "KFM" => (/\bkfm\b/i.test(route ?? "") ? "KFM" : "KI");
-
-const mobile = (raw: string | null): string | null => {
-  const d = (raw ?? "").replace(/\D/g, "");
-  const ten = d.length === 12 && d.startsWith("91") ? d.slice(2) : d;
-  return /^[6-9]\d{9}$/.test(ten) ? ten : null;
-};
+const entityFor = (route: string | null): "KI" | "KFM" => (/\bkfm/i.test(route ?? "") ? "KFM" : "KI");
 
 // ───────────────────────── planning (pure) ─────────────────────────
 
-export function planOrder(o: ParsedOrder, opts: { placeholderTotal: string }): PlannedOrder {
-  const amount = new Decimal(o.amount || "0");
-  const priceMissing = !amount.greaterThan(0);
-  const total = priceMissing ? new Decimal(opts.placeholderTotal) : amount;
+/** Client rule (2026-10-13): no ADV/BAL but the sheet says delivered/completed → paid. */
+const DONE_RE = /deliver|complete/i;
 
-  let paid = new Decimal(0);
-  let status: PlannedOrder["status"] = "PENDING";
-  let note: string | null = null;
-  if (priceMissing) {
-    note = "Price missing in the Excel sheet — please update the total.";
-  } else if (o.balanceStated) {
-    const bal = Decimal.min(Decimal.max(new Decimal(o.balance || "0"), 0), total);
-    paid = total.minus(bal);
-    status = o.status === "CANCELLED" ? "CANCELLED" : o.status === "DELIVERED" || o.status === "CLOSED" ? "COMPLETED" : "PENDING";
-  } else {
-    // Blank BAL: agreed rule — record as fully unpaid and Pending.
-    status = o.status === "CANCELLED" ? "CANCELLED" : "PENDING";
-  }
-  if (o.cancelNote) note = [note, `Cancelled: ${o.cancelNote}`].filter(Boolean).join(" ");
+export function planOrder(o: ParsedOrder, opts: { unrecordedPayment?: UnrecordedPayment } = {}): PlannedOrder {
+  const totalMissing = o.amountMissing;
+  const total = totalMissing ? new Decimal(0) : new Decimal(o.amount);
+  const paymentRecorded = o.paid !== null;
 
-  const productText = (o.lines.join(", ").replace(/\s+/g, " ").trim() || "(not specified in sheet)").slice(0, 500);
+  let paid: Decimal;
+  if (o.paid !== null) paid = new Decimal(o.paid);
+  else if (opts.unrecordedPayment === "PAID_IF_ACCOUNT" && o.route) paid = total; // money went to a named account
+  else if (opts.unrecordedPayment === "PAID_IF_DELIVERED" && DONE_RE.test(o.sheetRow.status ?? "")) paid = total; // the sheet says delivered/completed
+  else paid = new Decimal(0);
+  // Never more than the total (except when there is no total yet: keep the money received).
+  if (!totalMissing) paid = Decimal.min(Decimal.max(paid, 0), total);
+  const balance = totalMissing ? new Decimal(0) : total.minus(paid);
+
+  const cancelled = o.status === "CANCELLED";
+  const doneByStatus = o.status === "DELIVERED" || o.status === "CLOSED";
+  const status: PlannedOrder["status"] = cancelled
+    ? "CANCELLED"
+    : !totalMissing && balance.isZero() && doneByStatus && (paymentRecorded || paid.gt(0))
+      ? "COMPLETED"
+      : "PENDING";
+
   return {
     ref: o.ref,
     sheet: o.sheet,
     date: o.date,
-    customerName: o.customerName.trim().slice(0, 120) || "Unknown",
-    phone: mobile(o.phone),
-    productText,
+    customerName: o.customerName.trim().slice(0, 120),
+    phone: o.phone,
+    altPhone: o.altPhone,
+    productText: o.lines.join(", ").replace(/\s+/g, " ").trim().slice(0, 500),
     total: total.toFixed(2),
+    totalMissing,
     paid: paid.toFixed(2),
-    balance: total.minus(paid).toFixed(2),
+    balance: balance.toFixed(2),
+    paymentRecorded,
     status,
     method: paymentMethodFor(o.route),
     entityCode: entityFor(o.route),
-    note,
-    priceMissing,
+    note: o.comments ? o.comments.slice(0, 1000) : null,
+    cancelNote: cancelled ? (o.cancelNote ?? "Cancelled").slice(0, 300) : null,
+    deliveryDate: o.deliveryDate,
     flags: o.flags,
+    sheetRow: o.sheetRow,
   };
 }
 
@@ -167,7 +191,7 @@ export async function planOrderDetailsImport(file: Buffer | ArrayBuffer, opts: P
     .map((ws) => ({ name: ws.name.trim().toUpperCase(), rows: worksheetGrid(ws) }));
 
   const parsed = parseOrderBook(orderSheets, { latest: opts.latest });
-  const orders = parsed.orders.map((o) => planOrder(o, { placeholderTotal: opts.placeholderTotal ?? "1" }));
+  const orders = parsed.orders.map((o) => planOrder(o, { unrecordedPayment: opts.unrecordedPayment }));
 
   const employees: PlannedEmployee[] = orderSheets.map((s) => ({
     sheet: s.name,
@@ -193,6 +217,8 @@ export async function planOrderDetailsImport(file: Buffer | ArrayBuffer, opts: P
     orders,
     products,
     excludedSheets: wb.worksheets.map((ws) => ws.name.trim()).filter((n) => excluded.has(n.toUpperCase())),
+    reconciliation: parsed.reconciliation,
+    skipped: parsed.skipped ?? [],
   };
 }
 
@@ -237,7 +263,7 @@ export async function commitOrderDetailsImport(
       summary.employeesExisting.push(e.email);
       continue;
     }
-    // Placeholder contact number (unique per tenant) — the admin replaces it.
+    // Placeholder contact number for the login (unique per tenant) — the admin replaces it.
     let n = i + 1;
     let phone = `+91900000${String(n).padStart(4, "0")}`;
     while (await prisma.user.findFirst({ where: { tenantId: ctx.tenantId, phoneE164: phone }, select: { id: true } })) {
@@ -275,7 +301,7 @@ export async function commitOrderDetailsImport(
       select: { importRef: true },
     })).map((o) => o.importRef),
   );
-  const customerByPhone = new Map<string, string>();
+  const customers = new Map<string, string>();
   const sorted = [...plan.orders].sort((a, b) => a.sheet.localeCompare(b.sheet) || a.date.localeCompare(b.date) || rowNo(a.ref) - rowNo(b.ref));
 
   for (const o of sorted) {
@@ -284,7 +310,7 @@ export async function commitOrderDetailsImport(
       continue;
     }
     const salespersonId = userBySheet.get(o.sheet)!;
-    const customerId = await ensureCustomer(ctx.tenantId, salespersonId, o, customerByPhone, summary);
+    const customerId = await ensureCustomer(ctx.tenantId, salespersonId, o, customers, summary);
     const entity = entityByCode.get(o.entityCode) ?? fallbackEntity;
     const orderDate = new Date(`${o.date}T00:00:00.000Z`);
     const paid = new Decimal(o.paid);
@@ -296,15 +322,20 @@ export async function commitOrderDetailsImport(
         customerId,
         entity,
         orderDate,
-        productText: o.productText,
+        productText: o.productText || null,
         total: new Decimal(o.total),
         advance: paid,
         paymentMethod: o.method,
+        paymentNote: o.sheetRow.acc,
         note: o.note,
         simpleStatus: o.status,
         legacyStatus: o.status === "COMPLETED" ? "DELIVERED" : o.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED",
         completedAt: o.status === "COMPLETED" ? orderDate : null,
         importRef: o.ref,
+        totalMissing: o.totalMissing,
+        sheetRow: o.sheetRow as unknown as Prisma.InputJsonValue,
+        promisedDeliveryDate: o.deliveryDate ? new Date(`${o.deliveryDate}T00:00:00.000Z`) : null,
+        cancelNote: o.cancelNote,
       });
     });
     summary.ordersCreated++;
@@ -314,7 +345,12 @@ export async function commitOrderDetailsImport(
 }
 
 const rowNo = (ref: string) => Number(ref.split("!R")[1] ?? 0);
+const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+/**
+ * Same mobile = same customer (across sheets). No mobile: the same name for the same
+ * salesperson is one customer; no name and no mobile → a customer of its own.
+ */
 async function ensureCustomer(
   tenantId: string,
   ownerUserId: string,
@@ -322,18 +358,30 @@ async function ensureCustomer(
   cache: Map<string, string>,
   summary: CommitSummary,
 ): Promise<string> {
-  // Same phone = same customer (across sheets). No phone → one customer per order.
-  const phoneE164 = o.phone ? `+91${o.phone}` : `+91-import-${o.ref.replace(/[^A-Za-z0-9]/g, "")}`;
-  const hit = cache.get(phoneE164);
-  if (hit) return hit;
-  const existing = await prisma.customer.findUnique({
-    where: { tenantId_phoneE164: { tenantId, phoneE164 } },
+  const phoneE164 = o.phone ? `+91${o.phone}` : null;
+  const key = phoneE164 ? `p:${phoneE164}` : normName(o.customerName) ? `n:${ownerUserId}:${normName(o.customerName)}` : null;
+  if (key) {
+    const hit = cache.get(key);
+    if (hit) return hit;
+  }
+  if (phoneE164) {
+    const existing = await prisma.customer.findUnique({ where: { tenantId_phoneE164: { tenantId, phoneE164 } }, select: { id: true } });
+    if (existing) {
+      cache.set(key!, existing.id);
+      return existing.id;
+    }
+  }
+  const created = await prisma.customer.create({
+    data: {
+      tenantId,
+      phoneE164,
+      altPhone: o.altPhone ? `+91${o.altPhone}` : null,
+      name: o.customerName,
+      ownerUserId,
+    },
     select: { id: true },
   });
-  const id =
-    existing?.id ??
-    (await prisma.customer.create({ data: { tenantId, phoneE164, name: o.customerName, ownerUserId }, select: { id: true } })).id;
-  if (!existing) summary.customersCreated++;
-  cache.set(phoneE164, id);
-  return id;
+  summary.customersCreated++;
+  if (key) cache.set(key, created.id);
+  return created.id;
 }

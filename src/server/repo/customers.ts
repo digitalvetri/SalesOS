@@ -1,10 +1,11 @@
+import { realPhone } from "@/lib/orderDisplay";
 import { prisma, type CustomerType } from "./client";
 
 export type CustomerListRow = {
   id: string;
   name: string;
   businessName: string | null;
-  phoneE164: string;
+  phoneE164: string | null;
   type: CustomerType;
   city: string | null;
   ordersCount: number;
@@ -31,7 +32,7 @@ export async function listCustomers(tenantId: string, opts?: { limit?: number })
       id: r.id,
       name: r.name,
       businessName: r.businessName,
-      phoneE164: r.phoneE164,
+      phoneE164: realPhone(r.phoneE164),
       type: r.type,
       city: r.city,
       ordersCount: r._count.orders,

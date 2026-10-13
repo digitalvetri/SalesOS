@@ -2,33 +2,47 @@
 // Phone/tablet (< 1024 px) view of one order. Same actions as the table row:
 // tap Paid → Add payment, status select → complete / reopen / cancel.
 import * as React from "react";
+import Link from "next/link";
 import Decimal from "decimal.js";
-import { Phone, Plus } from "lucide-react";
-import { Money } from "@/components/app/Money";
+import { Phone, Plus, Truck, Landmark } from "lucide-react";
+import { formatInr } from "@/lib/formatInr";
+import { amountMissing } from "@/lib/orderDisplay";
 import type { OrderV2Row } from "@/server/repo/ordersV2";
 import { AddPaymentPopover } from "./AddPaymentPopover";
 import { useOrderStatus } from "./useOrderForms";
-import { fmtDate, PILL_STYLE, initialsOf } from "./sheetFormat";
+import { fmtDate, deliveryText, PILL_STYLE, initialsOf } from "./sheetFormat";
 
-export function OrderCard({ row, mode }: { row: OrderV2Row; mode: "employee" | "admin" }) {
+export function OrderCard({
+  row,
+  mode,
+  showEmployee = mode === "admin",
+}: {
+  row: OrderV2Row;
+  mode: "employee" | "admin";
+  showEmployee?: boolean;
+}) {
   const [showPay, setShowPay] = React.useState(false);
   const { pending, updateStatus } = useOrderStatus(row);
-  const paidUp = new Decimal(row.balanceDue).isZero();
+  const blank = amountMissing(row);
+  const paidUp = !blank && new Decimal(row.balanceDue).isZero();
   const cancelled = row.simpleStatus === "CANCELLED";
-  const phone = row.customerPhoneE164.replace(/^\+91/, "");
+  const delivery = deliveryText(row);
+  const acc = row.sheetRow?.acc?.trim() || null;
+  const sno =
+    row.serialNo === null ? "—" : showEmployee ? `${initialsOf(row.salespersonName)}-${row.serialNo}` : row.serialNo;
 
   return (
     <li className={`surface-card min-w-0 p-4 ${cancelled ? "opacity-70" : ""}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2 text-xs text-[color:var(--color-ink-3)]">
           <span className="whitespace-nowrap rounded-md bg-[color:var(--color-surface-2)] px-1.5 py-0.5 font-semibold tabular-nums text-[color:var(--color-ink-2)]">
-            #{row.serialNo === null ? "—" : mode === "admin" ? `${initialsOf(row.salespersonName)}-${row.serialNo}` : row.serialNo}
+            #{sno}
           </span>
           <span className="whitespace-nowrap tabular-nums">{fmtDate(row.orderDate)}</span>
-          {mode === "admin" && <span className="truncate font-medium text-[color:var(--color-gold)]">{row.salespersonName}</span>}
+          {showEmployee && <span className="truncate font-medium text-[color:var(--color-gold)]">{row.salespersonName}</span>}
         </div>
         <select
-          aria-label={`Status of order for ${row.customerName}`}
+          aria-label={`Status of order for ${row.customerLabel}`}
           value={row.simpleStatus}
           onChange={(e) => void updateStatus(e.target.value as "PENDING" | "COMPLETED" | "CANCELLED")}
           disabled={pending || (mode === "employee" && row.simpleStatus !== "PENDING")}
@@ -42,37 +56,65 @@ export function OrderCard({ row, mode }: { row: OrderV2Row; mode: "employee" | "
       </div>
 
       <div className="mt-2.5 min-w-0">
-        <div className="truncate text-base font-semibold">{row.customerName}</div>
-        <p className="mt-0.5 line-clamp-2 text-sm text-[color:var(--color-ink-2)]">{row.productText ?? "—"}</p>
-        <a
-          href={`tel:${row.customerPhoneE164}`}
-          className="mt-1.5 inline-flex items-center gap-1.5 text-xs tabular-nums text-[color:var(--color-ink-3)] hover:text-[color:var(--color-gold)]"
+        <Link
+          href={`/orders/${row.id}`}
+          className="block truncate text-base font-semibold hover:text-[color:var(--color-gold)] hover:underline"
         >
-          <Phone className="h-3.5 w-3.5" aria-hidden />
-          {phone}
-        </a>
+          {row.customerLabel}
+        </Link>
+        <p className="mt-0.5 line-clamp-2 break-words text-sm text-[color:var(--color-ink-2)]" title={row.productText ?? undefined}>
+          {row.productText ?? "—"}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[color:var(--color-ink-3)]">
+          {row.contactTel ? (
+            <a
+              href={`tel:${row.contactTel}`}
+              className="inline-flex min-w-0 items-center gap-1.5 tabular-nums hover:text-[color:var(--color-gold)]"
+            >
+              <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{row.contactLabel}</span>
+            </a>
+          ) : (
+            <span className="inline-flex min-w-0 items-center gap-1.5 tabular-nums">
+              <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{row.contactLabel}</span>
+            </span>
+          )}
+          {delivery !== "—" && (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Truck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="sr-only">Delivery:</span>
+              <span className="truncate">{delivery}</span>
+            </span>
+          )}
+          {acc && (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <Landmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="sr-only">Acc details:</span>
+              <span className="truncate">{acc}</span>
+            </span>
+          )}
+        </div>
       </div>
 
       <dl className="mt-3 grid grid-cols-3 gap-2 rounded-[var(--radius)] bg-[color:var(--color-surface-2)]/70 p-2.5 text-center">
         <div className="min-w-0">
           <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-ink-3)]">Total</dt>
-          <dd className="truncate text-sm font-semibold">
-            <Money value={row.total} className="text-sm" />
-          </dd>
+          <dd className="truncate text-sm font-semibold tabular-nums">{blank ? <Dash /> : formatInr(row.total)}</dd>
         </div>
         <div className="min-w-0">
           <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-ink-3)]">Paid</dt>
-          <dd className="truncate text-sm font-semibold">
-            <Money value={row.paidTotal} className="text-sm" />
-          </dd>
+          <dd className="truncate text-sm font-semibold tabular-nums">{blank ? <Dash /> : formatInr(row.paidTotal)}</dd>
         </div>
         <div className="min-w-0">
           <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-ink-3)]">Balance</dt>
-          <dd className="truncate text-sm font-semibold">
-            {paidUp ? (
+          <dd className="truncate text-sm font-semibold tabular-nums">
+            {blank ? (
+              <Dash />
+            ) : paidUp ? (
               <span className="text-[color:var(--color-ok)]">Paid</span>
             ) : (
-              <Money value={row.balanceDue} className="text-sm text-[color:var(--color-warn)]" />
+              <span className="text-[color:var(--color-warn)]">{formatInr(row.balanceDue)}</span>
             )}
           </dd>
         </div>
@@ -93,5 +135,13 @@ export function OrderCard({ row, mode }: { row: OrderV2Row; mode: "employee" | "
         <AddPaymentPopover orderId={row.id} currentBalance={row.balanceDue} onClose={() => setShowPay(false)} />
       )}
     </li>
+  );
+}
+
+function Dash() {
+  return (
+    <span className="text-[color:var(--color-ink-3)]">
+      —<span className="sr-only">no amount</span>
+    </span>
   );
 }

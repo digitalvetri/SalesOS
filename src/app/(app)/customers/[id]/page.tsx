@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Money } from "@/components/app/Money";
 import { StatusPill, type AnyStatus } from "@/components/app/StatusPill";
 import { MergeDialog } from "./MergeDialog";
+import { realPhone } from "@/lib/orderDisplay";
 
 export default async function CustomerDetailPage({
   params,
@@ -31,7 +32,7 @@ export default async function CustomerDetailPage({
   const otherCustomers = canMerge
     ? (await listCustomers(session.tenantId, { limit: 300 }))
         .filter((c) => c.id !== customer.id)
-        .map((c) => ({ id: c.id, name: c.name, phoneE164: c.phoneE164 }))
+        .map((c) => ({ id: c.id, name: c.name, phoneE164: realPhone(c.phoneE164) }))
     : [];
 
   const totalBooked = customer.orders.reduce(
@@ -47,7 +48,7 @@ export default async function CustomerDetailPage({
     <div className="px-6 py-6">
       <div className="mb-4">
         <Link href="/customers" className="text-sm text-[color:var(--color-ink-2)] hover:underline">
-          ← {t("backToList")}
+          â {t("backToList")}
         </Link>
       </div>
 
@@ -57,10 +58,10 @@ export default async function CustomerDetailPage({
             {customer.businessName ?? customer.name}
           </h1>
           <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-            {customer.businessName ? `${customer.name} · ` : ""}
-            <span className="tabular-nums">{customer.phoneE164}</span>
-            {customer.altPhone ? ` · ${customer.altPhone}` : ""}
-            {customer.city ? ` · ${customer.city}` : ""}
+            {customer.businessName ? `${customer.name} Â· ` : ""}
+            <span className="tabular-nums">{realPhone(customer.phoneE164) ?? "—"}</span>
+            {customer.altPhone ? ` Â· ${customer.altPhone}` : ""}
+            {customer.city ? ` Â· ${customer.city}` : ""}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <Badge tone="neutral">{customer.type.replace("_", " ")}</Badge>
@@ -81,7 +82,7 @@ export default async function CustomerDetailPage({
             survivor={{
               id: customer.id,
               name: customer.name,
-              phoneE164: customer.phoneE164,
+              phoneE164: realPhone(customer.phoneE164),
             }}
             others={otherCustomers}
           />

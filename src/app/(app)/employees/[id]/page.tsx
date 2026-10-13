@@ -52,12 +52,14 @@ export default async function EmployeeDetailPage({
               <span className="text-[color:var(--color-ink-3)]">
                 ••••••••
                 {d.user.passwordSetAt && (
-                  <> · set {d.user.passwordSetAt.toLocaleDateString("en-IN")}</>
+                  <> · set {d.user.passwordSetAt.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</>
                 )}
               </span>
             </Row>
             <Row label="Last login">
-              {d.user.lastLoginAt ? d.user.lastLoginAt.toLocaleString("en-IN") : "Never"}
+              {d.user.lastLoginAt
+                ? d.user.lastLoginAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+                : "Never"}
             </Row>
           </dl>
           <div className="mt-4">
@@ -81,19 +83,23 @@ export default async function EmployeeDetailPage({
 
       {/* Sales by month */}
       <section className="mt-5 rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-1)]">
-        <h2 className="label-caps mb-4">Sales by month</h2>
+        <h2 className="label-caps mb-1">Sales by month</h2>
+        <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
+          Orders are grouped by order date; payments by the date they were paid. Cancelled orders are left out.
+        </p>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="text-left text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
               <tr>
                 <th className="py-2 pr-3">Month</th>
                 <th className="py-2 pr-3 text-right">Orders</th>
                 <th className="py-2 pr-3 text-right">Booked</th>
+                <th className="py-2 pr-3 text-right">Avg order</th>
                 <th className="py-2 pr-3 text-right">Target</th>
                 <th className="py-2 pr-3 text-right">%</th>
-                <th className="py-2 pr-3 text-right">Completed</th>
+                <th className="py-2 pr-3 text-right" title="Orders booked that month that are now completed">Completed</th>
                 <th className="py-2 pr-3 text-right">Payment received</th>
-                <th className="py-2 text-right">Balance</th>
+                <th className="py-2 text-right" title="Still to collect on orders booked that month">Balance</th>
               </tr>
             </thead>
             <tbody>
@@ -111,8 +117,11 @@ export default async function EmployeeDetailPage({
                   <td className="py-2 pr-3 text-right tabular-nums">
                     <Money value={m.booked} />
                   </td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    <Money value={m.avgOrder} />
+                  </td>
                   <td className="py-2 pr-3 text-right tabular-nums text-[color:var(--color-ink-3)]">
-                    <Money value={m.target} />
+                    {m.hasTarget ? <Money value={m.target} /> : <span className="text-xs">Not set</span>}
                   </td>
                   <td
                     className={`py-2 pr-3 text-right tabular-nums font-medium ${

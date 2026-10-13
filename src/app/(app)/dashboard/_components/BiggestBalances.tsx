@@ -1,6 +1,8 @@
 // I1 mockup — "Biggest balances to collect" panel. Each row has a Remind
 // button that opens WhatsApp with a prefilled payment-reminder message
-// (wa.me deep link, no API).
+// (wa.me deep link, no API). Largest balance first across every
+// non-cancelled order (pending or delivered-but-unpaid); no Remind button when
+// the customer has no phone on file.
 "use client";
 import Link from "next/link";
 import { Money } from "@/components/app/Money";
@@ -9,8 +11,9 @@ import type { BalanceRow } from "@/server/services/adminOverviewService";
 
 function waHref(phoneE164: string, customerName: string, amount: string, days: number) {
   const digits = phoneE164.replace(/^\+/, "");
+  const greeting = customerName === "—" ? "Hi" : `Hi ${customerName}`;
   const msg =
-    `Hi ${customerName}, this is a friendly reminder that ₹${Number(amount).toLocaleString("en-IN")} is pending on your order` +
+    `${greeting}, this is a friendly reminder that ₹${Number(amount).toLocaleString("en-IN")} is pending on your order` +
     (days > 0 ? ` for ${days} day${days === 1 ? "" : "s"}.` : ".") +
     ` Please let us know when you'd like to settle it. Thanks!`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(msg)}`;
@@ -42,23 +45,32 @@ export function BiggestBalances({ rows }: { rows: BalanceRow[] }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{r.customerName}</div>
                 <div className="truncate text-xs text-[color:var(--color-ink-3)]">
-                  {r.salespersonName} · pending {r.pendingDays}{" "}
-                  {r.pendingDays === 1 ? "day" : "days"}
+                  {r.salespersonName} · {r.simpleStatus === "COMPLETED" ? "delivered, " : ""}
+                  {r.pendingDays} {r.pendingDays === 1 ? "day" : "days"} since order
                 </div>
               </div>
               <div className="text-right">
                 <Money value={r.balance} className="font-semibold tabular-nums" />
               </div>
-              <a
-                href={waHref(r.customerPhoneE164, r.customerName, r.balance, r.pendingDays)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Remind ${r.customerName} on WhatsApp`}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--color-border-strong)] px-2.5 text-xs font-medium text-[color:var(--color-ink)] transition-colors hover:border-[color:var(--color-gold)] hover:text-[color:var(--color-gold)] sm:px-3"
-              >
-                <Bell className="h-3.5 w-3.5" aria-hidden />
-                <span className="hidden sm:inline">Remind</span>
-              </a>
+              {r.customerPhoneE164 ? (
+                <a
+                  href={waHref(r.customerPhoneE164, r.customerName, r.balance, r.pendingDays)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Remind ${r.customerName} on WhatsApp`}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--color-border-strong)] px-2.5 text-xs font-medium text-[color:var(--color-ink)] transition-colors hover:border-[color:var(--color-gold)] hover:text-[color:var(--color-gold)] sm:px-3"
+                >
+                  <Bell className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">Remind</span>
+                </a>
+              ) : (
+                <span
+                  title="No phone number on file"
+                  className="inline-flex h-9 shrink-0 items-center px-2.5 text-[11px] text-[color:var(--color-ink-3)] sm:px-3"
+                >
+                  No phone
+                </span>
+              )}
             </li>
           ))}
         </ul>

@@ -47,8 +47,9 @@ export function TargetEditor({
         initial={nextTarget}
       />
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        Default target for the tenant is ₹{Number(defaultTarget).toLocaleString("en-IN")}.
-        Change it in Settings.
+        {Number(defaultTarget) > 0
+          ? `Months without their own target use the default of ₹${Number(defaultTarget).toLocaleString("en-IN")}. Change it in Settings.`
+          : "No default target is set, so a month left at ₹0 shows as “No target set”."}
       </p>
     </div>
   );

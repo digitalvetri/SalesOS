@@ -12,6 +12,23 @@ export function fmtDate(d: Date) {
     .replace(/\//g, "-");
 }
 
+/** "2026-10" → "October 2026". */
+export function fmtMonth(ym: string) {
+  const [y, m] = ym.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** DELIVERY column: the sheet's cell as typed, else the promised delivery date, else "—". */
+export function deliveryText(row: Pick<OrderV2Row, "sheetRow" | "promisedDeliveryDate">): string {
+  const sheet = row.sheetRow?.delivery?.trim();
+  if (sheet) return sheet;
+  return row.promisedDeliveryDate ? fmtDate(row.promisedDeliveryDate) : "—";
+}
+
 export const PILL_STYLE: Record<OrderV2Row["simpleStatus"], string> = {
   PENDING: "bg-[color:var(--color-warn-bg)] text-[color:var(--color-warn)]",
   COMPLETED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",

@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { getSession } from "@/server/auth/session";
 import { listOrdersV2 } from "@/server/repo/ordersV2";
+import { amountMissing, summarise } from "@/lib/orderDisplay";
 
 const STATUS_VALUES = ["all", "pending", "completed", "balance_due"] as const;
 
@@ -43,45 +44,52 @@ export async function GET(req: Request) {
     { header: "Date", key: "date", width: 12 },
     { header: "Employee", key: "sp", width: 20 },
     { header: "Customer", key: "cust", width: 24 },
+    { header: "Contact", key: "contact", width: 22 },
     { header: "Product", key: "prod", width: 40 },
-    { header: "Contact", key: "contact", width: 16 },
     { header: "Total", key: "total", width: 14, style: { numFmt: "#,##0.00" } },
     { header: "Paid", key: "paid", width: 14, style: { numFmt: "#,##0.00" } },
     { header: "Balance", key: "bal", width: 14, style: { numFmt: "#,##0.00" } },
+    { header: "Delivery", key: "delivery", width: 14 },
     { header: "Status", key: "status", width: 14 },
+    { header: "Acc details", key: "acc", width: 24 },
+    { header: "Comments", key: "comments", width: 30 },
   ];
   ws.getRow(1).font = { bold: true };
   ws.getRow(1).alignment = { vertical: "middle" };
 
   for (const r of rows) {
+    // Blank (not 0) money cells when the sheet had no TOTAL.
+    const blank = amountMissing(r);
     ws.addRow({
       sno: initialsNumber(r.salespersonName, r.serialNo),
       date: r.orderDate,
       sp: r.salespersonName,
-      cust: r.customerName,
+      cust: r.customerLabel === "—" ? "" : r.customerLabel,
+      contact: r.contactLabel === "—" ? "" : r.contactLabel,
       prod: r.productText ?? "",
-      contact: r.customerPhoneE164,
-      total: Number(r.total),
-      paid: Number(r.paidTotal),
-      bal: Number(r.balanceDue),
+      total: blank ? null : Number(r.total),
+      paid: blank ? null : Number(r.paidTotal),
+      bal: blank ? null : Number(r.balanceDue),
+      delivery: r.sheetRow?.delivery ?? (r.promisedDeliveryDate ? r.promisedDeliveryDate.toISOString().slice(0, 10) : ""),
       status: r.simpleStatus.toLowerCase(),
+      acc: r.sheetRow?.acc ?? "",
+      comments: r.sheetRow?.comments ?? r.notes ?? "",
     });
   }
 
-  // Totals row
-  const n = rows.length;
-  if (n > 0) {
+  // Totals row — same rule as the on-screen summary: cancelled orders and
+  // orders without a total are counted separately, not summed.
+  if (rows.length > 0) {
+    const s = summarise(rows);
+    const extra = [
+      s.noAmount ? `${s.noAmount} without amount` : "",
+      s.cancelled ? `${s.cancelled} cancelled` : "",
+    ].filter(Boolean);
     const totalsRow = ws.addRow({
-      sno: "",
-      date: "",
-      sp: "",
-      cust: "",
-      prod: `${n} orders`,
-      contact: "",
-      total: rows.reduce((s, r) => s + Number(r.total), 0),
-      paid: rows.reduce((s, r) => s + Number(r.paidTotal), 0),
-      bal: rows.reduce((s, r) => s + Number(r.balanceDue), 0),
-      status: "",
+      prod: `${s.orders} orders${extra.length ? ` (${extra.join(", ")})` : ""}`,
+      total: s.total,
+      paid: s.paid,
+      bal: s.balance,
     });
     totalsRow.font = { bold: true };
   }

@@ -15,6 +15,7 @@ import {
   type TemplateName,
 } from "@/server/domain/whatsapp/whatsapp";
 import { overdueInfo, waLink } from "@/server/domain/payment/collect";
+import { realPhone } from "@/lib/orderDisplay";
 import { istDateString } from "@/server/domain/payment/record";
 import { logReminder } from "@/server/services/followUpService";
 
@@ -133,11 +134,20 @@ export async function sendPaymentReminder(input: {
   orderIds: string[];
   fetchImpl?: Fetch;
 }): Promise<{ results: SendResult[] }> {
-  await logReminder(input); // throws CONFLICT inside the 48 h window
-  const orders = await prisma.order.findMany({
+  const allOrders = await prisma.order.findMany({
     where: { tenantId: input.tenantId, id: { in: input.orderIds } },
     select: { id: true, number: true, balanceDue: true, customer: { select: { id: true, name: true, businessName: true, phoneE164: true } } },
   });
+  // Customers without a contact number (imported rows with an empty CONTACT
+  // cell) are skipped — never send to a guessed or placeholder number.
+  const orders = allOrders.flatMap((o) => {
+    const phone = realPhone(o.customer.phoneE164);
+    return phone ? [{ ...o, customer: { ...o.customer, phoneE164: phone } }] : [];
+  });
+  if (allOrders.length > 0 && orders.length === 0) {
+    throw new AppError("VALIDATION", "No phone number on file for this customer, so no WhatsApp reminder can be sent.");
+  }
+  await logReminder({ ...input, orderIds: orders.length > 0 ? orders.map((o) => o.id) : input.orderIds }); // throws CONFLICT inside the 48 h window
   const cfg = await getWaConfig(input.tenantId);
   const byCustomer = new Map<string, typeof orders>();
   for (const o of orders) byCustomer.set(o.customer.id, [...(byCustomer.get(o.customer.id) ?? []), o]);
@@ -175,8 +185,10 @@ export async function notifyPaymentsVerified(input: { tenantId: string; actorId:
   });
   let sent = 0;
   for (const p of payments) {
+    const to = realPhone(p.order.customer.phoneE164);
+    if (!to) continue; // no number on file — nothing to send
     const r = await sendTemplate({
-      tenantId: input.tenantId, actorId: input.actorId, orderId: p.orderId, toE164: p.order.customer.phoneE164, config: cfg, fetchImpl: input.fetchImpl,
+      tenantId: input.tenantId, actorId: input.actorId, orderId: p.orderId, toE164: to, config: cfg, fetchImpl: input.fetchImpl,
       message: {
         template: "payment_received", name: p.order.customer.businessName ?? p.order.customer.name,
         amount: p.amount.toString(), receiptNo: p.receiptNo, balance: Decimal.max(0, p.order.balanceDue.toString()).toString(),
@@ -304,8 +316,13 @@ export async function runAutoReminders(opts: { now?: Date; fetchImpl?: Fetch; te
         skip(decision.reason);
         continue;
       }
+      const to = realPhone(o.customer.phoneE164);
+      if (!to) {
+        skip("no_phone");
+        continue;
+      }
       const r = await sendTemplate({
-        tenantId: t.tenantId, actorId: null, orderId: o.id, toE164: o.customer.phoneE164, config: cfg, fetchImpl: opts.fetchImpl,
+        tenantId: t.tenantId, actorId: null, orderId: o.id, toE164: to, config: cfg, fetchImpl: opts.fetchImpl,
         message: { template: "payment_reminder", name: o.customer.businessName ?? o.customer.name, orderNumber: o.number, balance: o.balanceDue.toString(), payTo: cfg.payTo },
       });
       if (r.mode !== "api") {
@@ -337,8 +354,10 @@ export async function sendDispatchUpdate(input: { tenantId: string; actorId: str
     },
   });
   if (!d) throw new AppError("NOT_FOUND", "Dispatch not found.");
+  const to = realPhone(d.order.customer.phoneE164);
+  if (!to) throw new AppError("VALIDATION", "No phone number on file for this customer, so no WhatsApp update can be sent.");
   return sendTemplate({
-    tenantId: input.tenantId, actorId: input.actorId, orderId: d.orderId, toE164: d.order.customer.phoneE164, fetchImpl: input.fetchImpl,
+    tenantId: input.tenantId, actorId: input.actorId, orderId: d.orderId, toE164: to, fetchImpl: input.fetchImpl,
     message: {
       template: "dispatch_update",
       name: d.order.customer.businessName ?? d.order.customer.name,
@@ -362,9 +381,11 @@ export async function sendOrderConfirmation(input: { tenantId: string; actorId: 
     },
   });
   if (!o) throw new AppError("NOT_FOUND", "Order not found.");
+  const to = realPhone(o.customer.phoneE164);
+  if (!to) throw new AppError("VALIDATION", "No phone number on file for this customer, so no WhatsApp confirmation can be sent.");
   const total = new Decimal(o.total.toString());
   return sendTemplate({
-    tenantId: input.tenantId, actorId: input.actorId, orderId: o.id, toE164: o.customer.phoneE164, fetchImpl: input.fetchImpl,
+    tenantId: input.tenantId, actorId: input.actorId, orderId: o.id, toE164: to, fetchImpl: input.fetchImpl,
     message: {
       template: "order_confirmation",
       name: o.customer.businessName ?? o.customer.name,

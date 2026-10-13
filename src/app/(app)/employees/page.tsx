@@ -21,6 +21,7 @@ export default async function EmployeesPage() {
   if (!can(session.role, "admin.dashboard")) redirect("/home");
   // ACCOUNTS can view the team but not manage logins.
   const canManage = can(session.role, "users.manage");
+  const canSetTargets = can(session.role, "targets.set");
 
   const now = new Date();
   const period = resolvePeriod("this_month", now);
@@ -121,11 +122,30 @@ export default async function EmployeesPage() {
 
                 {perf ? (
                   <div className="grid grid-cols-3 gap-2 border-t border-[color:var(--color-border)] pt-3">
-                    <Stat label="This month" value={<Money value={perf.booked} />} />
+                    <Stat label="Booked this month" value={<Money value={perf.booked} />} />
                     <Stat label="Orders" value={<span className="tabular-nums">{perf.orders}</span>} />
                     <Stat
                       label="% of target"
-                      value={<span className="tabular-nums">{perf.pct === null ? "—" : `${perf.pct}%`}</span>}
+                      value={
+                        perf.pct === null ? (
+                          <span className="text-xs font-normal text-[color:var(--color-ink-3)]">
+                            No target set
+                            {canSetTargets && (
+                              <>
+                                {" · "}
+                                <Link
+                                  href={`/employees/${u.id}`}
+                                  className="font-medium text-[color:var(--color-gold)] hover:underline"
+                                >
+                                  Set
+                                </Link>
+                              </>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="tabular-nums">{perf.pct}%</span>
+                        )
+                      }
                     />
                   </div>
                 ) : (
@@ -136,7 +156,7 @@ export default async function EmployeesPage() {
 
                 {h && (
                   <div className="border-t border-[color:var(--color-border)] pt-3">
-                    <div className="label-caps mb-2">Last 6 months — completed</div>
+                    <div className="label-caps mb-2">Last 6 months — completed orders, by order month</div>
                     <MonthlyHistoryPanel
                       months={history.months}
                       salespersons={[h]}

@@ -1,5 +1,7 @@
 // v1.1 listing — the sheet view (§4.3 / §5.3).
 import { prisma, type Prisma, type OrderStatusV2 } from "./client";
+import { readSheetRow, type SheetRow } from "@/server/domain/import/sheetRow";
+import { realPhone, customerLabelOf, contactLabelOf, telOf } from "@/lib/orderDisplay";
 
 export type OrderV2Row = {
   id: string;
@@ -10,11 +12,23 @@ export type OrderV2Row = {
   salespersonName: string;
   productText: string | null;
   customerId: string;
-  customerName: string;
-  customerPhoneE164: string;
+  customerName: string; // the customer record's name ("" when the sheet had none)
+  customerPhoneE164: string | null; // real phone only (placeholders → null)
+  /** Per-order display name: sheet CUSTOMER cell for imported orders, else customer.name; "—" if empty. */
+  customerLabel: string;
+  /** Per-order contact text: sheet CONTACT cell (raw), else the customer phone; "—" if none. */
+  contactLabel: string;
+  /** tel: target, or null when there is nothing dialable. */
+  contactTel: string | null;
   total: string;
   paidTotal: string;
   balanceDue: string;
+  /** The sheet's TOTAL cell was empty — show total/paid/balance as "—". */
+  totalMissing: boolean;
+  /** The original sheet row (imported orders only). */
+  sheetRow: SheetRow | null;
+  promisedDeliveryDate: Date | null;
+  notes: string | null;
   simpleStatus: OrderStatusV2;
   completedAt: Date | null;
   cancelNote: string | null;
@@ -25,7 +39,8 @@ export type OrderV2Filters = {
   salespersonId?: string; // scope to one salesperson (SALES view)
   month?: string | null; // "2026-10" — null means "all time"
   status?: "all" | "pending" | "completed" | "balance_due";
-  search?: string; // searches productText, customer.name, customer.phoneE164
+  // Matches productText, notes, customer name/phone, and the sheet's CUSTOMER / CONTACT cells.
+  search?: string;
   limit?: number;
 };
 
@@ -38,7 +53,20 @@ function monthBounds(ym: string): { start: Date; end: Date } {
   return { start, end };
 }
 
-export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
+/** Ids of orders whose sheet CUSTOMER / CONTACT cell contains `q` (case-insensitive). */
+async function sheetRowMatches(tenantId: string, q: string): Promise<string[]> {
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Order"
+    WHERE "tenantId" = ${tenantId}
+      AND "sheetRow" IS NOT NULL
+      AND ("sheetRow"->>'customer' ILIKE ${like} OR "sheetRow"->>'contact' ILIKE ${like})
+    LIMIT 5000
+  `;
+  return rows.map((r) => r.id);
+}
+
+async function buildWhere(f: Omit<OrderV2Filters, "limit">): Promise<Prisma.OrderWhereInput> {
   const where: Prisma.OrderWhereInput = { tenantId: f.tenantId };
   if (f.salespersonId) where.salespersonId = f.salespersonId;
   if (f.month) {
@@ -51,14 +79,22 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
     where.balanceDue = { gt: 0 };
     where.simpleStatus = { not: "CANCELLED" };
   }
-  if (f.search) {
-    const q = f.search.trim();
+  const q = f.search?.trim();
+  if (q) {
+    const sheetIds = await sheetRowMatches(f.tenantId, q);
     where.OR = [
       { productText: { contains: q, mode: "insensitive" } },
+      { notes: { contains: q, mode: "insensitive" } },
       { customer: { name: { contains: q, mode: "insensitive" } } },
       { customer: { phoneE164: { contains: q } } },
+      ...(sheetIds.length > 0 ? [{ id: { in: sheetIds } }] : []),
     ];
   }
+  return where;
+}
+
+export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
+  const where = await buildWhere(f);
 
   const rows = await prisma.order.findMany({
     where,
@@ -77,30 +113,67 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
       total: true,
       paidTotal: true,
       balanceDue: true,
+      totalMissing: true,
+      sheetRow: true,
+      promisedDeliveryDate: true,
+      notes: true,
       simpleStatus: true,
       completedAt: true,
       cancelNote: true,
     },
   });
 
-  return rows.map((r) => ({
-    id: r.id,
-    serialNo: r.serialNo,
-    number: r.number,
-    orderDate: r.orderDate,
-    salespersonId: r.salespersonId,
-    salespersonName: r.salesperson.name,
-    productText: r.productText,
-    customerId: r.customerId,
-    customerName: r.customer.name,
-    customerPhoneE164: r.customer.phoneE164,
-    total: r.total.toString(),
-    paidTotal: r.paidTotal.toString(),
-    balanceDue: r.balanceDue.toString(),
-    simpleStatus: r.simpleStatus,
-    completedAt: r.completedAt,
-    cancelNote: r.cancelNote,
-  }));
+  return rows.map((r) => {
+    const sheetRow = readSheetRow(r.sheetRow);
+    const phone = realPhone(r.customer.phoneE164);
+    return {
+      id: r.id,
+      serialNo: r.serialNo,
+      number: r.number,
+      orderDate: r.orderDate,
+      salespersonId: r.salespersonId,
+      salespersonName: r.salesperson.name,
+      productText: r.productText,
+      customerId: r.customerId,
+      customerName: r.customer.name,
+      customerPhoneE164: phone,
+      customerLabel: customerLabelOf(sheetRow, r.customer.name),
+      contactLabel: contactLabelOf(sheetRow, phone),
+      contactTel: telOf(sheetRow, phone),
+      total: r.total.toString(),
+      paidTotal: r.paidTotal.toString(),
+      balanceDue: r.balanceDue.toString(),
+      totalMissing: r.totalMissing,
+      sheetRow,
+      promisedDeliveryDate: r.promisedDeliveryDate,
+      notes: r.notes,
+      simpleStatus: r.simpleStatus,
+      completedAt: r.completedAt,
+      cancelNote: r.cancelNote,
+    };
+  });
+}
+
+/**
+ * Order counts per salesperson for the same month / status / search filters
+ * (used by the admin's employee picker). `all` is the true filtered total.
+ */
+export async function countOrdersBySalesperson(
+  f: Omit<OrderV2Filters, "salespersonId" | "limit">,
+): Promise<{ all: number; bySalesperson: Record<string, number> }> {
+  const where = await buildWhere(f);
+  const groups = await prisma.order.groupBy({
+    by: ["salespersonId"],
+    where,
+    _count: { _all: true },
+  });
+  const bySalesperson: Record<string, number> = {};
+  let all = 0;
+  for (const g of groups) {
+    bySalesperson[g.salespersonId] = g._count._all;
+    all += g._count._all;
+  }
+  return { all, bySalesperson };
 }
 
 /** Months (YYYY-MM) that have at least one order for the scope. Desc. */
@@ -136,6 +209,12 @@ export async function getOrderV2WithPayments(opts: {
       orderDate: true,
       completedAt: true,
       cancelNote: true,
+      totalMissing: true,
+      sheetRow: true,
+      notes: true,
+      promisedDeliveryDate: true,
+      salespersonId: true,
+      salesperson: { select: { name: true } },
       customer: { select: { id: true, name: true, phoneE164: true } },
       payments: {
         where: { status: { not: "REJECTED" } },

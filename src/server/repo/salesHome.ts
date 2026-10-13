@@ -3,6 +3,7 @@
 // metric set lives in §9 and ships in P5.
 import Decimal from "decimal.js";
 import { prisma, type OrderStatus } from "./client";
+import { dateOnly, displayCustomerName, monthWindow } from "@/server/domain/dashboard/overview";
 
 export type MonthBooked = {
   booked: Decimal;
@@ -25,21 +26,12 @@ export type RecentOrderRow = {
   orderDate: Date;
 };
 
-// IST month boundaries. Both dates returned are UTC Date objects.
+// IST month as UTC-midnight dates: `orderDate` and `SalesTarget.month` are
+// Postgres `date` columns, so an IST-shifted instant (e.g. 2026-09-30T18:30Z)
+// would be truncated to the previous day.
 function istMonthBounds(d: Date): { start: Date; end: Date } {
-  // Format into IST YYYY-MM to decide which month we're in.
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "numeric",
-  }).formatToParts(d);
-  const year = Number(fmt.find((p) => p.type === "year")!.value);
-  const month = Number(fmt.find((p) => p.type === "month")!.value); // 1..12
-  // IST = UTC+5:30 → the IST month starts at (prev day 18:30) UTC on day 1.
-  const start = new Date(Date.UTC(year, month - 1, 1) - (5 * 60 + 30) * 60 * 1000);
-  const nextMonth = month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
-  const end = new Date(Date.UTC(nextMonth.y, nextMonth.m - 1, 1) - (5 * 60 + 30) * 60 * 1000);
-  return { start, end };
+  const w = monthWindow(d);
+  return { start: dateOnly(w.monthStart), end: dateOnly(w.nextMonthStart) };
 }
 
 export async function salesMonthBooked(opts: {
@@ -55,10 +47,11 @@ export async function salesMonthBooked(opts: {
       status: { not: "CANCELLED" },
       orderDate: { gte: start, lt: end },
     },
-    select: { total: true },
+    select: { total: true, totalMissing: true },
   });
   const total = rows.reduce((s, r) => s.plus(r.total.toString()), new Decimal(0));
-  const avg = rows.length === 0 ? new Decimal(0) : total.div(rows.length);
+  const priced = rows.filter((r) => !r.totalMissing).length;
+  const avg = priced === 0 ? new Decimal(0) : total.div(priced);
   return { booked: total, ordersCount: rows.length, avgOrderValue: avg };
 }
 
@@ -91,6 +84,7 @@ export async function salesOutstanding(opts: {
       salespersonId: opts.salespersonId,
       status: { notIn: ["CANCELLED", "CLOSED"] },
       balanceDue: { gt: 0 },
+      totalMissing: false,
     },
     select: { balanceDue: true },
   });
@@ -117,13 +111,14 @@ export async function salesRecentOrders(opts: {
       balanceDue: true,
       status: true,
       orderDate: true,
+      sheetRow: true,
       customer: { select: { name: true, businessName: true } },
     },
   });
   return rows.map((r) => ({
     id: r.id,
     number: r.number,
-    customerName: r.customer.businessName ?? r.customer.name,
+    customerName: displayCustomerName(r.sheetRow, r.customer.businessName ?? r.customer.name),
     total: r.total.toString(),
     balanceDue: r.balanceDue.toString(),
     status: r.status,

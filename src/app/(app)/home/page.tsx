@@ -7,6 +7,7 @@ import { requireSession } from "@/server/auth/session";
 import { Money } from "@/components/app/Money";
 import { formatInr } from "@/lib/formatInr";
 import { employeeOverview } from "@/server/services/employeeOverviewService";
+import { formatOrderDate } from "@/server/domain/dashboard/overview";
 import { TargetRing } from "./_components/TargetRing";
 import { MonthBarChart } from "./_components/MonthBarChart";
 
@@ -106,8 +107,12 @@ async function EmployeeHome({
 
       {/* 6-month chart */}
       <section className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-1)]">
-        <h2 className="label-caps mb-4">Last 6 months — achieved vs target</h2>
-        <MonthBarChart rows={o.lastSixMonths} target={o.target} />
+        <h2 className="label-caps mb-4">
+          {o.lastSixMonths.some((m) => m.target !== "0")
+            ? "Last 6 months — sales vs target"
+            : "Last 6 months — sales"}
+        </h2>
+        <MonthBarChart rows={o.lastSixMonths} />
         <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
           Click a bar to open that month in the orders sheet.
         </p>
@@ -116,7 +121,7 @@ async function EmployeeHome({
       {/* Recent orders */}
       <section className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-1)]">
         <header className="flex items-center justify-between border-b border-[color:var(--color-border)] px-5 py-3">
-          <h2 className="label-caps">Recent orders</h2>
+          <h2 className="label-caps">Recent orders <span className="font-normal normal-case tracking-normal text-[color:var(--color-ink-3)]">· by order date</span></h2>
           <Link
             href="/orders"
             className="text-xs text-[color:var(--color-ink-2)] hover:underline"
@@ -141,7 +146,7 @@ async function EmployeeHome({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs tabular-nums text-[color:var(--color-ink-3)]">
-                          #{r.serialNo ?? "—"}
+                          #{r.serialNo ?? "—"} · {formatOrderDate(r.orderDate.toISOString().slice(0, 10))}
                         </span>
                         <span className="font-medium truncate">
                           {r.customerName}
@@ -159,14 +164,23 @@ async function EmployeeHome({
                       )}
                     </div>
                     <div className="text-right">
-                      <Money value={r.total} />
-                      <div className="text-[11px] text-[color:var(--color-ink-3)]">
-                        {balance.isZero() ? (
-                          "paid"
-                        ) : (
-                          <>Bal {formatInr(balance.toString())}</>
-                        )}
-                      </div>
+                      {r.totalMissing ? (
+                        <>
+                          <div className="text-[color:var(--color-ink-3)]">—</div>
+                          <div className="text-[11px] text-[color:var(--color-ink-3)]">no amount in sheet</div>
+                        </>
+                      ) : (
+                        <>
+                          <Money value={r.total} />
+                          <div className="text-[11px] text-[color:var(--color-ink-3)]">
+                            {balance.isZero() ? (
+                              "paid"
+                            ) : (
+                              <>Bal {formatInr(balance.toString())}</>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </li>

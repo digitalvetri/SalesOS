@@ -1,5 +1,6 @@
 // Collect read model (§11.6): open balances grouped by customer, with the §5.4
 // overdue rule, last follow-up and reminder cooldown per order.
+import { realPhone } from "@/lib/orderDisplay";
 import Decimal from "decimal.js";
 import { prisma, type OrderStatus } from "./client";
 import {
@@ -26,7 +27,7 @@ export type CollectOrderRow = {
 };
 
 export type CollectGroup = {
-  customer: { id: string; name: string; phoneE164: string };
+  customer: { id: string; name: string; phoneE164: string | null };
   total: string;
   overdue: boolean;
   maxDaysOverdue: number;
@@ -131,7 +132,7 @@ export async function getCollectView(opts: {
         customer: {
           id: o.customer.id,
           name: o.customer.businessName ?? o.customer.name,
-          phoneE164: o.customer.phoneE164,
+          phoneE164: realPhone(o.customer.phoneE164),
         },
         total: "0",
         overdue: false,

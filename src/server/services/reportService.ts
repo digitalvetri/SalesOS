@@ -1,6 +1,7 @@
 // §11.14 Excel reports. Every workbook: one header row, frozen panes, ₹ number
 // format `[$₹-4009] #,##,##0`, dates `DD-MMM-YYYY`, generated server-side with
 // exceljs. Sales users get their own orders only (§4.2 "Export reports 👤").
+import { realPhone } from "@/lib/orderDisplay";
 import ExcelJS from "exceljs";
 import Decimal from "decimal.js";
 import { prisma, type Prisma } from "@/server/repo/client";
@@ -77,7 +78,7 @@ async function salesRegister(s: ReportScope) {
   for (const o of orders) {
     for (const l of o.lines) {
       rows.push([
-        o.orderDate, o.number, o.entity.code, o.customer.businessName ?? o.customer.name, o.customer.phoneE164, o.customer.city,
+        o.orderDate, o.number, o.entity.code, o.customer.businessName ?? o.customer.name, realPhone(o.customer.phoneE164), o.customer.city,
         o.salesperson.name, o.status, l.description, l.qty, num(l.unitPrice), num(l.lineTotal), num(o.total), num(o.balanceDue),
       ]);
     }
@@ -131,10 +132,10 @@ async function outstanding(s: ReportScope, now: Date) {
       events: { where: { toStatus: "DELIVERED" }, orderBy: { at: "asc" }, take: 1, select: { at: true } },
     },
   });
-  type Agg = { name: string; phone: string; city: string | null; orders: number; total: Decimal; overdue: Decimal; buckets: Decimal[]; maxDays: number };
+  type Agg = { name: string; phone: string | null; city: string | null; orders: number; total: Decimal; overdue: Decimal; buckets: Decimal[]; maxDays: number };
   const by = new Map<string, Agg>();
   for (const o of orders) {
-    const a = by.get(o.customerId) ?? { name: o.customer.businessName ?? o.customer.name, phone: o.customer.phoneE164, city: o.customer.city, orders: 0, total: new Decimal(0), overdue: new Decimal(0), buckets: AGING_BUCKETS.map(() => new Decimal(0)), maxDays: 0 };
+    const a = by.get(o.customerId) ?? { name: o.customer.businessName ?? o.customer.name, phone: realPhone(o.customer.phoneE164), city: o.customer.city, orders: 0, total: new Decimal(0), overdue: new Decimal(0), buckets: AGING_BUCKETS.map(() => new Decimal(0)), maxDays: 0 };
     const info = overdueInfo(
       { balanceDue: o.balanceDue.toString(), promisedPaymentDate: o.promisedPaymentDate?.toISOString().slice(0, 10) ?? null, deliveredOn: o.events[0] ? istDateString(o.events[0].at) : null },
       today, grace,

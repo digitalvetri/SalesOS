@@ -10,9 +10,10 @@ import { MessageCircle, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/app/Toast";
 import { sendReminderAction, logCallAction } from "./actions";
+import { realPhone } from "@/lib/orderDisplay";
 
 export function ContactButtons(props: {
-  phoneE164: string;
+  phoneE164: string | null; // null = no number on file: no Call link, Remind disabled
   orderIds: string[];
   reminderBlockedUntil: string | null; // ISO — all orders in cooldown
   apiConfigured?: boolean; // Cloud API sends server-side; no tab to open
@@ -22,6 +23,7 @@ export function ContactButtons(props: {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const blocked = props.reminderBlockedUntil !== null;
+  const phone = realPhone(props.phoneE164);
 
   function call() {
     // Fire-and-forget: never hold up the dialer.
@@ -61,19 +63,23 @@ export function ContactButtons(props: {
   const size = props.compact ? "sm" : "md";
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" size={size} asChild>
-        <a href={`tel:${props.phoneE164}`} onClick={call} aria-label={t("call")}>
-          <Phone className="h-4 w-4" />
-          {!props.compact && t("call")}
-        </a>
-      </Button>
+      {phone && (
+        <Button variant="outline" size={size} asChild>
+          <a href={`tel:${phone}`} onClick={call} aria-label={t("call")}>
+            <Phone className="h-4 w-4" />
+            {!props.compact && t("call")}
+          </a>
+        </Button>
+      )}
       <Button
         variant="outline"
         size={size}
         onClick={remind}
-        disabled={pending || blocked}
+        disabled={pending || blocked || !phone}
         title={
-          blocked
+          !phone
+            ? "No phone number on file"
+            : blocked
             ? t("remindedTitle", {
                 when: new Date(props.reminderBlockedUntil!).toLocaleString("en-IN", {
                   day: "2-digit",

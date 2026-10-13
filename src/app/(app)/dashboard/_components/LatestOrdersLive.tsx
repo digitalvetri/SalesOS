@@ -1,6 +1,8 @@
 "use client";
 // v1.1 §5.2 "Latest orders (live)" — client polling at 30s intervals so new
 // orders appear without a page refresh. New rows get a 3-second highlight.
+// Rows are the most recent by order date (tie-break: newest entry) and show
+// the order date — never the entry/import time.
 // Shows a "Live" dot that goes grey if the last poll failed.
 import * as React from "react";
 import Link from "next/link";
@@ -18,15 +20,14 @@ const STATUS_PILL: Record<LatestOrderRow["simpleStatus"], string> = {
 const POLL_MS = 30_000;
 const HIGHLIGHT_MS = 3_000;
 
-function fmtTime(iso: Date) {
+// `orderDate` is a date-only business date (stored as UTC midnight), so format
+// it in UTC — formatting in IST would be harmless here, but UTC keeps it exact.
+function fmtOrderDate(d: Date) {
   return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
+    day: "numeric",
     month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Kolkata",
-  }).format(iso);
+    timeZone: "UTC",
+  }).format(d);
 }
 
 export function LatestOrdersLive({ initial }: { initial: LatestOrderRow[] }) {
@@ -126,8 +127,11 @@ export function LatestOrdersLive({ initial }: { initial: LatestOrderRow[] }) {
                 <div className="flex items-start justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-5">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs tabular-nums text-[color:var(--color-ink-3)]">
-                        {fmtTime(r.createdAt)}
+                      <span
+                        className="text-xs tabular-nums text-[color:var(--color-ink-3)]"
+                        title="Order date"
+                      >
+                        {fmtOrderDate(r.orderDate)}
                       </span>
                       <span className="text-xs font-medium text-[color:var(--color-gold)]">
                         {r.salespersonName}
@@ -146,10 +150,19 @@ export function LatestOrdersLive({ initial }: { initial: LatestOrderRow[] }) {
                     )}
                   </div>
                   <div className="shrink-0 text-right">
-                    <Money value={r.total} className="font-semibold tabular-nums" />
-                    <div className="text-[11px] text-[color:var(--color-ink-3)]">
-                      {bal.isZero() ? "paid" : <>Bal {formatInr(bal.toString())}</>}
-                    </div>
+                    {r.totalMissing ? (
+                      <>
+                        <div className="font-semibold text-[color:var(--color-ink-3)]">—</div>
+                        <div className="text-[11px] text-[color:var(--color-ink-3)]">no amount in sheet</div>
+                      </>
+                    ) : (
+                      <>
+                        <Money value={r.total} className="font-semibold tabular-nums" />
+                        <div className="text-[11px] text-[color:var(--color-ink-3)]">
+                          {bal.isZero() ? "paid" : <>Bal {formatInr(bal.toString())}</>}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </li>

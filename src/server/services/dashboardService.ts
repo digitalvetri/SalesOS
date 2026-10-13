@@ -15,6 +15,7 @@ import {
   type AgingBucket,
   type Period,
 } from "@/server/domain/dashboard/period";
+import { averageOrderValue, hasTarget } from "@/server/domain/dashboard/overview";
 
 export type Scope = { tenantId: string; entityId?: string };
 type Range = { from: string; to: string };
@@ -228,12 +229,19 @@ export async function pendingCancelRequests(s: Scope) {
  * avg order value, collected (verified, on their orders) for the period.
  */
 export async function salesLeaderboard(s: Scope, r: Range) {
-  const [sales, bookedRows, collectedRows, refundRows, targets] = await Promise.all([
+  const [sales, bookedRows, pricedRows, collectedRows, refundRows, targets, settings] = await Promise.all([
     prisma.user.findMany({ where: { tenantId: s.tenantId, role: "SALES", active: true }, select: { id: true, name: true } }),
     prisma.order.groupBy({
       by: ["salespersonId"],
       where: { ...orderScope(s), status: { not: "CANCELLED" }, orderDate: dateIn(r) },
       _sum: { total: true },
+      _count: true,
+    }),
+    // Orders that actually carry an amount — the divisor for avg order value
+    // (imported sheet rows with no total count as orders, not as ₹0 sales).
+    prisma.order.groupBy({
+      by: ["salespersonId"],
+      where: { ...orderScope(s), status: { not: "CANCELLED" }, orderDate: dateIn(r), totalMissing: false },
       _count: true,
     }),
     prisma.$queryRaw<{ salespersonId: string; amount: Prisma.Decimal }[]>`
@@ -251,21 +259,33 @@ export async function salesLeaderboard(s: Scope, r: Range) {
         AND (${s.entityId ?? null}::text IS NULL OR o."entityId" = ${s.entityId ?? null})
       GROUP BY o."salespersonId"`,
     // Targets are monthly (BR-15): sum every month that starts inside the period.
-    prisma.salesTarget.groupBy({
-      by: ["userId"],
+    // Targets are monthly (BR-15): every month that starts inside the period;
+    // a month without its own row falls back to the tenant default (§2).
+    prisma.salesTarget.findMany({
       where: { tenantId: s.tenantId, month: { gte: d(`${r.from.slice(0, 7)}-01`), lte: d(r.to) } },
-      _sum: { amount: true },
+      select: { userId: true, month: true, amount: true },
     }),
+    prisma.tenantSettings.findUnique({ where: { tenantId: s.tenantId }, select: { defaultMonthlyTarget: true } }),
   ]);
   const bookedBy = new Map(bookedRows.map((b) => [b.salespersonId, { total: sumStr(b._sum.total), count: b._count }]));
   const refundBy = new Map(refundRows.map((x) => [x.salespersonId, x.amount.toString()]));
   const collectedBy = new Map(collectedRows.map((c) => [c.salespersonId, new Decimal(c.amount.toString()).minus(refundBy.get(c.salespersonId) ?? 0).toString()]));
-  const targetBy = new Map(targets.map((t) => [t.userId, sumStr(t._sum.amount)]));
+  const pricedBy = new Map(pricedRows.map((p) => [p.salespersonId, p._count]));
+  const periodMonths = monthsStartingIn(r);
+  const defaultTarget = settings?.defaultMonthlyTarget.toString() ?? "0";
+  const targetRow = new Map(targets.map((t) => [`${t.userId}|${t.month.toISOString().slice(0, 7)}`, t.amount.toString()]));
+  const targetFor = (userId: string) =>
+    periodMonths
+      .reduce((sum, m) => {
+        const t = targetRow.get(`${userId}|${m}`) ?? defaultTarget;
+        return hasTarget(t) ? sum.plus(t) : sum;
+      }, new Decimal(0))
+      .toString();
 
   return sales
     .map((u) => {
       const b = bookedBy.get(u.id) ?? { total: "0", count: 0 };
-      const target = targetBy.get(u.id) ?? "0";
+      const target = targetFor(u.id);
       return {
         userId: u.id,
         name: u.name,
@@ -273,11 +293,25 @@ export async function salesLeaderboard(s: Scope, r: Range) {
         target,
         pct: Number(target) > 0 ? Math.round((Number(b.total) / Number(target)) * 100) : null,
         orders: b.count,
-        avgOrder: b.count > 0 ? new Decimal(b.total).div(b.count).toDecimalPlaces(0).toString() : "0",
+        avgOrder: averageOrderValue(b.total, pricedBy.get(u.id) ?? 0),
         collected: collectedBy.get(u.id) ?? "0",
       };
     })
     .sort((a, b) => Number(b.booked) - Number(a.booked) || a.name.localeCompare(b.name));
+}
+
+/** YYYY-MM of the period's first month and every later month that starts on or before `to` (same months the target query reads). */
+function monthsStartingIn(r: Range): string[] {
+  const out: string[] = [];
+  let [y, m] = r.from.split("-").map(Number) as [number, number];
+  for (;;) {
+    const ym = `${y}-${String(m).padStart(2, "0")}`;
+    if (`${ym}-01` > r.to) break;
+    out.push(ym);
+    m += 1;
+    if (m === 13) { m = 1; y += 1; }
+  }
+  return out;
 }
 
 // ───────── Trend / products / customers / cancellations ─────────
@@ -399,7 +433,7 @@ export async function salespersonMonthlyHistory(
     { salespersonId: string; month: string; orders: bigint; total: Prisma.Decimal }[]
   >`
     SELECT "salespersonId",
-           to_char("orderDate" AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM') AS month,
+           to_char("orderDate", 'YYYY-MM') AS month,
            COUNT(*)::bigint AS orders,
            SUM(total) AS total
     FROM "Order"
