@@ -24,7 +24,8 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 RUN pnpm build
 
 FROM node:22-bookworm-slim AS runner
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+# curl: Coolify's health check runs `curl` inside the container.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g prisma@6.19.3 && npm cache clean --force
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
@@ -40,6 +41,6 @@ COPY --from=build --chown=app:app /app/prisma ./prisma
 COPY --chown=app:app docker-entrypoint.sh ./docker-entrypoint.sh
 USER app
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:3000/api/health || exit 1
 ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
