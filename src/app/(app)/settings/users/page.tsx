@@ -55,7 +55,10 @@ export default async function UsersPage() {
                 key={u.id}
                 className="border-t border-[color:var(--color-border)] align-middle"
               >
-                <td className="px-4 py-3 font-medium">{u.name}</td>
+                <td className="px-4 py-3">
+                  <Link href={`/settings/users/${u.id}`} className="font-medium hover:underline">{u.name}</Link>
+                  {u.email && <div className="text-xs text-[color:var(--color-ink-3)]">{u.email}</div>}
+                </td>
                 <td className="px-4 py-3 tabular-nums">{u.phoneE164}</td>
                 <td className="px-4 py-3">
                   <Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge>

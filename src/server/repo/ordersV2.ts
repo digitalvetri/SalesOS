@@ -25,6 +25,7 @@ export type OrderV2Row = {
   balanceDue: string;
   /** The sheet's TOTAL cell was empty — show total/paid/balance as "—". */
   totalMissing: boolean;
+  accDetails: string | null; // where the payment was received (editable; from ACC DETAILS)
   /** The original sheet row (imported orders only). */
   sheetRow: SheetRow | null;
   promisedDeliveryDate: Date | null;
@@ -114,6 +115,7 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
       paidTotal: true,
       balanceDue: true,
       totalMissing: true,
+      accDetails: true,
       sheetRow: true,
       promisedDeliveryDate: true,
       notes: true,
@@ -144,6 +146,7 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
       paidTotal: r.paidTotal.toString(),
       balanceDue: r.balanceDue.toString(),
       totalMissing: r.totalMissing,
+      accDetails: r.accDetails ?? null,
       sheetRow,
       promisedDeliveryDate: r.promisedDeliveryDate,
       notes: r.notes,
@@ -210,6 +213,7 @@ export async function getOrderV2WithPayments(opts: {
       completedAt: true,
       cancelNote: true,
       totalMissing: true,
+      accDetails: true,
       sheetRow: true,
       notes: true,
       promisedDeliveryDate: true,

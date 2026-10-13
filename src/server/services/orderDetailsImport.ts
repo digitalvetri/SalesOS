@@ -327,6 +327,7 @@ export async function commitOrderDetailsImport(
         advance: paid,
         paymentMethod: o.method,
         paymentNote: o.sheetRow.acc,
+        accDetails: o.sheetRow.acc,
         note: o.note,
         simpleStatus: o.status,
         legacyStatus: o.status === "COMPLETED" ? "DELIVERED" : o.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED",

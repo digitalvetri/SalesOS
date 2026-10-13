@@ -27,7 +27,7 @@ export function OrderCard({
   const paidUp = !blank && new Decimal(row.balanceDue).isZero();
   const cancelled = row.simpleStatus === "CANCELLED";
   const delivery = deliveryText(row);
-  const acc = row.sheetRow?.acc?.trim() || null;
+  const acc = row.accDetails?.trim() || row.sheetRow?.acc?.trim() || null;
   const sno =
     row.serialNo === null ? "—" : showEmployee ? `${initialsOf(row.salespersonName)}-${row.serialNo}` : row.serialNo;
 

@@ -134,6 +134,7 @@ export type InsertOrderV2Args = {
   sheetRow?: Prisma.InputJsonValue | null; // the sheet row as typed
   promisedDeliveryDate?: Date | null;
   paymentNote?: string | null; // e.g. the sheet's ACC DETAILS
+  accDetails?: string | null; // where the money went (order-level, editable)
   cancelNote?: string | null;
 };
 
@@ -168,6 +169,7 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
       completedAt: a.completedAt ?? null,
       importRef: a.importRef ?? null,
       totalMissing: a.totalMissing ?? false,
+      accDetails: a.accDetails ?? null,
       ...(a.sheetRow ? { sheetRow: a.sheetRow } : {}),
       promisedDeliveryDate: a.promisedDeliveryDate ?? null,
       cancelNote: a.cancelNote ?? null,
@@ -324,6 +326,11 @@ export async function updateOrderFieldsV2(input: {
   productText?: string;
   total?: string;
   customerName?: string;
+  contact?: string | null; // contact as shown on the order (imported rows: the sheet's CONTACT text)
+  accDetails?: string | null; // where the payment was received
+  notes?: string | null;
+  deliveryDate?: string | null; // YYYY-MM-DD, null = clear
+  orderDate?: string; // YYYY-MM-DD — admins only
 }) {
   const current = await prisma.order.findFirst({
     where: { tenantId: input.tenantId, id: input.orderId },
@@ -335,6 +342,11 @@ export async function updateOrderFieldsV2(input: {
       paidTotal: true,
       customerId: true,
       salespersonId: true,
+      accDetails: true,
+      notes: true,
+      promisedDeliveryDate: true,
+      orderDate: true,
+      sheetRow: true,
     },
   });
   if (!current) throw new AppError("NOT_FOUND", "Order not found.");
@@ -364,6 +376,16 @@ export async function updateOrderFieldsV2(input: {
   if (input.customerName !== undefined && !customerName) {
     throw new AppError("VALIDATION", "Enter the customer's name.");
   }
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
+  if (input.deliveryDate && !ymd.test(input.deliveryDate)) throw new AppError("VALIDATION", "Pick a valid delivery date.");
+  if (input.orderDate !== undefined) {
+    if (!isAdmin) throw new AppError("FORBIDDEN", "Only an admin can change the order date.");
+    if (!ymd.test(input.orderDate)) throw new AppError("VALIDATION", "Pick a valid order date.");
+  }
+  const clean = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() ? v.trim() : null);
+  const contact = clean(input.contact);
+  const accDetails = clean(input.accDetails);
+  const notes = clean(input.notes);
 
   const row = await runWithSerializableRetry(() =>
     prisma.$transaction(
@@ -387,14 +409,39 @@ export async function updateOrderFieldsV2(input: {
           data.balanceDue = computeBalance(newTotal, paid).toFixed(2);
           data.totalMissing = false; // the price has now been filled in
         }
+        // Imported orders display name / contact / delivery from their sheet row — keep it in step with edits.
+        const sheet =
+          current.sheetRow && typeof current.sheetRow === "object" && !Array.isArray(current.sheetRow)
+            ? { ...(current.sheetRow as Prisma.JsonObject) }
+            : null;
         if (customerName) {
           await tx.customer.update({ where: { id: current.customerId }, data: { name: customerName } });
-          // Imported orders show the name from their sheet row — keep it in step with the edit.
-          const { sheetRow } = await tx.order.findUniqueOrThrow({ where: { id: input.orderId }, select: { sheetRow: true } });
-          if (sheetRow && typeof sheetRow === "object" && !Array.isArray(sheetRow)) {
-            data.sheetRow = { ...(sheetRow as Prisma.JsonObject), customer: customerName };
-          }
+          if (sheet) Object.assign(sheet, { customer: customerName, name: customerName });
         }
+        if (contact !== undefined && sheet) sheet.contact = contact;
+        if (contact && !sheet) {
+          // App orders show the customer's own mobile.
+          let e164: string;
+          try {
+            e164 = normalizePhone(contact).e164;
+          } catch {
+            throw new AppError("VALIDATION", "Enter a valid 10-digit mobile number.");
+          }
+          const other = await tx.customer.findFirst({
+            where: { tenantId: input.tenantId, phoneE164: e164, id: { not: current.customerId } },
+            select: { name: true },
+          });
+          if (other) throw new AppError("CONFLICT", `That number belongs to customer “${other.name || "—"}”.`);
+          await tx.customer.update({ where: { id: current.customerId }, data: { phoneE164: e164 } });
+        }
+        if (accDetails !== undefined) data.accDetails = accDetails;
+        if (notes !== undefined) data.notes = notes;
+        if (input.deliveryDate !== undefined) {
+          data.promisedDeliveryDate = input.deliveryDate ? new Date(`${input.deliveryDate}T00:00:00.000Z`) : null;
+          if (sheet) sheet.delivery = input.deliveryDate ? input.deliveryDate.split("-").reverse().join("/") : null;
+        }
+        if (input.orderDate) data.orderDate = new Date(`${input.orderDate}T00:00:00.000Z`);
+        if (sheet) data.sheetRow = sheet;
         return tx.order.update({ where: { id: input.orderId }, data });
       },
       { isolationLevel: "Serializable" as Prisma.TransactionIsolationLevel },
@@ -410,8 +457,21 @@ export async function updateOrderFieldsV2(input: {
     before: {
       productText: current.productText,
       total: current.total.toString(),
+      accDetails: current.accDetails,
+      notes: current.notes,
+      promisedDeliveryDate: current.promisedDeliveryDate,
+      orderDate: current.orderDate,
     },
-    after: { productText: row.productText, total: row.total.toString() },
+    after: {
+      productText: row.productText,
+      total: row.total.toString(),
+      accDetails: row.accDetails,
+      notes: row.notes,
+      promisedDeliveryDate: row.promisedDeliveryDate,
+      orderDate: row.orderDate,
+      ...(customerName ? { customerName } : {}),
+      ...(contact !== undefined ? { contact } : {}),
+    },
   });
 
   return row;
@@ -605,4 +665,48 @@ async function runWithSerializableRetry<T>(
     }
   }
   throw lastErr;
+}
+
+// ─── Edit a payment's details (date, method, account it was received in) ────
+
+export async function updatePaymentV2(input: {
+  tenantId: string;
+  actorId: string;
+  actorRole: "OWNER" | "ADMIN" | "ACCOUNTS" | "SALES" | "DISPATCH";
+  paymentId: string;
+  method?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
+  paidOn?: string; // YYYY-MM-DD
+  note?: string | null; // e.g. "KUMAR GPAY", "KFM account"
+}) {
+  const p = await prisma.payment.findFirst({
+    where: { tenantId: input.tenantId, id: input.paymentId },
+    select: { id: true, method: true, paidOn: true, note: true, order: { select: { salespersonId: true, simpleStatus: true } } },
+  });
+  if (!p) throw new AppError("NOT_FOUND", "Payment not found.");
+  const isAdmin = input.actorRole === "OWNER" || input.actorRole === "ADMIN" || input.actorRole === "ACCOUNTS";
+  if (!isAdmin) {
+    if (p.order.salespersonId !== input.actorId) throw new AppError("FORBIDDEN", "You can only edit payments on your own orders.");
+    if (p.order.simpleStatus !== "PENDING") throw new AppError("VALIDATION", "Only payments on pending orders can be edited.");
+  }
+  if (input.paidOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(input.paidOn)) throw new AppError("VALIDATION", "Pick a valid date.");
+  if (input.paidOn && input.paidOn > istDateString(new Date())) throw new AppError("VALIDATION", "The payment date can't be in the future.");
+
+  const after = await prisma.payment.update({
+    where: { id: p.id },
+    data: {
+      ...(input.method ? { method: input.method } : {}),
+      ...(input.paidOn ? { paidOn: new Date(`${input.paidOn}T00:00:00.000Z`) } : {}),
+      ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
+    },
+  });
+  await writeAudit(prisma, {
+    tenantId: input.tenantId,
+    actorId: input.actorId,
+    action: "PAYMENT_EDIT_V2",
+    entity: "Payment",
+    entityId: p.id,
+    before: { method: p.method, paidOn: p.paidOn, note: p.note },
+    after: { method: after.method, paidOn: after.paidOn, note: after.note },
+  });
+  return after;
 }

@@ -10,6 +10,9 @@ import { readSheetRow, type SheetRow } from "@/server/domain/import/sheetRow";
 import { formatInr } from "@/lib/formatInr";
 import { amountMissing, contactLabelOf, customerLabelOf, istMonthKey, realPhone, telOf } from "@/lib/orderDisplay";
 import { fmtDate, deliveryText, PILL_STYLE } from "../_components/sheet/sheetFormat";
+import { OrderEditable, PaymentRow } from "./OrderEditor";
+
+const ymdOf = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "");
 
 const STATUS_LABEL = { PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" } as const;
 const METHOD_LABEL: Record<string, string> = {
@@ -42,6 +45,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // The order's month in its employee's sheet (where edits / payments happen).
   const sheetHref = `${scopedToOwn ? "/orders?" : `/orders?sp=${encodeURIComponent(order.salespersonId)}&`}m=${istMonthKey(order.orderDate)}`;
   const backHref = scopedToOwn ? "/orders" : `/orders?sp=${encodeURIComponent(order.salespersonId)}`;
+  // Same rule as the server: admins edit any order; employees their own pending ones.
+  const isAdmin = session.role === "OWNER" || session.role === "ADMIN";
+  const canEdit = isAdmin || (isOwn && order.simpleStatus === "PENDING" && can(session.role, "orders.editBeforeDispatch", { isOwn }));
+  const canEditPayments = showMoney && (isAdmin || session.role === "ACCOUNTS" || (isOwn && order.simpleStatus === "PENDING"));
+  const accDetails = order.accDetails?.trim() || sheetRow?.acc?.trim() || "";
+  const editable = {
+    id: order.id,
+    customerName: customerLabel === "—" ? "" : customerLabel,
+    contact: sheetRow ? (sheetRow.contact ?? "") : (phone ?? "").replace(/^\+91/, ""),
+    productText: order.productText ?? "",
+    total: blank ? "" : order.total.toString().replace(/\.00$/, ""),
+    deliveryDate: ymdOf(order.promisedDeliveryDate),
+    orderDate: ymdOf(order.orderDate),
+    accDetails,
+    notes: order.notes ?? "",
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 px-4 py-5 md:px-6 md:py-7">
@@ -79,6 +98,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <div className="grid gap-4 lg:grid-cols-2">
         {/* What the app has */}
         <section className="surface-card min-w-0 p-5" aria-labelledby="order-heading">
+          <OrderEditable order={editable} isAdmin={isAdmin} showMoney={showMoney} enabled={canEdit}>
           <h2 id="order-heading" className="mb-3 text-base font-semibold">
             Order
           </h2>
@@ -95,6 +115,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </Field>
             <Field label="Products">{order.productText?.trim() || "—"}</Field>
             <Field label="Delivery">{delivery}</Field>
+            <Field label="Payment received in">{accDetails || "—"}</Field>
             {order.completedAt && <Field label="Completed">{fmtDate(order.completedAt)}</Field>}
             {order.cancelNote && <Field label="Cancel note">{order.cancelNote}</Field>}
             {order.notes && <Field label="Notes">{order.notes}</Field>}
@@ -119,19 +140,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               ) : (
                 <ul className="mt-2 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
                   {order.payments.map((p) => (
-                    <li key={p.id} className="flex items-baseline justify-between gap-3 py-2 text-sm">
-                      <span className="min-w-0">
-                        <span className="tabular-nums text-[color:var(--color-ink-2)]">{fmtDate(p.paidOn)}</span>
-                        <span className="text-[color:var(--color-ink-3)]"> · {METHOD_LABEL[p.method] ?? p.method}</span>
-                        {p.note && <span className="block break-words text-xs text-[color:var(--color-ink-3)]">{p.note}</span>}
-                      </span>
-                      <span className="shrink-0 font-semibold tabular-nums">{formatInr(p.amount.toString())}</span>
-                    </li>
+                    <PaymentRow
+                      key={p.id}
+                      canEdit={canEditPayments}
+                      payment={{ id: p.id, method: p.method, paidOn: ymdOf(p.paidOn), note: p.note ?? "" }}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="tabular-nums text-[color:var(--color-ink-2)]">{fmtDate(p.paidOn)}</span>
+                          <span className="text-[color:var(--color-ink-3)]"> · {METHOD_LABEL[p.method] ?? p.method}</span>
+                          {p.note && <span className="block break-words text-xs text-[color:var(--color-ink-3)]">Received in: {p.note}</span>}
+                        </span>
+                        <span className="shrink-0 font-semibold tabular-nums">{formatInr(p.amount.toString())}</span>
+                      </div>
+                    </PaymentRow>
                   ))}
                 </ul>
               )}
             </>
           )}
+          </OrderEditable>
         </section>
 
         {/* What the sheet said */}
@@ -193,7 +221,7 @@ function SheetPanel({ row, showMoney }: { row: SheetRow; showMoney: boolean }) {
       : []),
     ["Delivery", row.delivery],
     ["Status", row.status],
-    ["Acc details", row.acc],
+    ["Acc details (received in)", row.acc],
     ["Comments", row.comments],
   ];
   return (

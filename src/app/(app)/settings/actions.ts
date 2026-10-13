@@ -51,7 +51,7 @@ const ChangeMyPasswordInput = z.object({
 
 export const changeMyPasswordAction = makeServerAction({
   input: ChangeMyPasswordInput,
-  action: "settings.manage",
+  action: "profile.self", // everyone can change their own password
   async run(parsed, session) {
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
     await prisma.user.update({

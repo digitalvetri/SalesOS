@@ -2,7 +2,8 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Download, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { THEME_COOKIE } from "@/config/theme";
 import type { SessionUser } from "@/server/repo/users";
 
@@ -54,6 +55,24 @@ export function UserMenu({ user }: { user: SessionUser }) {
             <div className="text-xs text-[color:var(--color-ink-3)]">{user.role}</div>
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-[color:var(--color-border)]" />
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/profile"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 outline-none hover:bg-[color:var(--color-surface-2)]"
+            >
+              <UserRound className="h-4 w-4" aria-hidden />
+              My profile
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/profile#install"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 outline-none hover:bg-[color:var(--color-surface-2)]"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Install app
+            </Link>
+          </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={toggleTheme}
             className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 hover:bg-[color:var(--color-surface-2)]"

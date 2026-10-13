@@ -6,6 +6,7 @@ import { LOCALE } from "@/i18n/locale";
 import { BRAND } from "@/config/brand";
 import { Toaster } from "@/components/app/Toast";
 import { GoldAudit } from "@/components/app/GoldAudit";
+import { ServiceWorker } from "@/components/app/ServiceWorker";
 import { cookies } from "next/headers";
 import { THEME_COOKIE } from "@/config/theme";
 import "./globals.css";
@@ -20,6 +21,10 @@ const sans = Poppins({
 export const metadata: Metadata = {
   title: BRAND.name,
   description: BRAND.tagline,
+  applicationName: BRAND.name,
+  // Home-screen app on iPhone / iPad.
+  appleWebApp: { capable: true, title: BRAND.name, statusBarStyle: "black-translucent" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -41,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
           <Toaster />
         </NextIntlClientProvider>
+        <ServiceWorker />
         {process.env.NODE_ENV !== "production" && <GoldAudit />}
       </body>
     </html>

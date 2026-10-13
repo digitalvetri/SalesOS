@@ -12,6 +12,7 @@ import {
   setOrderStatusV2,
   addPaymentV2,
   deletePaymentV2,
+  updatePaymentV2,
 } from "@/server/services/orderV2Service";
 
 const PaymentMethod = z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE"]);
@@ -84,6 +85,11 @@ const UpdateFieldsInput = z.object({
   productText: z.string().min(1).max(500).optional(),
   total: Money.optional(),
   customerName: z.string().min(1).max(120).optional(),
+  contact: z.string().max(120).nullable().optional(),
+  accDetails: z.string().max(200).nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const updateOrderFieldsV2Action = makeServerAction({
@@ -101,6 +107,11 @@ export const updateOrderFieldsV2Action = makeServerAction({
       productText: parsed.productText,
       total: parsed.total,
       customerName: parsed.customerName,
+      contact: parsed.contact,
+      accDetails: parsed.accDetails,
+      notes: parsed.notes,
+      deliveryDate: parsed.deliveryDate,
+      orderDate: parsed.orderDate,
     });
     return { orderId: row.id };
   },
@@ -184,5 +195,36 @@ export const deletePaymentV2Action = makeServerAction({
       paymentId: parsed.paymentId,
     });
     return { ok: true };
+  },
+});
+
+const UpdatePaymentInput = z.object({
+  paymentId: z.string(),
+  method: z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE"]).optional(),
+  paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  note: z.string().max(200).nullable().optional(),
+});
+
+export const updatePaymentV2Action = makeServerAction({
+  input: UpdatePaymentInput,
+  action: "payments.record",
+  resolveOwnership: async (p, session) => {
+    if (!session) return { isOwn: false };
+    const pay = await prisma.payment.findFirst({ where: { id: p.paymentId, tenantId: session.tenantId }, select: { orderId: true } });
+    return pay ? ownsOrder(pay.orderId, session) : { isOwn: false };
+  },
+  revalidate: "/orders",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const p = await updatePaymentV2({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      actorRole: session.role,
+      paymentId: parsed.paymentId,
+      method: parsed.method,
+      paidOn: parsed.paidOn,
+      note: parsed.note,
+    });
+    return { paymentId: p.id };
   },
 });

@@ -289,6 +289,8 @@ model Order {
   // Imported orders: the sheet row exactly as typed (date, customer, contact, products,
   // total, adv, bal, delivery, status, acc, comments) — shown on the order for reference.
   sheetRow             Json?
+  // Where the customer's money went ("KUMAR GPAY", "KFM CA", "Cash") — the sheet's ACC DETAILS, editable.
+  accDetails           String?
   // v1.1 §3 — per-salesperson running number (S.No). Nullable during backfill;
   // enforced by application code to be set when writing a new order.
   serialNo             Int?

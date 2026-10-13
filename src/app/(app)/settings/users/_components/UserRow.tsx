@@ -1,5 +1,7 @@
 "use client";
 import * as React from "react";
+import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { deactivateUserAction, updateUserAction, resetPasswordAction } from "../actions";
 import { Button } from "@/components/ui/button";
@@ -46,7 +48,13 @@ export function UserRow({ user, isSelf }: { user: UserListRow; isSelf: boolean }
   }
 
   return (
-    <div className="inline-flex gap-2">
+    <div className="inline-flex flex-wrap justify-end gap-2">
+      <Link
+        href={`/settings/users/${user.id}`}
+        className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius)] border border-[color:var(--color-accent)] px-3 text-sm font-semibold text-[color:var(--color-accent)] hover:bg-[color:var(--color-gold-soft)]"
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+      </Link>
       <Button size="sm" variant="outline" onClick={reset} disabled={pending}>
         {t("resetPassword")}
       </Button>

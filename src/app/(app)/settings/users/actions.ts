@@ -11,6 +11,7 @@ import {
   adminResetPassword,
   adminSetPassword,
   generateTempPassword,
+  getUserForEdit,
 } from "@/server/services/userService";
 
 const PhoneSchema = z.string().min(3).transform((raw, ctx) => {
@@ -168,5 +169,41 @@ export const resetPasswordAction = makeServerAction({
       newPassword,
     });
     return { userId: parsed.userId, tempPassword: newPassword };
+  },
+});
+
+// ─── Edit a user (Settings → Users → Edit) ───────────────────────────
+
+const EditInput = z.object({
+  userId: z.string(),
+  name: z.string().trim().min(1, "Enter a name.").max(80),
+  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  phone: PhoneSchema,
+  role: RoleSchema,
+  defaultEntityId: z.string().optional().nullable(),
+  canReceivePayments: z.boolean(),
+});
+
+export const editUserAction = makeServerAction({
+  input: EditInput,
+  action: "users.manage",
+  revalidate: "/settings/users",
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const { userId, email, phone, ...rest } = parsed;
+    const current = await getUserForEdit(session.tenantId, userId);
+    if ((current.email ?? "") !== email) {
+      await adminUpdateUserEmail({ tenantId: session.tenantId, actorId: session.userId, userId, email });
+    }
+    const u = await adminUpdateUser({
+      tenantId: session.tenantId,
+      actorId: session.userId,
+      actorRole: session.role,
+      userId,
+      phoneE164: phone,
+      ...rest,
+      defaultEntityId: rest.defaultEntityId || null,
+    });
+    return { userId: u.id };
   },
 });

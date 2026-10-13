@@ -32,6 +32,7 @@ export const ACTIONS = [
   "import.excel",
   "reports.export",
   "audit.view",
+  "profile.self",
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -62,6 +63,8 @@ export const PERMISSION_MATRIX: Record<Action, Record<Role, Permission>> = {
   "import.excel":           { OWNER: "full", ADMIN: "full", ACCOUNTS: "denied", SALES: "denied",     DISPATCH: "denied" },
   "reports.export":         { OWNER: "full", ADMIN: "full", ACCOUNTS: "full",   SALES: "own",         DISPATCH: "denied" },
   "audit.view":             { OWNER: "full", ADMIN: "readOnly", ACCOUNTS: "denied", SALES: "denied", DISPATCH: "denied" },
+  // Everyone manages their own name, mobile and password (My profile).
+  "profile.self":           { OWNER: "full", ADMIN: "full", ACCOUNTS: "full",   SALES: "full",       DISPATCH: "full" },
 };
 
 export type OwnershipCtx = {

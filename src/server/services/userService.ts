@@ -82,7 +82,16 @@ export type AdminUpdateUserInput = {
   defaultEntityId?: string | null;
   canReceivePayments?: boolean;
   active?: boolean;
+  phoneE164?: string; // mobile (unique per company)
 };
+
+async function assertPhoneFree(tenantId: string, userId: string, phoneE164: string) {
+  const dupe = await prisma.user.findFirst({
+    where: { tenantId, phoneE164, id: { not: userId } },
+    select: { name: true },
+  });
+  if (dupe) throw new AppError("CONFLICT", `${dupe.name} already uses that mobile number.`);
+}
 
 
 /** Only an Owner may change another Owner's login (email / password).
@@ -122,10 +131,15 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
     }
   }
 
+  if (input.phoneE164 !== undefined && input.phoneE164 !== before.phoneE164) {
+    await assertPhoneFree(input.tenantId, input.userId, input.phoneE164);
+  }
+
   const after = await prisma.user.update({
     where: { id: input.userId },
     data: {
       ...(input.name !== undefined && { name: input.name }),
+      ...(input.phoneE164 !== undefined && { phoneE164: input.phoneE164 }),
       ...(input.role !== undefined && { role: input.role }),
       ...(input.lang !== undefined && { lang: input.lang }),
       ...(input.defaultEntityId !== undefined && { defaultEntityId: input.defaultEntityId }),
@@ -150,6 +164,7 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
       canReceivePayments: before.canReceivePayments,
       defaultEntityId: before.defaultEntityId,
       name: before.name,
+      phoneE164: before.phoneE164,
     },
     after: {
       role: after.role,
@@ -158,6 +173,7 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
       canReceivePayments: after.canReceivePayments,
       defaultEntityId: after.defaultEntityId,
       name: after.name,
+      phoneE164: after.phoneE164,
     },
   });
 
@@ -328,4 +344,37 @@ export function generateTempPassword(): string {
   const buf = new Uint8Array(10);
   crypto.getRandomValues(buf);
   return Array.from(buf, (b) => alphabet[b % alphabet.length]).join("");
+}
+
+/** Anyone can change their own name and mobile (their login email is set by an admin). */
+export async function updateMyProfile(opts: { tenantId: string; userId: string; name: string; phoneE164: string }) {
+  const before = await prisma.user.findFirst({ where: { tenantId: opts.tenantId, id: opts.userId } });
+  if (!before) throw new AppError("NOT_FOUND", "User not found.");
+  const name = opts.name.trim();
+  if (!name) throw new AppError("VALIDATION", "Enter your name.");
+  if (opts.phoneE164 !== before.phoneE164) await assertPhoneFree(opts.tenantId, opts.userId, opts.phoneE164);
+  const after = await prisma.user.update({
+    where: { id: opts.userId },
+    data: { name, phoneE164: opts.phoneE164 },
+  });
+  await writeAudit(prisma, {
+    tenantId: opts.tenantId,
+    actorId: opts.userId,
+    action: "PROFILE_SELF_UPDATE",
+    entity: "User",
+    entityId: opts.userId,
+    before: { name: before.name, phoneE164: before.phoneE164 },
+    after: { name: after.name, phoneE164: after.phoneE164 },
+  });
+  return after;
+}
+
+/** The fields the Edit user screen shows. */
+export async function getUserForEdit(tenantId: string, userId: string) {
+  const u = await prisma.user.findFirst({
+    where: { tenantId, id: userId },
+    select: { id: true, name: true, email: true, phoneE164: true, role: true, defaultEntityId: true, canReceivePayments: true, active: true },
+  });
+  if (!u) throw new AppError("NOT_FOUND", "User not found.");
+  return u;
 }

@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       bal: blank ? null : Number(r.balanceDue),
       delivery: r.sheetRow?.delivery ?? (r.promisedDeliveryDate ? r.promisedDeliveryDate.toISOString().slice(0, 10) : ""),
       status: r.simpleStatus.toLowerCase(),
-      acc: r.sheetRow?.acc ?? "",
+      acc: r.accDetails ?? r.sheetRow?.acc ?? "",
       comments: r.sheetRow?.comments ?? r.notes ?? "",
     });
   }

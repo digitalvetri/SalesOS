@@ -585,7 +585,7 @@ function OrderSheetRow({ row, mode, showEmployee }: { row: OrderV2Row; mode: Mod
 
   const paidUp = !blank && new Decimal(row.balanceDue).isZero();
   const sheetStatus = row.sheetRow?.status?.trim() || null;
-  const acc = row.sheetRow?.acc?.trim() || null;
+  const acc = row.accDetails?.trim() || row.sheetRow?.acc?.trim() || null;
   const delivery = deliveryText(row);
   const sno =
     row.serialNo === null ? "—" : showEmployee ? `${initialsOf(row.salespersonName)}-${row.serialNo}` : String(row.serialNo);
