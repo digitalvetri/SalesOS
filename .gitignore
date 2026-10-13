@@ -43,3 +43,6 @@ supabase/.branches
 
 # Local photo uploads (UPLOAD_DIR default)
 .uploads/
+
+# Import dry-run reports (contain customer data)
+import-report*.xlsx

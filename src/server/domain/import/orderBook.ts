@@ -31,6 +31,8 @@ export type ParsedOrder = {
   amount: string; // order total
   advance: string; // paid so far
   balance: string;
+  /** false when the BAL cell was left blank (no payment info), true for a number or NILL. */
+  balanceStated: boolean;
   status: ImportStatus;
   cancelNote: string | null;
   route: string | null; // payment route text, e.g. "KUMARESH GPAY"
@@ -116,6 +118,9 @@ export function parseMoney(v: Cell): Decimal | null {
   return /^-?\d+(\.\d+)?$/.test(t) ? new Decimal(t) : null;
 }
 
+/** A cell that holds something (a number, NILL, any text) — not blank. */
+const hasValue = (v: Cell) => v instanceof Date || typeof v === "number" || (typeof v === "string" && v.trim() !== "");
+
 // ───────── Dates ─────────
 
 const iso = (y: number, m: number, d: number) => {
@@ -162,6 +167,64 @@ export function resolveDate(r: DateRead, blockMonth: string | null): { date: str
   }
   if (r.date) return { date: r.date, flag: null };
   return blockMonth ? { date: `${blockMonth}-01`, flag: "DATE_GUESSED" } : { date: null, flag: "DATE_GUESSED" };
+}
+
+const dayNum = (isoDate: string) => Date.parse(`${isoDate}T00:00:00Z`) / 86_400_000;
+
+/**
+ * Like resolveDate, but uses the previous order's date (sheets are written in
+ * date order) — needed where month markers are missing (Viji's sheet).
+ *  1. A row with no date takes the previous order's date (DATE_GUESSED).
+ *  2. Candidates: the date as written, plus — for Excel date cells with day ≤ 12 —
+ *     the day/month-swapped reading (Excel swaps typed dd/mm).
+ *  3. "Plausible" = 45 days before … 120 days after the previous order, and not
+ *     after `latest` (today). The closest plausible candidate wins (going
+ *     backwards counts double — rows are mostly in order).
+ *  4. Only if none is plausible: try typo repairs — the previous order's year
+ *     (25 typed for 26) and, for text dates, its month (12 typed for 02).
+ */
+export function resolveDateInOrder(
+  r: DateRead,
+  blockMonth: string | null,
+  prevDate: string | null,
+  latest: string | null = null,
+): { date: string | null; flag: Flag | null } {
+  if (!r.date) {
+    if (prevDate) return { date: prevDate, flag: "DATE_GUESSED" };
+    return resolveDate(r, blockMonth);
+  }
+  if (!prevDate) return resolveDate(r, blockMonth);
+
+  type Cand = { date: string; flag: Flag | null; penalty: number };
+  const cands: Cand[] = [];
+  const add = (date: string | null, flag: Flag | null, penalty = 0) => {
+    if (date && !cands.some((c) => c.date === date)) cands.push({ date, flag, penalty });
+  };
+  const [y, m, d] = r.date.split("-").map(Number) as [number, number, number];
+  add(r.date, null);
+  if (r.fromDateCell && d <= 12 && d !== m) add(iso(y, d, m), "DATE_SWAPPED");
+
+  const diff = (c: Cand) => dayNum(c.date) - dayNum(prevDate);
+  const plausible = (c: Cand) => diff(c) >= -45 && diff(c) <= 120 && (!latest || c.date <= latest);
+  const score = (c: Cand) => (diff(c) >= 0 ? diff(c) : -diff(c) * 2) + c.penalty + (latest && c.date > latest ? 100_000 : 0);
+  const best = (list: Cand[]) => list.reduce((a, b) => (score(b) < score(a) ? b : a));
+
+  const ok = cands.filter(plausible);
+  if (ok.length) {
+    const b = best(ok);
+    return { date: b.date, flag: b.flag };
+  }
+  // Typo repairs: previous order's year; for text dates also its month.
+  const py = Number(prevDate.slice(0, 4));
+  const pm = Number(prevDate.slice(5, 7));
+  for (const c of [...cands]) {
+    const [, cm, cd] = c.date.split("-").map(Number) as [number, number, number];
+    add(iso(py, cm, cd), "DATE_GUESSED", 30);
+  }
+  if (!r.fromDateCell) add(iso(py, pm, d), "DATE_GUESSED", 30);
+  const repaired = cands.filter(plausible);
+  const b = best(repaired.length ? repaired : cands);
+  return { date: b.date, flag: repaired.length ? b.flag : (b.flag ?? "DATE_GUESSED") };
 }
 
 // ───────── Headers + rows ─────────
@@ -211,12 +274,15 @@ const digits = (s: string) => s.replace(/[\s\-()]/g, "");
 
 // ───────── Sheet parser ─────────
 
-export function parseSheet(sheet: SheetGrid): ParseResult {
+export type ParseOptions = { latest?: string | null };
+
+export function parseSheet(sheet: SheetGrid, opts: ParseOptions = {}): ParseResult {
   const orders: ParsedOrder[] = [];
   const stated = new Map<string, Decimal>();
   let cols: Columns | null = null;
   let blockMonth: string | null = null;
   let current: ParsedOrder | null = null;
+  let prevDate: string | null = null;
   // Majority month of text dates per block, learned on the fly.
   const monthVotes = new Map<string, number>();
 
@@ -238,6 +304,18 @@ export function parseSheet(sheet: SheetGrid): ParseResult {
       finish();
       cols = header;
       return;
+    }
+
+    // Month marker written across the row: every filled cell is the same date.
+    if (filled.length > 1 && filled.every((v) => v instanceof Date || typeof v === "number")) {
+      const ds = new Set(filled.map((v) => readDate(v).date));
+      const only = [...ds][0];
+      if (ds.size === 1 && only) {
+        finish();
+        blockMonth = only.slice(0, 7);
+        monthVotes.clear();
+        return;
+      }
     }
 
     // Month marker: a lone date → new block.
@@ -285,6 +363,7 @@ export function parseSheet(sheet: SheetGrid): ParseResult {
         if (adv && adv.gt(0)) (current as ParsedOrder).advance = adv.toString();
         const bal = parseMoney(get("balance"));
         if (bal && bal.gt(0)) (current as ParsedOrder).balance = bal.toString();
+        if (hasValue(get("balance"))) (current as ParsedOrder).balanceStated = true;
       }
       return;
     }
@@ -294,9 +373,10 @@ export function parseSheet(sheet: SheetGrid): ParseResult {
     const dr = readDate(dateCell);
     if (dr.date && !dr.fromDateCell) monthVotes.set(dr.date.slice(0, 7), (monthVotes.get(dr.date.slice(0, 7)) ?? 0) + 1);
     const majority = [...monthVotes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? blockMonth;
-    const resolved = resolveDate(dr, majority ?? blockMonth);
+    const resolved = resolveDateInOrder(dr, majority ?? blockMonth, prevDate, opts.latest ?? null);
     if (resolved.flag) flags.push(resolved.flag);
     const date = resolved.date ?? `${blockMonth ?? "1970-01"}-01`;
+    if (resolved.date) prevDate = resolved.date;
 
     // Phone in the customer column (Viji's sheet).
     let name = custText;
@@ -332,6 +412,7 @@ export function parseSheet(sheet: SheetGrid): ParseResult {
       amount: amount.toString(),
       advance: advance.toString(),
       balance: balance.toString(),
+      balanceStated: hasValue(get("balance")),
       status,
       cancelNote,
       route: text(get("route")) || null,
@@ -384,8 +465,8 @@ export function markDuplicates(orders: ParsedOrder[]): ParsedOrder[] {
 }
 
 /** Parse every sheet that isn't skipped, then flag cross-sheet duplicates. */
-export function parseOrderBook(sheets: SheetGrid[]): ParseResult {
-  const all = sheets.map(parseSheet);
+export function parseOrderBook(sheets: SheetGrid[], opts: ParseOptions = {}): ParseResult {
+  const all = sheets.map((sh) => parseSheet(sh, opts));
   return {
     orders: markDuplicates(all.flatMap((r) => r.orders)),
     reconciliation: all.flatMap((r) => r.reconciliation),

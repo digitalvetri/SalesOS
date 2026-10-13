@@ -45,7 +45,7 @@ export default async function OrdersPage({
       month,
       status,
       search: search || undefined,
-      limit: 500,
+      limit: 5000, // "All time" must include every order (counts + totals are computed from these rows)
     }),
     listOrderMonths({ tenantId: session.tenantId, salespersonId: salespersonScope }),
     mode === "admin"

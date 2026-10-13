@@ -63,7 +63,7 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
   const rows = await prisma.order.findMany({
     where,
     orderBy: [{ orderDate: "desc" }, { createdAt: "desc" }],
-    take: f.limit ?? 500,
+    take: f.limit ?? 5000,
     select: {
       id: true,
       serialNo: true,

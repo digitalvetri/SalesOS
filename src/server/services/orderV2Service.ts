@@ -76,7 +76,6 @@ export async function createOrderV2(input: CreateOrderV2Input) {
 
   // Resolve entity: user's default, or first active in the tenant.
   const entity = await resolveEntity(input.tenantId, input.salespersonId, input.entityId);
-  const fyLabel = fyLabelOf(orderDate);
 
   // Upsert the customer by phone (outside the main tx — races are safe thanks
   // to (tenantId, phoneE164) unique constraint).
@@ -92,80 +91,18 @@ export async function createOrderV2(input: CreateOrderV2Input) {
   const result = await runWithSerializableRetry(() =>
     prisma.$transaction(
     async (tx) => {
-      // S.No per salesperson (BR-04-style counter row).
-      const serialNo = await allocateCounter(tx, {
-        tenantId: input.tenantId,
-        key: snoKey(input.salespersonId),
-      });
-      // v1.0 global order number — kept so historical reports still work.
-      const seq = await allocateCounter(tx, {
-        tenantId: input.tenantId,
-        key: orderCounterKey(entity.code, fyLabel),
-      });
-      const number = orderNumber(entity.code, fyLabel, seq);
-
-      const balance = computeBalance(total, advance);
-
-      const order = await tx.order.create({
-        data: {
-          tenantId: input.tenantId,
-          number,
-          entityId: entity.id,
-          customerId: customer.id,
-          salespersonId: input.salespersonId,
-          orderDate,
-          status: "CONFIRMED", // v1.0 column retained; UI reads simpleStatus
-          simpleStatus: "PENDING",
-          subtotal: total.toFixed(2),
-          chargesTotal: "0.00",
-          discount: "0.00",
-          total: total.toFixed(2),
-          balanceDue: balance.toFixed(2),
-          paidTotal: advance.toFixed(2),
-          serialNo,
-          productText,
-          notes: input.note ?? null,
-          createdById: input.actorId,
-        },
-      });
-
-      // Optional advance payment — written as VERIFIED immediately (v1.1 §4.5).
-      let payment = null;
-      if (advance.greaterThan(0)) {
-        const rSeq = await allocateCounter(tx, {
-          tenantId: input.tenantId,
-          key: `RCPT:${fyLabel}`,
-        });
-        payment = await tx.payment.create({
-          data: {
-            tenantId: input.tenantId,
-            receiptNo: `RCPT/${fyLabel}/${String(rSeq).padStart(5, "0")}`,
-            orderId: order.id,
-            type: "ADVANCE",
-            method: input.paymentMethod ?? "UPI",
-            amount: advance.toFixed(2),
-            paidOn: orderDate,
-            status: "VERIFIED",
-            verifiedById: input.actorId,
-            verifiedAt: new Date(),
-            createdById: input.actorId,
-          },
-        });
-      }
-
-      await writeAudit(tx, {
+      const { order, payment } = await insertOrderV2Tx(tx, {
         tenantId: input.tenantId,
         actorId: input.actorId,
-        action: "ORDER_CREATE_V2",
-        entity: "Order",
-        entityId: order.id,
-        after: {
-          serialNo: order.serialNo,
-          number: order.number,
-          productText: order.productText,
-          total: order.total.toString(),
-          paidTotal: order.paidTotal.toString(),
-        },
+        salespersonId: input.salespersonId,
+        customerId: customer.id,
+        entity,
+        orderDate,
+        productText,
+        total,
+        advance,
+        paymentMethod: input.paymentMethod,
+        note: input.note,
       });
 
       return { order, payment, customer };
@@ -174,6 +111,109 @@ export async function createOrderV2(input: CreateOrderV2Input) {
   ));
 
   return result;
+}
+
+export type InsertOrderV2Args = {
+  tenantId: string;
+  actorId: string;
+  salespersonId: string;
+  customerId: string;
+  entity: { id: string; code: string };
+  orderDate: Date;
+  productText: string;
+  total: Decimal;
+  advance: Decimal;
+  paymentMethod?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
+  note?: string | null;
+  // Import extras (default: a new PENDING order).
+  simpleStatus?: "PENDING" | "COMPLETED" | "CANCELLED";
+  legacyStatus?: "CONFIRMED" | "DELIVERED" | "CANCELLED";
+  completedAt?: Date | null;
+  importRef?: string | null;
+};
+
+/** Order row + S.No + v1.0 number + optional advance payment + audit, inside `tx`.
+ *  Shared by createOrderV2 (app) and the Excel order-book import. */
+export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrderV2Args) {
+  const fyLabel = fyLabelOf(a.orderDate);
+  // S.No per salesperson (BR-04-style counter row).
+  const serialNo = await allocateCounter(tx, {
+    tenantId: a.tenantId,
+    key: snoKey(a.salespersonId),
+  });
+  // v1.0 global order number — kept so historical reports still work.
+  const seq = await allocateCounter(tx, {
+    tenantId: a.tenantId,
+    key: orderCounterKey(a.entity.code, fyLabel),
+  });
+  const number = orderNumber(a.entity.code, fyLabel, seq);
+
+  const balance = computeBalance(a.total, a.advance);
+
+  const order = await tx.order.create({
+    data: {
+      tenantId: a.tenantId,
+      number,
+      entityId: a.entity.id,
+      customerId: a.customerId,
+      salespersonId: a.salespersonId,
+      orderDate: a.orderDate,
+      status: a.legacyStatus ?? "CONFIRMED", // v1.0 column retained; UI reads simpleStatus
+      simpleStatus: a.simpleStatus ?? "PENDING",
+      completedAt: a.completedAt ?? null,
+      importRef: a.importRef ?? null,
+      subtotal: a.total.toFixed(2),
+      chargesTotal: "0.00",
+      discount: "0.00",
+      total: a.total.toFixed(2),
+      balanceDue: balance.toFixed(2),
+      paidTotal: a.advance.toFixed(2),
+      serialNo,
+      productText: a.productText,
+      notes: a.note ?? null,
+      createdById: a.actorId,
+    },
+  });
+
+  // Optional advance payment — written as VERIFIED immediately (v1.1 §4.5).
+  let payment = null;
+  if (a.advance.greaterThan(0)) {
+    const rSeq = await allocateCounter(tx, {
+      tenantId: a.tenantId,
+      key: `RCPT:${fyLabel}`,
+    });
+    payment = await tx.payment.create({
+      data: {
+        tenantId: a.tenantId,
+        receiptNo: `RCPT/${fyLabel}/${String(rSeq).padStart(5, "0")}`,
+        orderId: order.id,
+        type: "ADVANCE",
+        method: a.paymentMethod ?? "UPI",
+        amount: a.advance.toFixed(2),
+        paidOn: a.orderDate,
+        status: "VERIFIED",
+        verifiedById: a.actorId,
+        verifiedAt: new Date(),
+        createdById: a.actorId,
+      },
+    });
+  }
+
+  await writeAudit(tx, {
+    tenantId: a.tenantId,
+    actorId: a.actorId,
+    action: "ORDER_CREATE_V2",
+    entity: "Order",
+    entityId: order.id,
+    after: {
+      serialNo: order.serialNo,
+      number: order.number,
+      productText: order.productText,
+      total: order.total.toString(),
+      paidTotal: order.paidTotal.toString(),
+    },
+  });
+  return { order, payment };
 }
 
 async function resolveEntity(tenantId: string, userId: string, hinted?: string) {

@@ -146,8 +146,8 @@ describe("parseSheet — the VIJI sheet", () => {
     expect(by("VIJI!R7")).toMatchObject({ date: "2026-01-07", status: "CLOSED" });
     expect(by("VIJI!R7").flags).toContain("DATE_SWAPPED");
   });
-  it("typo date → block month day 1 + DATE_GUESSED; 'cancelled' → CANCELLED with note", () => {
-    expect(by("VIJI!R8")).toMatchObject({ date: "2026-01-01", status: "CANCELLED", cancelNote: "cancelled - price" });
+  it("typo date → previous order's date + DATE_GUESSED; 'cancelled' → CANCELLED with note", () => {
+    expect(by("VIJI!R8")).toMatchObject({ date: "2026-01-07", status: "CANCELLED", cancelNote: "cancelled - price" });
     expect(by("VIJI!R8").flags).toContain("DATE_GUESSED");
   });
   it("reconciliation: computed vs stated TOTAL per month", () => {
@@ -238,3 +238,113 @@ describe("block month from the majority of text dates (no month marker)", () => 
     expect(r.orders[3]!.flags).toContain("DATE_SWAPPED");
   });
 });
+
+describe("real ORDER DETAILS.xlsx layouts (2026-10-13 import)", () => {
+  const D = (s: string) => new Date(`${s}T00:00:00Z`);
+  it("treats a row of the same date repeated across columns as a month marker, not an order", () => {
+    const r = parseSheet({
+      name: "NAREN",
+      rows: [
+        H,
+        ["07.01.2026", "A", "9840000101", "x", 100, "NILL", "NILL", "DELIVERD", null],
+        Array(9).fill(D("2026-02-01")),
+        H,
+        ["03.02.2026", "B", "9840000102", "y", 200, "NILL", "NILL", "DELIVERD", null],
+      ],
+    });
+    expect(r.orders).toHaveLength(2);
+    expect(r.orders.map((o) => o.customerName)).toEqual(["A", "B"]);
+    expect(r.orders[1]!.month).toBe("2026-02");
+  });
+
+  it("resolves swapped Excel dates by date order when there is no month marker (Viji)", () => {
+    // Typed dd/mm: day ≤ 12 became an Excel date with day/month swapped; day > 12 stayed text.
+    const r = parseSheet({
+      name: "VIJI",
+      rows: [
+        [null, null, null, D("2026-01-01")],
+        H,
+        [D("2026-02-01"), "A", "9840000101", "x", 100, null, null, null, null], // 02/01 → 2 Jan
+        [D("2026-12-01"), "B", "9840000102", "x", 100, null, null, null, null], // 01/12? no: 12/01 → 12 Jan
+        ["14/01/26", "C", "9840000103", "x", 100, null, null, null, null],
+        [D("2026-02-02"), "D", "9840000104", "x", 100, null, null, null, null], // 02/02 → 2 Feb
+        [D("2026-03-02"), "E", "9840000105", "x", 100, null, null, null, null], // 03/02 → 3 Feb
+        ["13/02/26", "F", "9840000106", "x", 100, null, null, null, null],
+        [D("2026-02-03"), "G", "9840000107", "x", 100, null, null, null, null], // 02/03 → 2 Mar
+      ],
+    });
+    expect(r.orders.map((o) => o.date)).toEqual([
+      "2026-01-02", "2026-01-12", "2026-01-14", "2026-02-02", "2026-02-03", "2026-02-13", "2026-03-02",
+    ]);
+  });
+
+  it("keeps genuine Excel dates when they already follow on (Dhanushya)", () => {
+    const r = parseSheet({
+      name: "DHANUSHYA",
+      rows: [
+        H,
+        [D("2026-04-04"), "A", "9840000101", "x", 100, "NILL", "NILL", "DELIVERED", null],
+        [D("2026-04-15"), "B", "9840000102", "x", 100, "NILL", "NILL", "DELIVERED", null],
+        [D("2026-05-04"), "C", "9840000103", "x", 100, "NILL", "NILL", "DELIVERED", null],
+      ],
+    });
+    expect(r.orders.map((o) => o.date)).toEqual(["2026-04-04", "2026-04-15", "2026-05-04"]);
+  });
+
+  it("fixes a one-year typo in a text date that sits among this year's orders", () => {
+    const r = parseSheet({
+      name: "VIJI",
+      rows: [
+        H,
+        ["12/01/26", "A", "9840000101", "x", 100, null, null, null, null],
+        ["13/01/25", "B", "9840000102", "x", 100, null, null, null, null],
+      ],
+    });
+    expect(r.orders[1]!.date).toBe("2026-01-13");
+    expect(r.orders[1]!.flags).toContain("DATE_GUESSED");
+  });
+
+  it("fixes month/year typos and slightly out-of-order rows using the neighbouring dates", () => {
+    const r = parseSheet({
+      name: "VIJI",
+      rows: [
+        H,
+        ["13/02/26", "A", "9840000101", "x", 100, null, null, null, null],
+        ["16/12/25", "B", "9840000102", "x", 100, null, null, null, null], // 12 typed for 02, 25 for 26 → 16 Feb 2026
+        ["15/06/26", "C", "9840000103", "x", 100, null, null, null, null],
+        [D("2026-11-06"), "D", "9840000104", "x", 100, null, null, null, null], // 11/06 → 11 June (just before 15 June)
+        [D("2026-04-03"), "E", "9840000105", "x", 100, null, null, null, null], // 04/03 → 4 Mar? no: after June → keep… see below
+      ],
+    }, { latest: "2026-10-13" });
+    expect(r.orders.slice(0, 4).map((o) => o.date)).toEqual(["2026-02-13", "2026-02-16", "2026-06-15", "2026-06-11"]);
+    expect(r.orders[1]!.flags).toContain("DATE_GUESSED");
+    expect(r.orders.every((o) => o.date <= "2026-10-13")).toBe(true);
+  });
+
+  it("repairs an Excel date with a wrong year next to this year's rows", () => {
+    const r = parseSheet({
+      name: "VIJI",
+      rows: [
+        H,
+        ["02/03/26", "Z", "9840000100", "x", 100, null, null, null, null], // context: 2 Mar 2026
+        [D("2026-04-03"), "A", "9840000101", "x", 100, null, null, null, null], // → 4 Mar 2026
+        [D("2025-05-03"), "B", "9840000102", "x", 100, null, null, null, null], // year typo + swap → 5 Mar 2026
+      ],
+    }, { latest: "2026-10-13" });
+    expect(r.orders.map((o) => o.date)).toEqual(["2026-03-02", "2026-03-04", "2026-03-05"]);
+  });
+
+  it("gives a row with no date the previous order's date", () => {
+    const r = parseSheet({
+      name: "VIJI",
+      rows: [
+        H,
+        ["12/01/26", "A", "9840000101", "x", 100, null, null, null, null],
+        [null, null, "9840000102", "y", 200, null, null, null, null],
+      ],
+    });
+    expect(r.orders[1]!.date).toBe("2026-01-12");
+    expect(r.orders[1]!.flags).toContain("DATE_GUESSED");
+  });
+});
+
