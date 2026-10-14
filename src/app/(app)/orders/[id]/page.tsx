@@ -11,10 +11,11 @@ import { formatInr } from "@/lib/formatInr";
 import { amountMissing, contactLabelOf, customerLabelOf, istMonthKey, realPhone, telOf } from "@/lib/orderDisplay";
 import { fmtDate, deliveryText, PILL_STYLE } from "../_components/sheet/sheetFormat";
 import { OrderEditable, PaymentRow } from "./OrderEditor";
+import { ProductionBadge } from "@/components/app/ProductionBadge";
 
 const ymdOf = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "");
 
-const STATUS_LABEL = { PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" } as const;
+const STATUS_LABEL = { PENDING: "Pending", DELIVERED: "Delivered", CANCELLED: "Cancelled" } as const;
 const METHOD_LABEL: Record<string, string> = {
   CASH: "Cash",
   UPI: "UPI",
@@ -81,6 +82,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {order.simpleStatus !== "CANCELLED" && <ProductionBadge status={order.productionStatus} className="h-8 px-3 text-sm" />}
           <span className={`inline-flex h-8 items-center rounded-full px-3 text-sm font-semibold ${PILL_STYLE[order.simpleStatus]}`}>
             {STATUS_LABEL[order.simpleStatus]}
           </span>
@@ -116,7 +118,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <Field label="Products">{order.productText?.trim() || "—"}</Field>
             <Field label="Delivery">{delivery}</Field>
             <Field label="Payment received in">{accDetails || "—"}</Field>
-            {order.completedAt && <Field label="Completed">{fmtDate(order.completedAt)}</Field>}
+            {order.completedAt && <Field label="Delivered on">{fmtDate(order.completedAt)}</Field>}
             {order.cancelNote && <Field label="Cancel note">{order.cancelNote}</Field>}
             {order.notes && <Field label="Notes">{order.notes}</Field>}
           </dl>

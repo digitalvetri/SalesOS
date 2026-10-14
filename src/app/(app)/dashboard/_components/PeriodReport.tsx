@@ -117,8 +117,8 @@ export function PeriodKpis({
         </div>
         <div><Change pct={changeOf(t.value, prev.value)} label={prevLabel} /></div>
       </Tile>
-      <Tile href={`/orders?f=completed${m}`} tone="ok" icon={<CheckCircle2 className="h-4 w-4" aria-hidden />} label="Completed" value={
-        <>{t.completed}<span className="ml-1.5 text-base font-semibold text-[color:var(--color-ok)]">{pct(t.completionPct)}</span></>
+      <Tile href={`/orders?f=completed${m}`} tone="ok" icon={<CheckCircle2 className="h-4 w-4" aria-hidden />} label="Delivered" value={
+        <>{t.completed}<span className="sr-only"> orders, </span><span className="ml-1.5 text-base font-semibold text-[color:var(--color-ok)]">{pct(t.completionPct)}</span></>
       }>
         <div>of the {t.orders} orders booked {word}</div>
         <div className="font-semibold">{formatInr(t.completedValue)} value</div>
@@ -184,7 +184,7 @@ export function MonthlyBreakdown({ year, rows, total, selected }: { year: number
               <th className="px-3 py-2.5 text-right font-semibold">Orders</th>
               <th className="px-3 py-2.5 text-right font-semibold">Sales value</th>
               <th className="px-3 py-2.5 text-right font-semibold">Money received</th>
-              <th className="px-3 py-2.5 text-right font-semibold">Completed</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Delivered</th>
               <th className="px-3 py-2.5 text-right font-semibold">Pending</th>
               <th className="px-3 py-2.5 text-right font-semibold">Collected on these orders</th>
               <th className="px-3 py-2.5 text-right font-semibold">Still to collect</th>
@@ -251,7 +251,7 @@ export function TeamTable({ period, rows, total, label }: { period: Period; rows
               <th className="px-3 py-2.5 text-right font-semibold">Sales value</th>
               <th className="px-3 py-2.5 text-right font-semibold">Share</th>
               <th className="px-3 py-2.5 text-right font-semibold">Money received</th>
-              <th className="px-3 py-2.5 text-right font-semibold">Completed</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Delivered</th>
               <th className="px-3 py-2.5 text-right font-semibold">Pending</th>
               <th className="px-3 py-2.5 text-right font-semibold">Still to collect</th>
               <th className="px-3 py-2.5 text-right font-semibold sm:pr-6">Avg order</th>
@@ -345,7 +345,7 @@ export function TeamMonthGrid({
                         href={`/orders?sp=${r.id}&m=${m}`}
                         title={c ? `${c.orders} orders · ${formatInr(c.value)}` : "No orders"}
                         className={`block rounded-md px-1.5 py-1.5 tabular-nums hover:ring-1 hover:ring-[color:var(--color-accent)] ${m === selected ? "ring-1 ring-[color:var(--color-gold)]" : ""}`}
-                        style={{ backgroundColor: shade ? `rgba(45, 106, 79, ${shade})` : undefined }}
+                        style={{ backgroundColor: shade ? `rgba(64, 110, 50, ${shade})` : undefined }}
                       >
                         <span className="block text-[13px] font-semibold">{v ? compactInr(v) : "—"}</span>
                         <span className="block text-[10px] text-[color:var(--color-ink-3)]">{c?.orders ? `${c.orders} ord` : ""}</span>

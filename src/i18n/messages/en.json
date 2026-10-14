@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "Kumaar Industries",
+    "name": "Kumar Food Machinery",
     "entities": "KI · KFM"
   },
   "common": {
@@ -33,16 +33,17 @@
     "title": "Sign in",
     "phoneLabel": "Mobile number",
     "emailLabel": "Email",
+    "usernameLabel": "Username",
     "passwordLabel": "Password",
     "showPassword": "Show",
     "hidePassword": "Hide",
     "forgot": "Forgot password? Ask your admin.",
     "submit": "Sign in",
     "errors": {
-      "invalidCredentials": "Email or password is wrong.",
+      "invalidCredentials": "Username or password is wrong.",
       "deactivated": "Your account is turned off. Contact your admin.",
       "rateLimited": "Too many attempts. Try again in a few minutes.",
-      "missingFields": "Enter your email and password.",
+      "missingFields": "Enter your username and password.",
       "unknown": "Something went wrong — reference #{ref}"
     }
   },

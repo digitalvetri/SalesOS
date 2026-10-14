@@ -31,7 +31,7 @@ export function deliveryText(row: Pick<OrderV2Row, "sheetRow" | "promisedDeliver
 
 export const PILL_STYLE: Record<OrderV2Row["simpleStatus"], string> = {
   PENDING: "bg-[color:var(--color-warn-bg)] text-[color:var(--color-warn)]",
-  COMPLETED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
+  DELIVERED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
   CANCELLED: "bg-[color:var(--color-surface-2)] text-[color:var(--color-ink-3)]",
 };
 

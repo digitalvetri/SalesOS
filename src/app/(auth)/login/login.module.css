@@ -1,19 +1,19 @@
-/* Login — flat deep-forest theme (Kumaar green + logo red) + CSS-only 3D scene. No gradients: every
+/* Login — flat deep logo-green theme (KFM green #406E32 + light green) + CSS-only 3D scene. No gradients: every
    fill is a single solid colour. Scoped to the login route. */
 
 /* ───────────── Theme (re-points the shared design tokens) ───────────── */
 .theme {
-  --teal: #2d6a4f;
-  --teal-bright: #74c69d;
+  --teal: #406e32;
+  --teal-bright: #8cc47a;
 
-  --color-bg: #10261b;
-  --color-surface: #163024;
-  --color-surface-2: #1c3a2c;
-  --color-border: #24493a;
-  --color-border-strong: #2f5a47;
-  --color-ink: #eaf4ee;
-  --color-ink-2: #b7d0c1;
-  --color-ink-3: #8aa798;
+  --color-bg: #172a12;
+  --color-surface: #1e3518;
+  --color-surface-2: #25401e;
+  --color-border: #2f4f27;
+  --color-border-strong: #3a5e31;
+  --color-ink: #eef4ea;
+  --color-ink-2: #c0d3b7;
+  --color-ink-3: #93ab89;
 
   position: relative;
   min-height: 100dvh;
@@ -28,11 +28,11 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   background: var(--teal);
-  box-shadow: 0 10px 28px -10px rgba(45, 106, 79, 0.8);
+  box-shadow: 0 10px 28px -10px rgba(64, 110, 50, 0.8);
   transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .theme [data-gold]:hover {
-  background: #40916c;
+  background: #4e8340;
 }
 .theme [data-gold]:active {
   transform: translateY(1px) scale(0.99);
@@ -45,11 +45,11 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .theme input::placeholder {
-  color: #7f9a8b;
+  color: #8aa180;
 }
 .theme input:focus-visible {
   border-color: var(--teal-bright);
-  box-shadow: 0 0 0 4px rgba(116, 198, 157, 0.18);
+  box-shadow: 0 0 0 4px rgba(140, 196, 122, 0.18);
   --tw-ring-color: transparent;
 }
 /* Chrome autofill would otherwise paint a pale-blue box. */
@@ -98,7 +98,7 @@
   width: 2px;
   height: 2px;
   border-radius: 9999px;
-  background: #d8ebdf;
+  background: #dfecd9;
   animation: twinkle 4s ease-in-out infinite alternate;
 }
 @keyframes twinkle { from { opacity: 0.15; } to { opacity: 0.8; } }
@@ -124,10 +124,17 @@
   }
 }
 
-.wordmark {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+/* Full KFM lockup (light version) — crisp vector, sized for the dark panel. */
+.lockup {
+  display: block;
+  width: min(100%, 260px);
+  height: auto;
+}
+@media (min-width: 640px) {
+  .lockup { width: 320px; }
+}
+@media (min-width: 1024px) {
+  .lockup { width: 400px; }
 }
 .accentText {
   color: var(--teal-bright);
@@ -184,8 +191,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 18px;
-  border: 1.5px solid rgba(116, 198, 157, 0.6);
-  background: rgba(45, 106, 79, 0.6);
+  border: 1.5px solid rgba(140, 196, 122, 0.6);
+  background: rgba(64, 110, 50, 0.6);
   color: #ffffff;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -198,8 +205,8 @@
 .back   { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
 .right  { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
 .left   { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
-.top    { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: rgba(45, 106, 79, 0.35); }
-.bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); background: rgba(45, 106, 79, 0.35); }
+.top    { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: rgba(64, 110, 50, 0.35); }
+.bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); background: rgba(64, 110, 50, 0.35); }
 
 /* Orbit rings with a travelling dot. */
 .ring {
@@ -207,7 +214,7 @@
   left: 50%;
   top: 50%;
   border-radius: 9999px;
-  border: 1.5px solid rgba(116, 198, 157, 0.4);
+  border: 1.5px solid rgba(140, 196, 122, 0.4);
   transform-style: preserve-3d;
 }
 .ring1 {
@@ -303,7 +310,7 @@
 }
 .up {
   font-size: 12px;
-  color: #95d5b2;
+  color: #a8d69a;
 }
 .bars {
   display: flex;
@@ -327,8 +334,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: rgba(116, 198, 157, 0.18);
-  color: #b7e4c7;
+  background: rgba(140, 196, 122, 0.18);
+  color: #c4e3b9;
 }
 
 /* ───────────── Login card ───────────── */

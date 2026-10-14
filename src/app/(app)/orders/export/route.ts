@@ -1,10 +1,15 @@
-// v1.1 §5.3 — Download Excel of the current filtered Orders view.
-// Owner / Admin / Accounts. Mirrors the same filters the OrderSheet UI uses.
+// Download Excel of the current filtered Orders view — every order detail.
+// Owner / Admin / Accounts: all orders. Sales: only their own orders.
+// Mirrors the same filters the OrderSheet UI uses.
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { getSession } from "@/server/auth/session";
 import { listOrdersV2 } from "@/server/repo/ordersV2";
 import { amountMissing, summarise } from "@/lib/orderDisplay";
+import { BRAND } from "@/config/brand";
+import { ORDER_STATUS_LABEL, PRODUCTION_LABEL } from "@/server/domain/v1_1/workflow";
+
+const MODE_LABEL: Record<string, string> = { UPI: "UPI", CASH: "Cash", BANK_TRANSFER: "Account", CHEQUE: "Cheque", CARD: "Card" };
 
 const STATUS_VALUES = ["all", "pending", "completed", "balance_due"] as const;
 
@@ -13,14 +18,15 @@ export async function GET(req: Request) {
   if (!s) {
     return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
   }
-  if (s.role !== "OWNER" && s.role !== "ADMIN" && s.role !== "ACCOUNTS") {
+  const ownOnly = s.role === "SALES";
+  if (s.role !== "OWNER" && s.role !== "ADMIN" && s.role !== "ACCOUNTS" && !ownOnly) {
     return NextResponse.json({ ok: false, error: "FORBIDDEN" }, { status: 403 });
   }
   const url = new URL(req.url);
   const m = url.searchParams.get("m");
   const f = url.searchParams.get("f");
   const q = url.searchParams.get("q");
-  const sp = url.searchParams.get("sp");
+  const sp = ownOnly ? s.userId : url.searchParams.get("sp");
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : null;
   const status = f && (STATUS_VALUES as readonly string[]).includes(f)
     ? (f as (typeof STATUS_VALUES)[number])
@@ -35,25 +41,28 @@ export async function GET(req: Request) {
   });
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Kumaar Industries";
+  wb.creator = BRAND.name;
   wb.created = new Date();
   const ws = wb.addWorksheet("Orders");
 
   ws.columns = [
     { header: "S.No", key: "sno", width: 10 },
-    { header: "Date", key: "date", width: 12 },
-    { header: "Employee", key: "sp", width: 20 },
+    { header: "Order date", key: "date", width: 12, style: { numFmt: "dd-mm-yyyy" } },
+    { header: "Delivery date", key: "delivery", width: 14 },
+    { header: "Employee", key: "sp", width: 18 },
     { header: "Customer", key: "cust", width: 24 },
-    { header: "Contact", key: "contact", width: 22 },
-    { header: "Product", key: "prod", width: 40 },
-    { header: "Total", key: "total", width: 14, style: { numFmt: "#,##0.00" } },
-    { header: "Paid", key: "paid", width: 14, style: { numFmt: "#,##0.00" } },
-    { header: "Balance", key: "bal", width: 14, style: { numFmt: "#,##0.00" } },
-    { header: "Delivery", key: "delivery", width: 14 },
-    { header: "Status", key: "status", width: 14 },
-    { header: "Acc details", key: "acc", width: 24 },
-    { header: "Comments", key: "comments", width: 30 },
+    { header: "Contact", key: "contact", width: 20 },
+    { header: "Products", key: "prod", width: 42 },
+    { header: "Total", key: "total", width: 13, style: { numFmt: "#,##0.00" } },
+    { header: "Received", key: "paid", width: 13, style: { numFmt: "#,##0.00" } },
+    { header: "Balance", key: "bal", width: 13, style: { numFmt: "#,##0.00" } },
+    { header: "Payment mode", key: "mode", width: 13 },
+    { header: "Account name", key: "acc", width: 22 },
+    { header: "Production", key: "production", width: 13 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Comments", key: "comments", width: 32 },
   ];
+  ws.views = [{ state: "frozen", ySplit: 1 }];
   ws.getRow(1).font = { bold: true };
   ws.getRow(1).alignment = { vertical: "middle" };
 
@@ -70,10 +79,12 @@ export async function GET(req: Request) {
       total: blank ? null : Number(r.total),
       paid: blank ? null : Number(r.paidTotal),
       bal: blank ? null : Number(r.balanceDue),
-      delivery: r.sheetRow?.delivery ?? (r.promisedDeliveryDate ? r.promisedDeliveryDate.toISOString().slice(0, 10) : ""),
-      status: r.simpleStatus.toLowerCase(),
+      delivery: r.promisedDeliveryDate ? r.promisedDeliveryDate.toISOString().slice(0, 10).split("-").reverse().join("-") : (r.sheetRow?.delivery ?? ""),
+      mode: r.paymentMode ? (MODE_LABEL[r.paymentMode] ?? r.paymentMode) : "",
       acc: r.accDetails ?? r.sheetRow?.acc ?? "",
-      comments: r.sheetRow?.comments ?? r.notes ?? "",
+      production: r.simpleStatus === "CANCELLED" ? "" : PRODUCTION_LABEL[r.productionStatus],
+      status: ORDER_STATUS_LABEL[r.simpleStatus],
+      comments: r.notes ?? r.sheetRow?.comments ?? "",
     });
   }
 

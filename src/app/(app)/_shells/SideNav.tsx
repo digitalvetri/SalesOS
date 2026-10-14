@@ -84,9 +84,9 @@ export function SideNav({ items }: { items: NavItem[] }) {
       <div className="hidden items-start gap-3 px-6 pb-7 text-sm text-[color:var(--color-sidebar-ink-2)] xl:flex">
         <Zap className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-sidebar-ink)]" aria-hidden />
         <p className="leading-snug">
-          Better Sales
+          {BRAND.tagline}
           <br />
-          Bigger Tomorrow
+          <span className="text-xs opacity-80">{BRAND.since}</span>
         </p>
       </div>
     </aside>

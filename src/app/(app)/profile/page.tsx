@@ -9,12 +9,12 @@ export default async function ProfilePage() {
   const session = await requireSession();
   const me = await prisma.user.findUniqueOrThrow({
     where: { id: session.userId },
-    select: { name: true, email: true, phoneE164: true, role: true, defaultEntityId: true },
+    select: { name: true, username: true, email: true, phoneE164: true, role: true, defaultEntityId: true },
   });
   const entity = me.defaultEntityId
     ? await prisma.billingEntity.findUnique({ where: { id: me.defaultEntityId }, select: { code: true } })
     : null;
-  const roleLabel = { OWNER: "Owner", ADMIN: "Admin", ACCOUNTS: "Accounts", SALES: "Sales", DISPATCH: "Dispatch" }[me.role];
+  const roleLabel = { OWNER: "Owner", ADMIN: "Admin", ACCOUNTS: "Accounts", SALES: "Sales", DISPATCH: "Dispatch", PRODUCTION: "Production" }[me.role];
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-4 py-6 md:px-6">
@@ -32,7 +32,7 @@ export default async function ProfilePage() {
         <section className="surface-card p-5">
           <h2 className="mb-1 text-base font-semibold">Your details</h2>
           <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-            Login email: <span className="font-semibold text-[color:var(--color-ink-2)]">{me.email ?? "—"}</span> — ask your admin to change it.
+            You sign in as <span className="font-semibold text-[color:var(--color-ink-2)]">{me.username ?? me.email ?? "—"}</span> — ask your admin to change it.
           </p>
           <ProfileForm name={me.name} phone={me.phoneE164.replace(/^\+91/, "")} />
         </section>
@@ -44,7 +44,7 @@ export default async function ProfilePage() {
         <section id="install" className="surface-card p-5 md:col-span-2">
           <h2 className="mb-1 text-base font-semibold">Install the app</h2>
           <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-            Put the Kumaar Industries app on your phone or computer like a normal app — opens full screen from its own icon.
+            Put the KFM app on your phone or computer like a normal app — opens full screen from its own icon.
           </p>
           <InstallApp />
         </section>

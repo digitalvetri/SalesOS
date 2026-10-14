@@ -24,6 +24,11 @@ import { LatestOrdersLive } from "./_components/LatestOrdersLive";
 import { BiggestBalances } from "./_components/BiggestBalances";
 import { MonthlyBreakdown, PeriodBar, PeriodKpis, TeamMonthGrid, TeamTable } from "./_components/PeriodReport";
 import { Mini3D } from "@/components/app/three/Mini3D";
+import { opsOverview } from "@/server/services/opsOverviewService";
+import { PipelineStrip } from "./_components/PipelineStrip";
+import { PieRow } from "./_components/PieRow";
+import { FollowUpList } from "./_components/FollowUpList";
+import { ServiceSummary } from "./_components/ServiceSummary";
 
 const istToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
@@ -34,9 +39,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const today = istToday();
   const sp = await searchParams;
   const period = parsePeriod(sp.p, today);
-  const [o, report] = await Promise.all([
+  const [o, report, ops] = await Promise.all([
     adminOverview({ tenantId: session.tenantId }),
     periodReport({ tenantId: session.tenantId, year: period.year, todayYmd: today }),
+    opsOverview({
+      tenantId: session.tenantId,
+      todayYmd: today,
+      ...(period.kind === "month" ? { monthYm: periodKey(period) } : { year: period.year }),
+    }),
   ]);
   const roleLabel = session.role === "OWNER" ? "Owner" : session.role === "ACCOUNTS" ? "Accounts" : "Admin";
 
@@ -94,6 +104,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <PeriodBar period={period} years={report.years} months={report.months} />
 
       <PeriodKpis period={period} t={totals} prev={prevTotals} prevLabel={prevLabel} ordersHref={ordersHref} />
+
+      <PipelineStrip p={ops.pipeline} monthLabel={o.monthLabel} />
+
+      <PieRow ops={ops} periodLabel={label} />
+
+      <FollowUpList groups={ops.followUps} todayYmd={today} allHref="/production" />
+
+      <ServiceSummary s={ops.service} monthLabel={o.monthLabel} />
 
       <MonthlyBreakdown year={period.year} rows={months} total={yearTotal} selected={periodKey(period)} />
 

@@ -6,18 +6,25 @@ import { checkLoginRateLimit, noteLoginAttempt } from "@/server/auth/rateLimit";
 import { touchLastLogin } from "@/server/repo/users";
 import { verifyPassword, verifyAgainstDummy } from "@/server/auth/password";
 import { createSession } from "@/server/auth/session";
+import { resolveLoginWhere } from "@/server/auth/loginIdentity";
 import { AppError, isAppError } from "@/lib/errors";
 import type { ActionResult } from "@/lib/serverAction";
 
-const Input = z.object({
-  email: z.string().trim().min(3).max(254),
-  password: z.string().min(1),
-});
+// `identity` = username ("naren", "sadmin") or, still accepted, an email.
+// `email` is the old field name (kept so an open old login page still works).
+const Input = z
+  .object({
+    identity: z.string().trim().min(2).max(254).optional(),
+    email: z.string().trim().min(2).max(254).optional(),
+    password: z.string().min(1),
+  })
+  .refine((v) => v.identity || v.email);
 
 export async function signInAction(raw: unknown): Promise<ActionResult<{ ok: true }>> {
   try {
     const parsed = Input.parse(raw);
-    const email = parsed.email.toLowerCase();
+    const where = resolveLoginWhere((parsed.identity ?? parsed.email)!);
+    const key = "email" in where ? where.email : `user:${where.username}`;
     const hdrs = await headers();
     const ip =
       hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -28,28 +35,28 @@ export async function signInAction(raw: unknown): Promise<ActionResult<{ ok: tru
     // still `phoneE164`; we repurpose it as a generic identity bucket so we
     // don't need a migration just for this.)
     try {
-      await checkLoginRateLimit({ phoneE164: email, ip });
+      await checkLoginRateLimit({ phoneE164: key, ip });
     } catch {
       throw new AppError("RATE_LIMITED", "Too many attempts. Try again in a few minutes.");
     }
 
-    // Email is the login identity (unique per tenant; one tenant per deploy).
+    // Username (or email) is the login identity (unique per tenant; one tenant per deploy).
     const user = await prisma.user.findFirst({
-      where: { email },
+      where,
       select: { id: true, active: true, passwordHash: true },
     });
     const ok = user ? await verifyPassword(parsed.password, user.passwordHash) : await verifyAgainstDummy(parsed.password);
     if (!user || !ok) {
-      await noteLoginAttempt({ phoneE164: email, ip, success: false });
-      throw new AppError("INVALID_CREDENTIALS", "Email or password is wrong.");
+      await noteLoginAttempt({ phoneE164: key, ip, success: false });
+      throw new AppError("INVALID_CREDENTIALS", "Username or password is wrong.");
     }
     if (!user.active) {
-      await noteLoginAttempt({ phoneE164: email, ip, success: false });
+      await noteLoginAttempt({ phoneE164: key, ip, success: false });
       throw new AppError("DEACTIVATED", "Your account is turned off. Contact your admin.");
     }
 
     await createSession(user.id, { ip, userAgent: hdrs.get("user-agent") ?? undefined });
-    await noteLoginAttempt({ phoneE164: email, ip, success: true });
+    await noteLoginAttempt({ phoneE164: key, ip, success: true });
     await touchLastLogin(user.id);
     return { ok: true, data: { ok: true } };
   } catch (e) {

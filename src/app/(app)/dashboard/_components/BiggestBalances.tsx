@@ -45,7 +45,7 @@ export function BiggestBalances({ rows }: { rows: BalanceRow[] }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{r.customerName}</div>
                 <div className="truncate text-xs text-[color:var(--color-ink-3)]">
-                  {r.salespersonName} · {r.simpleStatus === "COMPLETED" ? "delivered, " : ""}
+                  {r.salespersonName} · {r.simpleStatus === "DELIVERED" ? "delivered, " : ""}
                   {r.pendingDays} {r.pendingDays === 1 ? "day" : "days"} since order
                 </div>
               </div>

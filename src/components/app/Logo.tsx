@@ -1,44 +1,55 @@
 import { cn } from "@/lib/utils";
 import { BRAND, LOGO } from "@/config/brand";
 
-// Kumaar Industries "Ki" mark: blue K (stem, arm, leg) + red i. Flat colours only.
-// Keep in sync with src/app/icon.svg and public/icons/*.
-function KiMark({ blue = LOGO.blue, red = LOGO.red }: { blue?: string; red?: string }) {
-  return (
-    <>
-      <rect x="10" y="8" width="11" height="48" fill={blue} />
-      <polygon points="21,32 44,8 57,8 27,40" fill={blue} />
-      <polygon points="27,40 33,34 44,46 44,56 40,56" fill={blue} />
-      <rect x="46" y="30" width="9" height="26" fill={red} />
-      <rect x="46" y="20" width="9" height="7" fill={red} />
-    </>
-  );
-}
+// Kumar Food Machinery (KFM) brand. Vector artwork lives in public/brand/:
+//   kfm-emblem.svg       the KFM ring mark (green + charcoal, transparent)
+//   kfm-lockup.svg       full horizontal logo for light backgrounds
+//   kfm-lockup-light.svg full logo recoloured for dark backgrounds
+// Flat colours only. Keep in sync with src/app/icon.svg and public/icons/*.
+export const EMBLEM_SRC = "/brand/kfm-emblem.svg";
+export const LOCKUP_SRC = "/brand/kfm-lockup.svg";
+export const LOCKUP_LIGHT_SRC = "/brand/kfm-lockup-light.svg";
 
-/** The mark. `tile` puts it on a white rounded badge (for dark backgrounds). */
+/**
+ * The KFM emblem. `tile` puts it on a white rounded badge so the charcoal parts
+ * stay visible on dark backgrounds (sidebar, dark theme).
+ */
 export function LogoMark({ size = 36, className, tile = false }: { size?: number; className?: string; tile?: boolean }) {
+  if (!tile) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- static vector asset, no optimisation needed
+      <img src={EMBLEM_SRC} width={size} height={size} alt="" aria-hidden className={cn("shrink-0", className)} />
+    );
+  }
+  const pad = Math.round(size * 0.08);
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className={cn("shrink-0", className)}>
-      {tile ? (
-        <>
-          <rect width="64" height="64" rx="14" fill="#FFFFFF" />
-          <g transform="translate(6.4 6.4) scale(0.8)">
-            <KiMark />
-          </g>
-        </>
-      ) : (
-        <KiMark />
-      )}
-    </svg>
+    <span
+      aria-hidden
+      className={cn("inline-flex shrink-0 items-center justify-center bg-white", className)}
+      style={{ width: size, height: size, padding: pad, borderRadius: Math.round(size * 0.22) }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- static vector asset */}
+      <img src={EMBLEM_SRC} width={size - pad * 2} height={size - pad * 2} alt="" className="block h-full w-full" />
+    </span>
   );
 }
 
-/** "Kumaar / INDUSTRIES" wordmark. `onDark` uses light ink for graphite surfaces. */
+/**
+ * "KUMAR / FOOD MACHINERY" wordmark in the logo colours (green + charcoal).
+ * Default follows the theme tokens (light: logo charcoal + green; dark theme: light ink +
+ * light green). `onDark` forces white + light green for always-dark surfaces like the sidebar.
+ */
 export function Wordmark({ onDark = false, className }: { onDark?: boolean; className?: string }) {
+  const green = onDark ? LOGO.greenOnDark : "var(--color-gold)";
+  const ink = onDark ? "#FFFFFF" : "var(--color-ink)";
   return (
-    <span className={cn("flex flex-col leading-none", className)}>
-      <span className={cn("text-[1.15em] font-bold tracking-tight", onDark ? "text-white" : "text-[#1E2B4A]")}>Kumaar</span>
-      <span className={cn("mt-[3px] text-[0.55em] font-bold tracking-[0.22em]", onDark ? "text-[#FF6B71]" : "text-[#D7262E]")}>INDUSTRIES</span>
+    <span className={cn("flex flex-col font-bold uppercase leading-none", className)}>
+      <span className="text-[1.15em] tracking-[0.04em]" style={{ color: green }}>
+        Kumar
+      </span>
+      <span className="mt-[4px] whitespace-nowrap text-[0.58em] tracking-[0.12em]">
+        <span style={{ color: ink }}>Food</span> <span style={{ color: green }}>Machinery</span>
+      </span>
     </span>
   );
 }

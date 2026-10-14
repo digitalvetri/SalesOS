@@ -156,7 +156,7 @@ export default async function EmployeesPage() {
 
                 {h && (
                   <div className="border-t border-[color:var(--color-border)] pt-3">
-                    <div className="label-caps mb-2">Last 6 months — completed orders, by order month</div>
+                    <div className="label-caps mb-2">Last 6 months — delivered orders, by order month</div>
                     <MonthlyHistoryPanel
                       months={history.months}
                       salespersons={[h]}

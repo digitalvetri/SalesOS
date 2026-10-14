@@ -18,7 +18,7 @@ export async function exportPriceList(opts: {
   ]);
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Kumaar Industries";
+  wb.creator = "Kumar Food Machinery";
   wb.created = new Date();
   const ws = wb.addWorksheet("PRICE LIST");
 

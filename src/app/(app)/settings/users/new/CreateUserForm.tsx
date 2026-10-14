@@ -12,7 +12,7 @@ import type { Role } from "@/server/repo/client";
 
 type EntityOpt = { id: string; code: string; name: string };
 
-const ROLES: Role[] = ["ADMIN", "ACCOUNTS", "SALES", "DISPATCH"];
+const ROLES: Role[] = ["ADMIN", "ACCOUNTS", "SALES", "PRODUCTION", "DISPATCH"];
 const OWNER_ONLY: Role[] = ["OWNER"];
 
 export function CreateUserForm({
@@ -26,6 +26,7 @@ export function CreateUserForm({
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [name, setName] = React.useState("");
+  const [username, setUsername] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [role, setRole] = React.useState<Role>("SALES");
@@ -44,6 +45,7 @@ export function CreateUserForm({
     try {
       const r = await createUserAction({
         name,
+        username,
         email,
         phone,
         role,
@@ -83,19 +85,29 @@ export function CreateUserForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            maxLength={40}
+            autoCapitalize="none"
+            placeholder="e.g. naren"
+          />
+          <p className="text-xs text-[color:var(--color-ink-3)]">They sign in with this name (capital letters don&apos;t matter). Must be unique.</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email (optional)</Label>
           <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
             maxLength={254}
             placeholder="name@gmail.com"
           />
-          <p className="text-xs text-[color:var(--color-ink-3)]">
-            Used to sign in. Must be unique.
-          </p>
         </div>
 
         <div className="space-y-2">
@@ -167,7 +179,7 @@ export function CreateUserForm({
         <Button
           type="submit"
           gold
-          disabled={pending || !name || !email || !phone}
+          disabled={pending || !name || !username.trim() || !phone}
           className="h-11 w-full"
         >
           {pending ? "…" : t("newUser")}

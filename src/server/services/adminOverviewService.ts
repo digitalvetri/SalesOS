@@ -7,7 +7,7 @@
 //   `createdAt` (entry/import time). Cancelled orders never count.
 // - Payment received = Σ payments with `paidOn` in the window, status not
 //   REJECTED, refunds subtracted, on non-cancelled orders.
-// - Orders completed this month = simpleStatus COMPLETED with `completedAt`
+// - Orders completed this month = simpleStatus DELIVERED with `completedAt`
 //   in the month (the importer sets completedAt = orderDate for sheet orders).
 // - Still to collect = Σ balanceDue > 0 over every non-cancelled order
 //   (pending AND completed-but-unpaid), excluding sheet rows with no amount.
@@ -54,7 +54,7 @@ export type LatestOrderRow = {
   total: string;
   totalMissing: boolean;
   balanceDue: string;
-  simpleStatus: "PENDING" | "COMPLETED" | "CANCELLED";
+  simpleStatus: "PENDING" | "DELIVERED" | "CANCELLED";
 };
 
 export type BalanceRow = {
@@ -63,7 +63,7 @@ export type BalanceRow = {
   salespersonName: string;
   customerPhoneE164: string | null; // null = no phone on file → no Remind button
   pendingDays: number; // IST days since the order date
-  simpleStatus: "PENDING" | "COMPLETED";
+  simpleStatus: "PENDING" | "DELIVERED";
   balance: string;
 };
 
@@ -181,7 +181,7 @@ export async function adminOverview(opts: {
 
   // ── This month ──
   const completedPromise = prisma.order.aggregate({
-    where: { ...scope, simpleStatus: "COMPLETED", completedAt: monthRange },
+    where: { ...scope, simpleStatus: "DELIVERED", completedAt: monthRange },
     _sum: { total: true },
     _count: true,
   });
@@ -198,7 +198,7 @@ export async function adminOverview(opts: {
 
   // ── Previous month up to the same day (for deltas) ──
   const prevCompletedPromise = prisma.order.aggregate({
-    where: { ...scope, simpleStatus: "COMPLETED", completedAt: prevRange },
+    where: { ...scope, simpleStatus: "DELIVERED", completedAt: prevRange },
     _count: true,
   });
   const prevPaymentsPromise = paymentsBetween(opts.tenantId, w.prevStart, w.prevSameDayEnd);
@@ -326,7 +326,7 @@ export async function adminOverview(opts: {
     salespersonName: o.salesperson.name,
     customerPhoneE164: o.customer.phoneE164 ?? null,
     pendingDays: daysSince(ymdOf(o.orderDate), w.today),
-    simpleStatus: o.simpleStatus === "COMPLETED" ? "COMPLETED" : "PENDING",
+    simpleStatus: o.simpleStatus === "DELIVERED" ? "DELIVERED" : "PENDING",
     balance: o.balanceDue.toString(),
   }));
 

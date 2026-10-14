@@ -9,6 +9,7 @@ import { formatInr } from "@/lib/formatInr";
 import { amountMissing } from "@/lib/orderDisplay";
 import type { OrderV2Row } from "@/server/repo/ordersV2";
 import { AddPaymentPopover } from "./AddPaymentPopover";
+import { ProductionBadge } from "@/components/app/ProductionBadge";
 import { useOrderStatus } from "./useOrderForms";
 import { fmtDate, deliveryText, PILL_STYLE, initialsOf } from "./sheetFormat";
 
@@ -39,18 +40,26 @@ export function OrderCard({
             #{sno}
           </span>
           <span className="whitespace-nowrap tabular-nums">{fmtDate(row.orderDate)}</span>
+          {!cancelled && <ProductionBadge status={row.productionStatus} />}
           {showEmployee && <span className="truncate font-medium text-[color:var(--color-gold)]">{row.salespersonName}</span>}
         </div>
         <select
           aria-label={`Status of order for ${row.customerLabel}`}
           value={row.simpleStatus}
-          onChange={(e) => void updateStatus(e.target.value as "PENDING" | "COMPLETED" | "CANCELLED")}
+          onChange={(e) => void updateStatus(e.target.value as "PENDING" | "DELIVERED" | "CANCELLED")}
           disabled={pending || (mode === "employee" && row.simpleStatus !== "PENDING")}
           title={mode === "employee" && row.simpleStatus !== "PENDING" ? "Only an admin can change this order" : undefined}
           className={`h-8 shrink-0 rounded-full border-0 px-2.5 text-xs font-semibold ${PILL_STYLE[row.simpleStatus]}`}
         >
           <option value="PENDING">Pending</option>
-          <option value="COMPLETED">Completed</option>
+          <option
+            value="DELIVERED"
+            disabled={mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"}
+          >
+            {mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"
+              ? "Delivered (after production)"
+              : "Delivered"}
+          </option>
           <option value="CANCELLED">Cancelled</option>
         </select>
       </div>

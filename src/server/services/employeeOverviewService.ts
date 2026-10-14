@@ -22,7 +22,7 @@ export type RecentOrderRow = {
   productText: string | null;
   total: string;
   balanceDue: string;
-  simpleStatus: "PENDING" | "COMPLETED" | "CANCELLED";
+  simpleStatus: "PENDING" | "DELIVERED" | "CANCELLED";
 };
 
 export type EmployeeOverview = {
@@ -124,7 +124,7 @@ export async function employeeOverview(opts: {
   );
   const counts = {
     orders: monthOrders.length,
-    completed: monthOrders.filter((o) => o.simpleStatus === "COMPLETED").length,
+    completed: monthOrders.filter((o) => o.simpleStatus === "DELIVERED").length,
     pending: monthOrders.filter((o) => o.simpleStatus === "PENDING").length,
   };
 

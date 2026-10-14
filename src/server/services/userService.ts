@@ -5,12 +5,27 @@ import { revokeUserSessions } from "@/server/auth/session";
 import { prisma, type Role, type Lang } from "@/server/repo/client";
 import { AppError } from "@/lib/errors";
 import { writeAudit } from "@/server/repo/audit";
+import { normalizeUsername, usernameError } from "@/server/domain/auth/username";
+
+/** Clean + validate a username and make sure nobody else in the company has it. */
+async function checkUsername(tenantId: string, raw: string, exceptUserId?: string): Promise<string> {
+  const why = usernameError(raw);
+  if (why) throw new AppError("VALIDATION", why);
+  const username = normalizeUsername(raw);
+  const taken = await prisma.user.findFirst({
+    where: { tenantId, username, ...(exceptUserId ? { id: { not: exceptUserId } } : {}) },
+    select: { name: true },
+  });
+  if (taken) throw new AppError("CONFLICT", `“${username}” is already ${taken.name}'s username.`);
+  return username;
+}
 
 export type AdminCreateUserInput = {
   tenantId: string;
   actorId: string; // the admin/owner doing the creation
   actorRole: Role;
-  email: string;
+  username: string; // sign-in name
+  email?: string | null; // optional (still accepted at sign-in)
   phoneE164: string;
   password: string;
   name: string;
@@ -25,12 +40,15 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
     throw new AppError("FORBIDDEN", "Only an Owner can create another Owner.");
   }
 
-  const email = input.email.trim().toLowerCase();
-  const existingEmail = await prisma.user.findFirst({
-    where: { tenantId: input.tenantId, email },
-  });
-  if (existingEmail) {
-    throw new AppError("CONFLICT", "A user with this email already exists.");
+  const username = await checkUsername(input.tenantId, input.username);
+  const email = input.email?.trim().toLowerCase() || null;
+  if (email) {
+    const existingEmail = await prisma.user.findFirst({
+      where: { tenantId: input.tenantId, email },
+    });
+    if (existingEmail) {
+      throw new AppError("CONFLICT", "A user with this email already exists.");
+    }
   }
   const existingPhone = await prisma.user.findUnique({
     where: { tenantId_phoneE164: { tenantId: input.tenantId, phoneE164: input.phoneE164 } },
@@ -50,6 +68,7 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
       passwordHash,
       passwordSetAt: new Date(),
       name: input.name,
+      username,
       email,
       phoneE164: input.phoneE164,
       role: input.role,
@@ -65,7 +84,7 @@ export async function adminCreateUser(input: AdminCreateUserInput) {
     action: "USER_CREATE",
     entity: "User",
     entityId: user.id,
-    after: { email: user.email, phoneE164: user.phoneE164, name: user.name, role: user.role },
+    after: { username: user.username, email: user.email, phoneE164: user.phoneE164, name: user.name, role: user.role },
   });
 
   return user;
@@ -83,6 +102,7 @@ export type AdminUpdateUserInput = {
   canReceivePayments?: boolean;
   active?: boolean;
   phoneE164?: string; // mobile (unique per company)
+  username?: string; // sign-in name (unique per company)
 };
 
 async function assertPhoneFree(tenantId: string, userId: string, phoneE164: string) {
@@ -134,12 +154,18 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
   if (input.phoneE164 !== undefined && input.phoneE164 !== before.phoneE164) {
     await assertPhoneFree(input.tenantId, input.userId, input.phoneE164);
   }
+  let username: string | undefined;
+  if (input.username !== undefined) {
+    username = await checkUsername(input.tenantId, input.username, input.userId);
+    if (username !== before.username) await assertMayManageLogin(input.tenantId, input.actorId, before);
+  }
 
   const after = await prisma.user.update({
     where: { id: input.userId },
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.phoneE164 !== undefined && { phoneE164: input.phoneE164 }),
+      ...(username !== undefined && { username }),
       ...(input.role !== undefined && { role: input.role }),
       ...(input.lang !== undefined && { lang: input.lang }),
       ...(input.defaultEntityId !== undefined && { defaultEntityId: input.defaultEntityId }),
@@ -165,6 +191,7 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
       defaultEntityId: before.defaultEntityId,
       name: before.name,
       phoneE164: before.phoneE164,
+      username: before.username,
     },
     after: {
       role: after.role,
@@ -174,6 +201,7 @@ export async function adminUpdateUser(input: AdminUpdateUserInput) {
       defaultEntityId: after.defaultEntityId,
       name: after.name,
       phoneE164: after.phoneE164,
+      username: after.username,
     },
   });
 
@@ -373,7 +401,7 @@ export async function updateMyProfile(opts: { tenantId: string; userId: string; 
 export async function getUserForEdit(tenantId: string, userId: string) {
   const u = await prisma.user.findFirst({
     where: { tenantId, id: userId },
-    select: { id: true, name: true, email: true, phoneE164: true, role: true, defaultEntityId: true, canReceivePayments: true, active: true },
+    select: { id: true, name: true, username: true, email: true, phoneE164: true, role: true, defaultEntityId: true, canReceivePayments: true, active: true },
   });
   if (!u) throw new AppError("NOT_FOUND", "User not found.");
   return u;

@@ -1,4 +1,4 @@
-// Web app manifest — lets the Kumaar Industries app be installed on phones and computers (PWA).
+// Web app manifest — lets the Kumar Food Machinery app be installed on phones and computers (PWA).
 import type { MetadataRoute } from "next";
 import { BRAND } from "@/config/brand";
 
@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "any",
     background_color: "#FFFFFF",
-    theme_color: "#1B4332",
+    theme_color: "#24401C",
     categories: ["business", "productivity"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

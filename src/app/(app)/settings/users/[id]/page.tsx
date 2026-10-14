@@ -25,10 +25,10 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
       </div>
       <h2 className="mb-1 text-lg font-semibold">Edit {user.name}</h2>
       <p className="mb-6 text-sm text-[color:var(--color-ink-3)]">
-        Change the name, login email, mobile, role or password. They sign in with the email below.
+        Change the name, username, mobile, role or password. They sign in with the username below.
       </p>
       <EditUserForm
-        user={{ ...user, email: user.email ?? "", phone: user.phoneE164.replace(/^\+91/, "") }}
+        user={{ ...user, username: user.username ?? "", email: user.email ?? "", phone: user.phoneE164.replace(/^\+91/, "") }}
         canSetOwner={session.role === "OWNER"}
         locked={locked}
         isSelf={user.id === session.userId}

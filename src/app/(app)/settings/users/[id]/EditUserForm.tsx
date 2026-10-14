@@ -11,11 +11,11 @@ import type { Role } from "@/server/repo/client";
 
 type EntityOpt = { id: string; code: string; name: string };
 type EditableUser = {
-  id: string; name: string; email: string; phone: string; role: Role;
+  id: string; name: string; username: string; email: string; phone: string; role: Role;
   defaultEntityId: string | null; canReceivePayments: boolean;
 };
 
-const ROLES: Role[] = ["ADMIN", "ACCOUNTS", "SALES", "DISPATCH"];
+const ROLES: Role[] = ["ADMIN", "ACCOUNTS", "SALES", "PRODUCTION", "DISPATCH"];
 const selectCls =
   "h-11 w-full rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-base disabled:opacity-60";
 
@@ -25,6 +25,7 @@ export function EditUserForm({
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [name, setName] = React.useState(user.name);
+  const [username, setUsername] = React.useState(user.username);
   const [email, setEmail] = React.useState(user.email);
   const [phone, setPhone] = React.useState(user.phone);
   const [role, setRole] = React.useState<Role>(user.role);
@@ -38,7 +39,7 @@ export function EditUserForm({
     setPending(true);
     try {
       const r = await editUserAction({
-        userId: user.id, name, email, phone, role, defaultEntityId: entityId || null, canReceivePayments: canReceive,
+        userId: user.id, name, username, email, phone, role, defaultEntityId: entityId || null, canReceivePayments: canReceive,
       });
       if (!r.ok) {
         toast.error(r.error.message);
@@ -61,9 +62,14 @@ export function EditUserForm({
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Login email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={254} />
-            <p className="text-xs text-[color:var(--color-ink-3)]">They sign in with this. Must be unique.</p>
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} required maxLength={40} autoCapitalize="none" />
+            <p className="text-xs text-[color:var(--color-ink-3)]">They sign in with this name. Must be unique.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email (optional)</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} />
+            
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Mobile</Label>
@@ -100,7 +106,7 @@ export function EditUserForm({
         {locked ? (
           <p className="text-sm text-[color:var(--color-warn)]">Only an Owner can edit an Owner.</p>
         ) : (
-          <Button type="submit" gold disabled={pending || !name.trim() || !email.trim() || !phone.trim()} className="h-11 w-full">
+          <Button type="submit" gold disabled={pending || !name.trim() || !username.trim() || !phone.trim()} className="h-11 w-full">
             {pending ? "…" : "Save changes"}
           </Button>
         )}

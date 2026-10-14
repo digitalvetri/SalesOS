@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff, Loader2, Lock, Mail, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, UserRound, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,15 +21,15 @@ export function LoginForm() {
     // Read straight from the form: browser autofill fills the inputs without
     // firing React onChange, so component state can be empty when it isn't.
     const form = new FormData(e.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
+    const identity = String(form.get("username") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    if (!email || !password) {
+    if (!identity || !password) {
       toast.error(t("login.errors.missingFields"));
       return;
     }
     setPending(true);
     try {
-      const result = await signInAction({ email, password });
+      const result = await signInAction({ identity, password });
       if (result.ok) {
         router.push("/home");
         router.refresh();
@@ -59,16 +59,19 @@ export function LoginForm() {
     <form onSubmit={onSubmit} noValidate>
       <div className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email">{t("login.emailLabel")}</Label>
+          <Label htmlFor="username">{t("login.usernameLabel")}</Label>
           <div className="relative">
-            <Mail className={iconCls} aria-hidden />
+            <UserRound className={iconCls} aria-hidden />
             <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
-              placeholder="you@gmail.com"
+              placeholder="e.g. naren"
               className="h-12 pl-11"
             />
           </div>

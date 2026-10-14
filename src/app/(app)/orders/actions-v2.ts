@@ -55,6 +55,9 @@ const CreateInput = z.object({
   paid: Money.optional(),
   paymentMethod: PaymentMethod.optional(),
   note: z.string().max(1000).optional(),
+  orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  accDetails: z.string().max(200).nullable().optional(),
 });
 
 export const createOrderV2Action = makeServerAction({
@@ -75,6 +78,9 @@ export const createOrderV2Action = makeServerAction({
       paid: parsed.paid,
       paymentMethod: parsed.paymentMethod,
       note: parsed.note,
+      orderDate: parsed.orderDate ? new Date(`${parsed.orderDate}T00:00:00.000Z`) : undefined,
+      deliveryDate: parsed.deliveryDate ?? null,
+      accDetails: parsed.accDetails ?? null,
     });
     return { orderId: order.id, serialNo: order.serialNo, number: order.number };
   },
@@ -119,7 +125,7 @@ export const updateOrderFieldsV2Action = makeServerAction({
 
 const SetStatusInput = z.object({
   orderId: z.string(),
-  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]),
+  status: z.enum(["PENDING", "DELIVERED", "CANCELLED"]),
   cancelReason: z.string().max(500).optional(),
 });
 
@@ -137,12 +143,13 @@ export const setOrderStatusV2Action = makeServerAction({
         select: { simpleStatus: true },
       });
       if (current && current.simpleStatus !== "PENDING") {
-        throw new AppError("FORBIDDEN", "Only an admin can change a completed or cancelled order.");
+        throw new AppError("FORBIDDEN", "Only an admin can change a delivered or cancelled order.");
       }
     }
     const row = await setOrderStatusV2({
       tenantId: session.tenantId,
       actorId: session.userId,
+      actorRole: session.role,
       orderId: parsed.orderId,
       status: parsed.status,
       cancelReason: parsed.cancelReason,

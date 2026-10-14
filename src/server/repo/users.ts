@@ -14,6 +14,7 @@ export type SessionUser = {
 export type UserListRow = {
   id: string;
   name: string;
+  username: string | null;
   email: string | null;
   phoneE164: string;
   role: Role;
@@ -32,6 +33,7 @@ export async function listUsers(tenantId: string): Promise<UserListRow[]> {
     select: {
       id: true,
       name: true,
+      username: true,
       email: true,
       phoneE164: true,
       role: true,

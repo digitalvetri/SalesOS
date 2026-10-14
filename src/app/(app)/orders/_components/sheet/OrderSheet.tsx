@@ -20,6 +20,7 @@ import { amountMissing, groupByMonth, summarise, type MoneySummary } from "@/lib
 import { parseAmount } from "@/server/domain/v1_1/amountParser";
 import { updateOrderFieldsV2Action } from "@/app/(app)/orders/actions-v2";
 import { AddPaymentPopover } from "./AddPaymentPopover";
+import { ProductionBadge } from "@/components/app/ProductionBadge";
 import { useOrderStatus } from "./useOrderForms";
 import { fmtDate, fmtMonth, deliveryText, PILL_STYLE, initialsOf } from "./sheetFormat";
 import { OrderCard } from "./OrderCard";
@@ -47,7 +48,7 @@ const STATUS_FILTERS: {
 }[] = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
-  { value: "completed", label: "Completed" },
+  { value: "completed", label: "Delivered" },
   { value: "balance_due", label: "Balance due" },
 ];
 
@@ -68,7 +69,7 @@ export function OrderSheet(props: OrderSheetProps) {
   const summary = React.useMemo(() => summarise(props.rows), [props.rows]);
   const groups = React.useMemo(() => groupByMonth(props.rows), [props.rows]);
   const completed = React.useMemo(
-    () => props.rows.filter((r) => r.simpleStatus === "COMPLETED").length,
+    () => props.rows.filter((r) => r.simpleStatus === "DELIVERED").length,
     [props.rows],
   );
 
@@ -123,21 +124,19 @@ export function OrderSheet(props: OrderSheetProps) {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
           <p className="mt-0.5 text-sm text-[color:var(--color-ink-3)]">
-            {props.rows.length} orders · {completed} completed
+            {props.rows.length} orders · {completed} delivered
             {props.activeMonth ? ` · ${fmtMonth(props.activeMonth)}` : " · All time"}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {props.mode === "admin" && (
-            <a
-              href={exportHref}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-4 text-sm font-medium hover:bg-[color:var(--color-surface-2)]"
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">Excel</span>
-              <span className="sr-only sm:hidden">Download Excel</span>
-            </a>
-          )}
+          <a
+            href={exportHref}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-4 text-sm font-medium hover:bg-[color:var(--color-surface-2)]"
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Export to Excel</span>
+            <span className="sr-only sm:hidden">Export to Excel</span>
+          </a>
           <button
             type="button"
             data-gold
@@ -243,7 +242,7 @@ export function OrderSheet(props: OrderSheetProps) {
               <th scope="col" className="text-right">Adv</th>
               <th scope="col" className="text-right">Bal</th>
               <th scope="col">Delivery</th>
-              <th scope="col">Status</th>
+              <th scope="col">Status · Production</th>
               <th scope="col">Acc details</th>
             </tr>
           </thead>
@@ -714,15 +713,23 @@ function OrderSheetRow({ row, mode, showEmployee }: { row: OrderV2Row; mode: Mod
         <select
           value={row.simpleStatus}
           aria-label={`Status of order for ${row.customerLabel}`}
-          onChange={(e) => void updateStatus(e.target.value as "PENDING" | "COMPLETED" | "CANCELLED")}
+          onChange={(e) => void updateStatus(e.target.value as "PENDING" | "DELIVERED" | "CANCELLED")}
           disabled={pending || (mode === "employee" && row.simpleStatus !== "PENDING")}
           title={mode === "employee" && row.simpleStatus !== "PENDING" ? "Only an admin can change this order" : undefined}
           className={`h-7 w-full max-w-[112px] rounded-full border-0 pl-2 pr-1 text-xs font-medium ${PILL_STYLE[row.simpleStatus]}`}
         >
           <option value="PENDING">Pending</option>
-          <option value="COMPLETED">Completed</option>
+          <option
+            value="DELIVERED"
+            disabled={mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"}
+          >
+            {mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"
+              ? "Delivered (after production)"
+              : "Delivered"}
+          </option>
           <option value="CANCELLED">Cancelled</option>
         </select>
+        {row.simpleStatus !== "CANCELLED" && <ProductionBadge status={row.productionStatus} className="mt-1" />}
         {sheetStatus && (
           <span
             className="mt-1 line-clamp-2 break-words text-[11px] leading-tight text-[color:var(--color-ink-3)]"

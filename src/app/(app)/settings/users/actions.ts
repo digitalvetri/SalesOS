@@ -26,11 +26,19 @@ const PhoneSchema = z.string().min(3).transform((raw, ctx) => {
   }
 });
 
-const RoleSchema = z.enum(["OWNER", "ADMIN", "ACCOUNTS", "SALES", "DISPATCH"]);
+const RoleSchema = z.enum(["OWNER", "ADMIN", "ACCOUNTS", "SALES", "DISPATCH", "PRODUCTION"]);
+
+const OptionalEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((v) => v || null)
+  .pipe(z.string().email("Enter a valid email address.").nullable());
 
 const CreateInput = z.object({
   name: z.string().min(1).max(80),
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  username: z.string().trim().min(2, "Enter a username.").max(40),
+  email: OptionalEmail.optional(),
   phone: PhoneSchema,
   role: RoleSchema,
   defaultEntityId: z.string().optional().nullable(),
@@ -52,7 +60,8 @@ export const createUserAction = makeServerAction({
       actorId: session.userId,
       actorRole: session.role,
       name: parsed.name,
-      email: parsed.email,
+      username: parsed.username,
+      email: parsed.email ?? null,
       phoneE164: parsed.phone,
       password,
       role: parsed.role,
@@ -177,7 +186,8 @@ export const resetPasswordAction = makeServerAction({
 const EditInput = z.object({
   userId: z.string(),
   name: z.string().trim().min(1, "Enter a name.").max(80),
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  username: z.string().trim().min(2, "Enter a username.").max(40),
+  email: OptionalEmail,
   phone: PhoneSchema,
   role: RoleSchema,
   defaultEntityId: z.string().optional().nullable(),
@@ -192,7 +202,7 @@ export const editUserAction = makeServerAction({
     if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
     const { userId, email, phone, ...rest } = parsed;
     const current = await getUserForEdit(session.tenantId, userId);
-    if ((current.email ?? "") !== email) {
+    if (email && (current.email ?? "") !== email) {
       await adminUpdateUserEmail({ tenantId: session.tenantId, actorId: session.userId, userId, email });
     }
     const u = await adminUpdateUser({

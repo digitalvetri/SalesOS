@@ -71,6 +71,7 @@ enum Role {
   ACCOUNTS
   SALES
   DISPATCH
+  PRODUCTION
 }
 
 enum Lang {
@@ -85,7 +86,8 @@ model User {
   authUserId         String?       @unique // legacy Supabase auth id (unused since own auth)
   passwordHash       String? // scrypt hash (see src/server/auth/password.ts); null = cannot log in
   name               String
-  email              String? // lowercase; the login identity (unique per tenant)
+  email              String? // lowercase; optional second login identity
+  username           String? // login name, lowercase ("naren", "sadmin", "production")
   phoneE164          String // contact phone; no longer the login identity
   role               Role
   lang               Lang          @default(en)
@@ -104,6 +106,7 @@ model User {
 
   @@unique([tenantId, phoneE164])
   @@unique([tenantId, email])
+  @@unique([tenantId, username])
   @@index([tenantId, role, active])
 }
 
@@ -252,8 +255,25 @@ enum OrderSource {
 // v1.1 §2 — simplified status set.
 enum OrderStatusV2 {
   PENDING
-  COMPLETED
+  DELIVERED
   CANCELLED
+}
+
+// Factory progress of an order, set by the production team.
+enum ProductionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  FINISHED
+}
+
+enum ServiceType {
+  FREE
+  PAID
+}
+
+enum ServiceStatus {
+  PENDING
+  DONE
 }
 
 model Order {
@@ -291,6 +311,9 @@ model Order {
   sheetRow             Json?
   // Where the customer's money went ("KUMAR GPAY", "KFM CA", "Cash") — the sheet's ACC DETAILS, editable.
   accDetails           String?
+  productionStatus      ProductionStatus @default(NOT_STARTED)
+  productionUpdatedAt   DateTime?
+  productionUpdatedById String?
   // v1.1 §3 — per-salesperson running number (S.No). Nullable during backfill;
   // enforced by application code to be set when writing a new order.
   serialNo             Int?
@@ -318,6 +341,7 @@ model Order {
   @@index([tenantId, salespersonId, orderDate])
   @@index([tenantId, customerId])
   @@index([tenantId, balanceDue])
+  @@index([tenantId, productionStatus])
 }
 
 model OrderLine {
@@ -575,4 +599,28 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// Customer service / repair request: typed by sales, closed by production.
+model ServiceRequest {
+  id           String        @id @default(cuid())
+  tenantId     String
+  number       String // SR-0001
+  customerName String
+  phone        String // E.164
+  address      String?
+  product      String?
+  complaint    String
+  serviceType  ServiceType
+  status       ServiceStatus @default(PENDING)
+  notes        String?
+  createdById  String
+  doneAt       DateTime?
+  doneById     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, createdById])
 }

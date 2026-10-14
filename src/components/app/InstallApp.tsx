@@ -67,7 +67,7 @@ export function InstallApp() {
     </Button>
   ) : (
     <p className="text-sm text-[color:var(--color-ink-2)]">
-      Use your browser menu → <b>Install Kumaar Industries</b> (or <b>Add to Home screen</b> on Android).
+      Use your browser menu → <b>Install Kumar Food Machinery</b> (or <b>Add to Home screen</b> on Android).
     </p>
   );
 }

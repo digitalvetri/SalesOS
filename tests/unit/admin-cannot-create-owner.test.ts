@@ -46,6 +46,7 @@ describe("createUserAction — ADMIN cannot create OWNER", () => {
     const { createUserAction } = await import("@/app/(app)/settings/users/actions");
     const result = await createUserAction({
       name: "Mallory",
+      username: "mallory",
       email: "mallory@salesos.in",
       phone: "9843722055",
       role: "OWNER",
@@ -63,6 +64,7 @@ describe("createUserAction — ADMIN cannot create OWNER", () => {
     const { createUserAction } = await import("@/app/(app)/settings/users/actions");
     const result = await createUserAction({
       name: "New Owner",
+      username: "new.owner",
       email: "new.owner@salesos.in",
       phone: "9843722055",
       role: "OWNER",
@@ -81,6 +83,7 @@ describe("createUserAction — ADMIN cannot create OWNER", () => {
     const { createUserAction } = await import("@/app/(app)/settings/users/actions");
     const result = await createUserAction({
       name: "Bob",
+      username: "bob",
       email: "bob@salesos.in",
       phone: "123",
       role: "SALES",
@@ -102,6 +105,7 @@ describe("createUserAction — ADMIN cannot create OWNER", () => {
     const { createUserAction } = await import("@/app/(app)/settings/users/actions");
     const result = await createUserAction({
       name: "Bob",
+      username: "bob2",
       email: "bob2@salesos.in",
       phone: "9843722055",
       role: "SALES",

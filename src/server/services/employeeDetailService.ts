@@ -108,7 +108,7 @@ export async function employeeDetail(opts: {
            COUNT(*)::bigint AS orders,
            COUNT(*) FILTER (WHERE NOT "totalMissing")::bigint AS priced,
            COALESCE(SUM(total), 0) AS booked,
-           COUNT(*) FILTER (WHERE "simpleStatus" = 'COMPLETED')::bigint AS completed,
+           COUNT(*) FILTER (WHERE "simpleStatus" = 'DELIVERED')::bigint AS completed,
            COALESCE(SUM(GREATEST("balanceDue", 0)), 0) AS balance
     FROM "Order"
     WHERE "tenantId" = ${opts.tenantId}

@@ -42,7 +42,7 @@ describe.skipIf(!DB_REACHABLE)("own auth — admin user tools", () => {
   it("creates a user with a verifiable scrypt hash (never the plain password)", async () => {
     const u = await adminCreateUser({
       tenantId, actorId: ownerId, actorRole: "OWNER",
-      email: "New.Rep@Example.com", phoneE164: "+919999922002", password: "Temp-pass-123",
+      username: "New Rep", email: "New.Rep@Example.com", phoneE164: "+919999922002", password: "Temp-pass-123",
       name: "New Rep", role: "SALES",
     });
     const row = await prisma.user.findUniqueOrThrow({ where: { id: u.id } });
@@ -55,7 +55,7 @@ describe.skipIf(!DB_REACHABLE)("own auth — admin user tools", () => {
     await expect(
       adminCreateUser({
         tenantId, actorId: ownerId, actorRole: "OWNER",
-        email: "short@example.com", phoneE164: "+919999922003", password: "short",
+        username: "short", email: "short@example.com", phoneE164: "+919999922003", password: "short",
         name: "Short", role: "SALES",
       }),
     ).rejects.toMatchObject({ code: "VALIDATION" });

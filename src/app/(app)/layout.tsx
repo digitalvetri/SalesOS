@@ -4,6 +4,7 @@ import { MobileSalesShell } from "./_shells/MobileSalesShell";
 import { MobileDispatchShell } from "./_shells/MobileDispatchShell";
 import { DesktopOwnerAdminShell } from "./_shells/DesktopOwnerAdminShell";
 import { DesktopAccountsShell } from "./_shells/DesktopAccountsShell";
+import { ProductionShell } from "./_shells/ProductionShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let session;
@@ -18,6 +19,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       return <MobileSalesShell user={session.user}>{children}</MobileSalesShell>;
     case "DISPATCH":
       return <MobileDispatchShell user={session.user}>{children}</MobileDispatchShell>;
+    case "PRODUCTION":
+      return <ProductionShell user={session.user}>{children}</ProductionShell>;
     case "ACCOUNTS":
       return <DesktopAccountsShell user={session.user}>{children}</DesktopAccountsShell>;
     case "OWNER":

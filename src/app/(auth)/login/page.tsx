@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import { BarChart3, Check, IndianRupee, TrendingUp } from "lucide-react";
-import { LogoMark, Wordmark } from "@/components/app/Logo";
+import { LOCKUP_LIGHT_SRC } from "@/components/app/Logo";
 import { getSession } from "@/server/auth/session";
 import { LoginForm } from "./LoginForm";
 import { Parallax } from "./Parallax";
 import { BRAND } from "@/config/brand";
-import { getTranslations } from "next-intl/server";
 import s from "./login.module.css";
 
 // [left %, top %, delay s] — fixed positions so server and client render the same.
@@ -17,8 +16,6 @@ const STARS: [number, number, number][] = [
 export default async function LoginPage() {
   const session = await getSession();
   if (session) redirect("/home");
-
-  const t = await getTranslations();
 
   return (
     <Parallax className={s.theme}>
@@ -33,13 +30,15 @@ export default async function LoginPage() {
       <div className={s.layout}>
         {/* Brand + 3D scene. On phones it sits above the card, smaller. */}
         <section className="flex flex-col gap-4 lg:gap-6">
-          <div className="flex items-center gap-2.5">
-            <LogoMark size={46} tile />
-            <span className="flex flex-col">
-              <Wordmark onDark className="text-xl" />
-              <span className="mt-1.5 text-[11px] font-semibold text-[#FF8A8F]">{BRAND.tagline}</span>
-            </span>
-          </div>
+          {/* Full KFM lockup: emblem + KUMAR FOOD MACHINERY + Since 1999 + tagline (vector). */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- static vector asset */}
+          <img
+            src={LOCKUP_LIGHT_SRC}
+            width={3908}
+            height={1332}
+            alt={`${BRAND.name} — ${BRAND.since} — ${BRAND.tagline}`}
+            className={s.lockup}
+          />
 
           <div className={s.stage} aria-hidden>
             <div className={s.rig}>
@@ -108,7 +107,7 @@ export default async function LoginPage() {
                 Welcome <span className={s.accentText}>back</span>
               </h1>
               <p className="mt-1.5 text-sm text-[color:var(--color-ink-3)]">
-                Sign in to {BRAND.name} · {t("brand.entities")}
+                Sign in to {BRAND.name}
               </p>
             </header>
 

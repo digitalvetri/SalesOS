@@ -1,7 +1,7 @@
 // Pre-deploy audit fixes (2026-10-12):
 //  - a payment can't exceed the balance (Paid must stay = Σ payments, v1.1 §2)
 //  - payment delete / total edit recompute from fresh rows
-//  - re-marking COMPLETED keeps the original completedAt
+//  - re-marking DELIVERED keeps the original completedAt
 //  - an ADMIN can't change an OWNER's login (email / password)
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { config } from "dotenv";
@@ -11,8 +11,7 @@ import {
   addPaymentV2,
   deletePaymentV2,
   updateOrderFieldsV2,
-  setOrderStatusV2,
-} from "@/server/services/orderV2Service";
+  setOrderStatusV2, setProductionStatusV2 } from "@/server/services/orderV2Service";
 import { adminSetPassword, adminUpdateUserEmail, adminUpdateUser } from "@/server/services/userService";
 
 config({ path: ".env.local" });
@@ -106,14 +105,37 @@ describe.skipIf(!DB_REACHABLE)("v1.1 order + user rules", () => {
     ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
-  it("re-marking COMPLETED keeps the original completion date", async () => {
+  it("re-marking DELIVERED keeps the original completion date", async () => {
     const order = await newOrder("100");
-    await setOrderStatusV2({ tenantId, actorId: adminId, orderId: order.id, status: "COMPLETED" });
+    await setOrderStatusV2({ tenantId, actorId: adminId, actorRole: "ADMIN", orderId: order.id, status: "DELIVERED" });
     const back = new Date("2026-09-15T00:00:00.000Z");
     await prisma.order.update({ where: { id: order.id }, data: { completedAt: back } });
-    await setOrderStatusV2({ tenantId, actorId: adminId, orderId: order.id, status: "COMPLETED" });
+    await setOrderStatusV2({ tenantId, actorId: adminId, actorRole: "ADMIN", orderId: order.id, status: "DELIVERED" });
     const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
     expect(after.completedAt?.toISOString()).toBe(back.toISOString());
+  });
+
+  it("sales mark Delivered only after production Finished; production can't touch delivered orders", async () => {
+    const order = await newOrder("100");
+    await expect(
+      setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      setProductionStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "FINISHED" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" });
+    await setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "FINISHED" });
+    await setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" });
+    await expect(
+      setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
+  it("an admin override to Delivered also marks production Finished", async () => {
+    const order = await newOrder("100");
+    await setOrderStatusV2({ tenantId, actorId: adminId, actorRole: "ADMIN", orderId: order.id, status: "DELIVERED" });
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(after.productionStatus).toBe("FINISHED");
   });
 
   it("an ADMIN can't change the OWNER's password, email or deactivate them", async () => {

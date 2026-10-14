@@ -18,7 +18,7 @@ type ProductHit = { id: string; name: string; spec: string | null; customerPrice
 const METHODS: { v: PaymentMethod; label: string }[] = [
   { v: "UPI", label: "UPI" },
   { v: "CASH", label: "Cash" },
-  { v: "BANK_TRANSFER", label: "Bank" },
+  { v: "BANK_TRANSFER", label: "Account" },
   { v: "CHEQUE", label: "Cheque" },
 ];
 
@@ -108,6 +108,14 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
     setAdvancePct,
     method,
     setMethod,
+    orderDate,
+    setOrderDate,
+    deliveryDate,
+    setDeliveryDate,
+    accDetails,
+    setAccDetails,
+    notes,
+    setNotes,
     total,
     paid,
     balance,
@@ -171,7 +179,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
               <div>
                 <DialogPrimitive.Title className="text-lg font-bold">New order</DialogPrimitive.Title>
                 <DialogPrimitive.Description className="text-xs text-[color:var(--color-ink-3)]">
-                  Customer, what they ordered, and any advance received.
+                  Customer, what they ordered, delivery date and the amount received.
                 </DialogPrimitive.Description>
               </div>
               <button
@@ -373,8 +381,54 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
               </div>
             </Step>
 
-            {/* 3 · Payment */}
-            <Step n={3} title="Advance received" hint="optional">
+            {/* 3 · Dates + comments */}
+            <Step n={3} title="Dates & comments">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="no-date">Order date</Label>
+                  <Input
+                    id="no-date"
+                    type="date"
+                    value={orderDate}
+                    onChange={(e) => setOrderDate(e.target.value)}
+                    aria-invalid={Boolean(errors.orderDate)}
+                    className={cn(errors.orderDate && "border-[color:var(--color-danger)]")}
+                    disabled={pending}
+                  />
+                  <FieldError id="err-date" msg={errors.orderDate} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="no-delivery">Delivery date</Label>
+                  <Input
+                    id="no-delivery"
+                    type="date"
+                    value={deliveryDate}
+                    min={orderDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    aria-invalid={Boolean(errors.deliveryDate)}
+                    className={cn(errors.deliveryDate && "border-[color:var(--color-danger)]")}
+                    disabled={pending}
+                  />
+                  <FieldError id="err-delivery" msg={errors.deliveryDate} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="no-notes">Comments</Label>
+                <textarea
+                  id="no-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  maxLength={1000}
+                  rows={2}
+                  placeholder="e.g. Deliver with stand, call before dispatch"
+                  className="w-full rounded-[var(--radius)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 py-2 text-base"
+                  disabled={pending}
+                />
+              </div>
+            </Step>
+
+            {/* 4 · Payment */}
+            <Step n={4} title="Payment received" hint="optional">
               <div className="flex flex-wrap gap-2" role="group" aria-label="Quick advance">
                 {[
                   { label: "None", pct: 0 },
@@ -394,7 +448,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                 ))}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="no-paid">Amount ₹</Label>
+                <Label htmlFor="no-paid">Amount received ₹</Label>
                 <Input
                   id="no-paid"
                   inputMode="decimal"
@@ -410,7 +464,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
               </div>
               {paid.greaterThan(0) && (
                 <div className="space-y-1.5">
-                  <span className="text-sm font-medium">Paid by</span>
+                  <span className="text-sm font-medium">Payment mode</span>
                   <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Payment mode">
                     {METHODS.map((m) => (
                       <button
@@ -432,6 +486,19 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                   </div>
                 </div>
               )}
+              <div className="space-y-1.5">
+                <Label htmlFor="no-acc">
+                  Account name <span className="font-normal text-[color:var(--color-ink-3)]">(optional)</span>
+                </Label>
+                <Input
+                  id="no-acc"
+                  value={accDetails}
+                  onChange={(e) => setAccDetails(e.target.value)}
+                  maxLength={200}
+                  placeholder="e.g. KUMAR GPAY, KFM account"
+                  disabled={pending}
+                />
+              </div>
             </Step>
           </form>
 
@@ -443,7 +510,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                 <dd className="text-sm font-semibold"><Money value={total.toString()} className="text-sm" /></dd>
               </div>
               <div>
-                <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-ink-3)]">Advance</dt>
+                <dt className="text-[10px] uppercase tracking-wider text-[color:var(--color-ink-3)]">Received</dt>
                 <dd className="text-sm font-semibold"><Money value={paid.toString()} className="text-sm" /></dd>
               </div>
               <div>

@@ -1,5 +1,5 @@
 // v1.1 listing — the sheet view (§4.3 / §5.3).
-import { prisma, type Prisma, type OrderStatusV2 } from "./client";
+import { prisma, type Prisma, type OrderStatusV2, type ProductionStatus } from "./client";
 import { readSheetRow, type SheetRow } from "@/server/domain/import/sheetRow";
 import { realPhone, customerLabelOf, contactLabelOf, telOf } from "@/lib/orderDisplay";
 
@@ -26,6 +26,8 @@ export type OrderV2Row = {
   /** The sheet's TOTAL cell was empty — show total/paid/balance as "—". */
   totalMissing: boolean;
   accDetails: string | null; // where the payment was received (editable; from ACC DETAILS)
+  productionStatus: ProductionStatus; // set by the production team
+  paymentMode: string | null; // method of the first recorded payment (UPI / CASH / BANK_TRANSFER / CHEQUE)
   /** The original sheet row (imported orders only). */
   sheetRow: SheetRow | null;
   promisedDeliveryDate: Date | null;
@@ -75,7 +77,7 @@ async function buildWhere(f: Omit<OrderV2Filters, "limit">): Promise<Prisma.Orde
     where.orderDate = { gte: b.start, lt: b.end };
   }
   if (f.status === "pending") where.simpleStatus = "PENDING";
-  if (f.status === "completed") where.simpleStatus = "COMPLETED";
+  if (f.status === "completed") where.simpleStatus = "DELIVERED";
   if (f.status === "balance_due") {
     where.balanceDue = { gt: 0 };
     where.simpleStatus = { not: "CANCELLED" };
@@ -111,11 +113,18 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
       productText: true,
       customerId: true,
       customer: { select: { name: true, phoneE164: true } },
+      payments: {
+        where: { status: { not: "REJECTED" }, type: { not: "REFUND" } },
+        orderBy: { paidOn: "asc" },
+        take: 1,
+        select: { method: true },
+      },
       total: true,
       paidTotal: true,
       balanceDue: true,
       totalMissing: true,
       accDetails: true,
+      productionStatus: true,
       sheetRow: true,
       promisedDeliveryDate: true,
       notes: true,
@@ -147,6 +156,8 @@ export async function listOrdersV2(f: OrderV2Filters): Promise<OrderV2Row[]> {
       balanceDue: r.balanceDue.toString(),
       totalMissing: r.totalMissing,
       accDetails: r.accDetails ?? null,
+      productionStatus: r.productionStatus,
+      paymentMode: r.payments[0]?.method ?? null,
       sheetRow,
       promisedDeliveryDate: r.promisedDeliveryDate,
       notes: r.notes,
@@ -214,6 +225,7 @@ export async function getOrderV2WithPayments(opts: {
       cancelNote: true,
       totalMissing: true,
       accDetails: true,
+      productionStatus: true,
       sheetRow: true,
       notes: true,
       promisedDeliveryDate: true,

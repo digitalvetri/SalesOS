@@ -9,7 +9,7 @@ export function TopBar({ user }: { user: SessionUser }) {
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-[color:var(--color-nav-border)] bg-[color:var(--color-surface)] px-4 text-[color:var(--color-nav-ink)] md:h-[72px] md:px-6 xl:px-8">
       {/* Brand on phones only — the side nav carries it from 768 px up. */}
       <div className="flex items-center gap-2 md:hidden">
-        <LogoMark size={32} />
+        <LogoMark size={32} tile />
         <Wordmark className="text-sm" />
       </div>
       <p className="hidden truncate text-base text-[color:var(--color-nav-ink-3)] md:block">

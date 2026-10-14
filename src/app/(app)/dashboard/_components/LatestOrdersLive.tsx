@@ -13,7 +13,7 @@ import type { LatestOrderRow } from "@/server/services/adminOverviewService";
 
 const STATUS_PILL: Record<LatestOrderRow["simpleStatus"], string> = {
   PENDING: "bg-[color:var(--color-warn-bg)] text-[color:var(--color-warn)]",
-  COMPLETED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
+  DELIVERED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
   CANCELLED: "bg-[color:var(--color-surface-2)] text-[color:var(--color-ink-3)]",
 };
 

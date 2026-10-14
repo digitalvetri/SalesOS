@@ -284,7 +284,7 @@ export async function buildReport(kind: ReportKind, s: ReportScope, now = new Da
     : kind === "cancellations" ? await cancellationsReport(s)
     : await productSales(s);
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Kumaar Industries";
+  wb.creator = "Kumar Food Machinery";
   wb.created = now;
   buildSheet(wb, spec.sheet, spec.cols, spec.rows);
   return Buffer.from(await wb.xlsx.writeBuffer());

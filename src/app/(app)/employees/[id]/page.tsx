@@ -97,7 +97,7 @@ export default async function EmployeeDetailPage({
                 <th className="py-2 pr-3 text-right">Avg order</th>
                 <th className="py-2 pr-3 text-right">Target</th>
                 <th className="py-2 pr-3 text-right">%</th>
-                <th className="py-2 pr-3 text-right" title="Orders booked that month that are now completed">Completed</th>
+                <th className="py-2 pr-3 text-right" title="Orders booked that month that are now delivered">Delivered</th>
                 <th className="py-2 pr-3 text-right">Payment received</th>
                 <th className="py-2 text-right" title="Still to collect on orders booked that month">Balance</th>
               </tr>

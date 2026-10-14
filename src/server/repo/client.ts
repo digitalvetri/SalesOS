@@ -31,4 +31,7 @@ export {
   PaymentType,
   PaymentStatus,
   FollowUpChannel,
+  ProductionStatus,
+  ServiceType,
+  ServiceStatus,
 } from "@prisma/client";

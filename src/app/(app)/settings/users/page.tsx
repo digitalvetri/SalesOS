@@ -13,6 +13,7 @@ const ROLE_TONE: Record<Role, React.ComponentProps<typeof Badge>["tone"]> = {
   ACCOUNTS: "neutral",
   SALES: "ok",
   DISPATCH: "neutral",
+  PRODUCTION: "warn",
 };
 
 export default async function UsersPage() {
@@ -57,7 +58,10 @@ export default async function UsersPage() {
               >
                 <td className="px-4 py-3">
                   <Link href={`/settings/users/${u.id}`} className="font-medium hover:underline">{u.name}</Link>
-                  {u.email && <div className="text-xs text-[color:var(--color-ink-3)]">{u.email}</div>}
+                  <div className="text-xs text-[color:var(--color-ink-3)]">
+                    {u.username ? <span className="font-semibold text-[color:var(--color-ink-2)]">@{u.username}</span> : <span className="text-[color:var(--color-warn)]">no username</span>}
+                    {u.email ? ` · ${u.email}` : ""}
+                  </div>
                 </td>
                 <td className="px-4 py-3 tabular-nums">{u.phoneE164}</td>
                 <td className="px-4 py-3">

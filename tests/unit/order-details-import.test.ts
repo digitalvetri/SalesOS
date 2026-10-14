@@ -156,7 +156,7 @@ describe("planning: what the app stores", () => {
     ...o,
   });
   it("delivered + nothing left to pay → Completed", () => {
-    expect(planOrder(base({}))).toMatchObject({ total: "17000.00", paid: "17000.00", balance: "0.00", status: "COMPLETED", paymentRecorded: true });
+    expect(planOrder(base({}))).toMatchObject({ total: "17000.00", paid: "17000.00", balance: "0.00", status: "DELIVERED", paymentRecorded: true });
   });
   it("balance left → Pending", () => {
     expect(planOrder(base({ paid: "10000", balance: "7000" }))).toMatchObject({ paid: "10000.00", balance: "7000.00", status: "PENDING" });
@@ -167,12 +167,12 @@ describe("planning: what the app stores", () => {
   it("payment not recorded: unpaid by default; paid when ACC DETAILS names an account (option)", () => {
     const o = base({ paid: null, balance: "17000", flags: ["PAYMENT_NOT_RECORDED"] });
     expect(planOrder(o)).toMatchObject({ paid: "0.00", balance: "17000.00", status: "PENDING", paymentRecorded: false });
-    expect(planOrder(o, { unrecordedPayment: "PAID_IF_ACCOUNT" })).toMatchObject({ paid: "17000.00", balance: "0.00", status: "COMPLETED" });
+    expect(planOrder(o, { unrecordedPayment: "PAID_IF_ACCOUNT" })).toMatchObject({ paid: "17000.00", balance: "0.00", status: "DELIVERED" });
     expect(planOrder({ ...o, route: null }, { unrecordedPayment: "PAID_IF_ACCOUNT" }).paid).toBe("0.00");
   });
   it("client rule: payment not recorded but STATUS says delivered/completed → paid", () => {
     const o = base({ paid: null, balance: "17000", flags: ["PAYMENT_NOT_RECORDED"] });
-    expect(planOrder(o, { unrecordedPayment: "PAID_IF_DELIVERED" })).toMatchObject({ paid: "17000.00", status: "COMPLETED" });
+    expect(planOrder(o, { unrecordedPayment: "PAID_IF_DELIVERED" })).toMatchObject({ paid: "17000.00", status: "DELIVERED" });
     const blank = { ...o, sheetRow: { ...o.sheetRow, status: null } };
     expect(planOrder(blank, { unrecordedPayment: "PAID_IF_DELIVERED" })).toMatchObject({ paid: "0.00", status: "PENDING" });
   });

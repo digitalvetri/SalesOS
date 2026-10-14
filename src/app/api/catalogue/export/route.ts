@@ -15,7 +15,7 @@ export async function GET() {
       headers: {
         "content-type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "content-disposition": `attachment; filename="Kumaar-price-list-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+        "content-disposition": `attachment; filename="KFM-price-list-${new Date().toISOString().slice(0, 10)}.xlsx"`,
       },
     });
   } catch (e) {

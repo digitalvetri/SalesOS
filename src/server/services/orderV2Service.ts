@@ -4,7 +4,7 @@
 // Everything inside one Serializable transaction so parallel creates by the
 // same salesperson get sequential S.Nos with no gaps.
 import Decimal from "decimal.js";
-import { prisma, type Prisma, type OrderStatusV2 } from "@/server/repo/client";
+import { prisma, type Prisma, type OrderStatusV2, type Role } from "@/server/repo/client";
 import { normalizePhone, PhoneParseError } from "@/server/domain/phone";
 import { AppError } from "@/lib/errors";
 import { writeAudit } from "@/server/repo/audit";
@@ -15,6 +15,12 @@ import { orderCounterKey, orderNumber } from "@/server/domain/order/numbering";
 import { snoKey } from "@/server/domain/v1_1/serialNo";
 import { computeBalance, applyPayment } from "@/server/domain/v1_1/balance";
 import { istDateString } from "@/server/domain/payment/record";
+import {
+  canUpdateProduction,
+  deliveredBlockReason,
+  productionEditable,
+  type ProductionStatus,
+} from "@/server/domain/v1_1/workflow";
 
 /** Today's IST calendar date as a UTC-midnight Date, for `@db.Date` columns
  *  (a plain `new Date()` would store the UTC date — yesterday before 05:30 IST). */
@@ -36,6 +42,8 @@ export type CreateOrderV2Input = {
   entityId?: string; // defaults to salesperson's defaultEntityId or first active
   billFromKI?: boolean; // §4.3 optional — only used for defaulting entity
   note?: string;
+  deliveryDate?: string | null; // YYYY-MM-DD — promised delivery
+  accDetails?: string | null; // account / person the money went to (optional)
 };
 
 export async function createOrderV2(input: CreateOrderV2Input) {
@@ -73,6 +81,18 @@ export async function createOrderV2(input: CreateOrderV2Input) {
   }
 
   const orderDate = input.orderDate ?? istToday();
+  if (orderDate.getTime() > istToday().getTime()) {
+    throw new AppError("VALIDATION", "The order date can't be in the future.");
+  }
+  let promisedDeliveryDate: Date | null = null;
+  if (input.deliveryDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.deliveryDate)) throw new AppError("VALIDATION", "Pick a valid delivery date.");
+    promisedDeliveryDate = new Date(`${input.deliveryDate}T00:00:00.000Z`);
+    if (promisedDeliveryDate.getTime() < orderDate.getTime()) {
+      throw new AppError("VALIDATION", "Delivery can't be before the order date.");
+    }
+  }
+  const accDetails = input.accDetails?.trim() || null;
 
   // Resolve entity: user's default, or first active in the tenant.
   const entity = await resolveEntity(input.tenantId, input.salespersonId, input.entityId);
@@ -102,7 +122,10 @@ export async function createOrderV2(input: CreateOrderV2Input) {
         total,
         advance,
         paymentMethod: input.paymentMethod,
-        note: input.note,
+        paymentNote: accDetails,
+        accDetails,
+        promisedDeliveryDate,
+        note: input.note?.trim() || null,
       });
 
       return { order, payment, customer };
@@ -126,7 +149,7 @@ export type InsertOrderV2Args = {
   paymentMethod?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
   note?: string | null;
   // Import extras (default: a new PENDING order).
-  simpleStatus?: "PENDING" | "COMPLETED" | "CANCELLED";
+  simpleStatus?: "PENDING" | "DELIVERED" | "CANCELLED";
   legacyStatus?: "CONFIRMED" | "DELIVERED" | "CANCELLED";
   completedAt?: Date | null;
   importRef?: string | null;
@@ -266,18 +289,24 @@ async function resolveEntity(tenantId: string, userId: string, hinted?: string) 
 export async function setOrderStatusV2(input: {
   tenantId: string;
   actorId: string;
+  actorRole: Role;
   orderId: string;
   status: OrderStatusV2;
   cancelReason?: string;
 }) {
   const current = await prisma.order.findFirst({
     where: { tenantId: input.tenantId, id: input.orderId },
-    select: { id: true, simpleStatus: true, salespersonId: true, serialNo: true, completedAt: true },
+    select: { id: true, simpleStatus: true, salespersonId: true, serialNo: true, completedAt: true, productionStatus: true },
   });
   if (!current) throw new AppError("NOT_FOUND", "Order not found.");
 
   if (input.status === "CANCELLED" && !input.cancelReason?.trim()) {
     throw new AppError("VALIDATION", "Cancellation needs a one-line reason.");
+  }
+  // Delivered only after production finished (Owner / Admin may override).
+  if (input.status === "DELIVERED" && current.simpleStatus !== "DELIVERED") {
+    const why = deliveredBlockReason({ productionStatus: current.productionStatus, role: input.actorRole });
+    if (why) throw new AppError("VALIDATION", why);
   }
 
   const row = await prisma.order.update({
@@ -287,15 +316,19 @@ export async function setOrderStatusV2(input: {
       // Keep the original completion date if it's already completed (re-saving
       // must not move the order into a different month).
       completedAt:
-        input.status === "COMPLETED"
-          ? current.simpleStatus === "COMPLETED" && current.completedAt
+        input.status === "DELIVERED"
+          ? current.simpleStatus === "DELIVERED" && current.completedAt
             ? current.completedAt
             : istToday()
           : null,
       cancelNote: input.status === "CANCELLED" ? input.cancelReason ?? null : null,
+      // A delivered order has been produced (covers an admin override).
+      ...(input.status === "DELIVERED" && current.productionStatus !== "FINISHED"
+        ? { productionStatus: "FINISHED" as const, productionUpdatedAt: new Date(), productionUpdatedById: input.actorId }
+        : {}),
       // Mirror the v1.0 status column so legacy queries still work.
       status:
-        input.status === "COMPLETED"
+        input.status === "DELIVERED"
           ? "DELIVERED"
           : input.status === "CANCELLED"
             ? "CANCELLED"
@@ -321,7 +354,7 @@ export async function setOrderStatusV2(input: {
 export async function updateOrderFieldsV2(input: {
   tenantId: string;
   actorId: string;
-  actorRole: "OWNER" | "ADMIN" | "ACCOUNTS" | "SALES" | "DISPATCH";
+  actorRole: Role;
   orderId: string;
   productText?: string;
   total?: string;
@@ -575,7 +608,7 @@ export async function addPaymentV2(input: {
 export async function deletePaymentV2(input: {
   tenantId: string;
   actorId: string;
-  actorRole: "OWNER" | "ADMIN" | "ACCOUNTS" | "SALES" | "DISPATCH";
+  actorRole: Role;
   paymentId: string;
 }) {
   const p = await prisma.payment.findFirst({
@@ -672,7 +705,7 @@ async function runWithSerializableRetry<T>(
 export async function updatePaymentV2(input: {
   tenantId: string;
   actorId: string;
-  actorRole: "OWNER" | "ADMIN" | "ACCOUNTS" | "SALES" | "DISPATCH";
+  actorRole: Role;
   paymentId: string;
   method?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
   paidOn?: string; // YYYY-MM-DD
@@ -709,4 +742,43 @@ export async function updatePaymentV2(input: {
     after: { method: after.method, paidOn: after.paidOn, note: after.note },
   });
   return after;
+}
+
+// ─── Production status (production team) ───────────────────────────
+
+export async function setProductionStatusV2(input: {
+  tenantId: string;
+  actorId: string;
+  actorRole: Role;
+  orderId: string;
+  status: ProductionStatus;
+}) {
+  if (!canUpdateProduction(input.actorRole)) {
+    throw new AppError("FORBIDDEN", "Only the production team can change production status.");
+  }
+  const current = await prisma.order.findFirst({
+    where: { tenantId: input.tenantId, id: input.orderId },
+    select: { id: true, simpleStatus: true, productionStatus: true },
+  });
+  if (!current) throw new AppError("NOT_FOUND", "Order not found.");
+  if (!productionEditable({ simpleStatus: current.simpleStatus })) {
+    throw new AppError("VALIDATION", "This order is already delivered or cancelled.");
+  }
+  if (current.productionStatus === input.status) return current;
+
+  const row = await prisma.order.update({
+    where: { id: input.orderId },
+    data: { productionStatus: input.status, productionUpdatedAt: new Date(), productionUpdatedById: input.actorId },
+    select: { id: true, simpleStatus: true, productionStatus: true },
+  });
+  await writeAudit(prisma, {
+    tenantId: input.tenantId,
+    actorId: input.actorId,
+    action: "ORDER_PRODUCTION_STATUS",
+    entity: "Order",
+    entityId: input.orderId,
+    before: { productionStatus: current.productionStatus },
+    after: { productionStatus: input.status },
+  });
+  return row;
 }

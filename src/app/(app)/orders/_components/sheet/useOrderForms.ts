@@ -11,7 +11,10 @@ import type { OrderV2Row } from "@/server/repo/ordersV2";
 
 export type PaymentMethod = "UPI" | "CASH" | "BANK_TRANSFER" | "CHEQUE";
 export type OrderItem = { name: string; price: string | null };
-export type NewOrderField = "phone" | "customerName" | "items" | "total" | "paid";
+export type NewOrderField = "phone" | "customerName" | "items" | "total" | "paid" | "orderDate" | "deliveryDate";
+
+/** Today in India (YYYY-MM-DD) — the default order date. */
+export const istToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
 /** Keep only the 10-digit Indian mobile (drops +91 / leading 0 and spaces). */
 export function normalizeMobile(raw: string): string {
@@ -32,6 +35,10 @@ export function useNewOrderForm(onDone: () => void) {
   const [totalTouched, setTotalTouched] = React.useState(false);
   const [paidRaw, setPaidRaw] = React.useState("");
   const [method, setMethod] = React.useState<PaymentMethod>("UPI");
+  const [orderDate, setOrderDateState] = React.useState(istToday);
+  const [deliveryDate, setDeliveryDateState] = React.useState("");
+  const [accDetails, setAccDetails] = React.useState("");
+  const [notes, setNotes] = React.useState("");
   const [errors, setErrors] = React.useState<Partial<Record<NewOrderField, string>>>({});
   const [pending, setPending] = React.useState(false);
 
@@ -75,7 +82,7 @@ export function useNewOrderForm(onDone: () => void) {
   }
 
   const productText = [...items.map((i) => i.name), itemQuery.trim()].filter(Boolean).join(", ");
-  const dirty = Boolean(phone || customerName || productText || totalRaw || paidRaw);
+  const dirty = Boolean(phone || customerName || productText || totalRaw || paidRaw || deliveryDate || accDetails || notes);
 
   function validate() {
     const e: Partial<Record<NewOrderField, string>> = {};
@@ -85,7 +92,10 @@ export function useNewOrderForm(onDone: () => void) {
     const t = parseAmount(totalRaw);
     if (!t || t.lessThanOrEqualTo(0)) e.total = "Total must be more than ₹0.";
     else if (paid.greaterThan(t)) e.paid = `Paid can't be more than the total (₹${t.toFixed(0)}).`;
-    if (paidRaw && !parseAmount(paidRaw)) e.paid = "Enter the advance as a number.";
+    if (paidRaw && !parseAmount(paidRaw)) e.paid = "Enter the amount received as a number.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(orderDate)) e.orderDate = "Pick the order date.";
+    else if (orderDate > istToday()) e.orderDate = "The order date can't be in the future.";
+    if (deliveryDate && deliveryDate < orderDate) e.deliveryDate = "Delivery can't be before the order date.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -101,6 +111,10 @@ export function useNewOrderForm(onDone: () => void) {
         total: total.toFixed(2),
         paid: paid.greaterThan(0) ? paid.toFixed(2) : undefined,
         paymentMethod: paid.greaterThan(0) ? method : undefined,
+        orderDate,
+        deliveryDate: deliveryDate || null,
+        accDetails: accDetails.trim() || null,
+        note: notes.trim() || undefined,
       });
       if (!r.ok) {
         toast.error(r.error.message);
@@ -144,6 +158,20 @@ export function useNewOrderForm(onDone: () => void) {
     setAdvancePct,
     method,
     setMethod,
+    orderDate,
+    setOrderDate: (v: string) => {
+      setOrderDateState(v);
+      clearError("orderDate");
+    },
+    deliveryDate,
+    setDeliveryDate: (v: string) => {
+      setDeliveryDateState(v);
+      clearError("deliveryDate");
+    },
+    accDetails,
+    setAccDetails,
+    notes,
+    setNotes,
     total,
     paid,
     balance,
@@ -158,7 +186,7 @@ export function useOrderStatus(row: OrderV2Row) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
 
-  async function updateStatus(next: "PENDING" | "COMPLETED" | "CANCELLED") {
+  async function updateStatus(next: "PENDING" | "DELIVERED" | "CANCELLED") {
     if (pending) return;
     if (next === row.simpleStatus) return;
     if (next === "CANCELLED") {
@@ -188,7 +216,7 @@ export function useOrderStatus(row: OrderV2Row) {
       const r = await setOrderStatusV2Action({ orderId: row.id, status: next });
       if (!r.ok) toast.error(r.error.message);
       else {
-        toast.success(next === "COMPLETED" ? "Marked completed." : "Reopened.");
+        toast.success(next === "DELIVERED" ? "Marked delivered." : "Reopened.");
         router.refresh();
       }
     } catch {

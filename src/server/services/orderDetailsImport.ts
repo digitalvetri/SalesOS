@@ -52,7 +52,7 @@ export type PlannedOrder = {
   paid: string;
   balance: string;
   paymentRecorded: boolean; // false = ADV and BAL were empty in the sheet
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "DELIVERED" | "CANCELLED";
   method: PaymentMethod;
   entityCode: "KI" | "KFM";
   note: string | null; // the sheet's comments / remarks
@@ -153,7 +153,7 @@ export function planOrder(o: ParsedOrder, opts: { unrecordedPayment?: Unrecorded
   const status: PlannedOrder["status"] = cancelled
     ? "CANCELLED"
     : !totalMissing && balance.isZero() && doneByStatus && (paymentRecorded || paid.gt(0))
-      ? "COMPLETED"
+      ? "DELIVERED"
       : "PENDING";
 
   return {
@@ -330,8 +330,8 @@ export async function commitOrderDetailsImport(
         accDetails: o.sheetRow.acc,
         note: o.note,
         simpleStatus: o.status,
-        legacyStatus: o.status === "COMPLETED" ? "DELIVERED" : o.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED",
-        completedAt: o.status === "COMPLETED" ? orderDate : null,
+        legacyStatus: o.status === "DELIVERED" ? "DELIVERED" : o.status === "CANCELLED" ? "CANCELLED" : "CONFIRMED",
+        completedAt: o.status === "DELIVERED" ? orderDate : null,
         importRef: o.ref,
         totalMissing: o.totalMissing,
         sheetRow: o.sheetRow as unknown as Prisma.InputJsonValue,

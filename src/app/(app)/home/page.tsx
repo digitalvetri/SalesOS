@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Decimal from "decimal.js";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus, Wrench } from "lucide-react";
 import { requireSession } from "@/server/auth/session";
 import { Money } from "@/components/app/Money";
 import { formatInr } from "@/lib/formatInr";
@@ -10,10 +10,14 @@ import { employeeOverview } from "@/server/services/employeeOverviewService";
 import { formatOrderDate } from "@/server/domain/dashboard/overview";
 import { TargetRing } from "./_components/TargetRing";
 import { MonthBarChart } from "./_components/MonthBarChart";
+import { opsOverview } from "@/server/services/opsOverviewService";
+import { istDateString } from "@/server/domain/payment/record";
+import { FollowUpList } from "../dashboard/_components/FollowUpList";
+import { PieRow } from "../dashboard/_components/PieRow";
 
-const STATUS_PILL: Record<"PENDING" | "COMPLETED" | "CANCELLED", string> = {
+const STATUS_PILL: Record<"PENDING" | "DELIVERED" | "CANCELLED", string> = {
   PENDING: "bg-[color:var(--color-warn-bg)] text-[color:var(--color-warn)]",
-  COMPLETED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
+  DELIVERED: "bg-[color:var(--color-ok-bg)] text-[color:var(--color-ok)]",
   CANCELLED: "bg-[color:var(--color-surface-2)] text-[color:var(--color-ink-3)]",
 };
 
@@ -22,6 +26,7 @@ export default async function HomePage() {
 
   // v1.1 §4.1 — Employee app = Overview + Orders. Owner/Admin bounce to
   // /dashboard; Accounts collapsed into admin app (also /dashboard).
+  if (session.role === "PRODUCTION") redirect("/production");
   if (session.role === "OWNER" || session.role === "ADMIN" || session.role === "ACCOUNTS") {
     redirect("/dashboard");
   }
@@ -36,11 +41,16 @@ async function EmployeeHome({
   const now = new Date();
   const t = await getTranslations("salesHome");
   const greeting = greetingByHour(now);
-  const o = await employeeOverview({
-    tenantId: session.tenantId,
-    userId: session.userId,
-    now,
-  });
+  const today = istDateString(now);
+  const [o, ops] = await Promise.all([
+    employeeOverview({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      now,
+    }),
+    // Own orders / payments / service requests only (scoped by salesperson).
+    opsOverview({ tenantId: session.tenantId, salespersonId: session.userId, todayYmd: today }),
+  ]);
 
   return (
     <div className="flex flex-col gap-5 px-4 py-5 pb-24 md:px-6 md:pb-6">
@@ -82,7 +92,7 @@ async function EmployeeHome({
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-3">
             <CountTile label="Orders" value={o.counts.orders} />
-            <CountTile label="Completed" value={o.counts.completed} tone="ok" />
+            <CountTile label="Delivered" value={o.counts.completed} tone="ok" />
             <CountTile label="Pending" value={o.counts.pending} tone="warn" />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -104,6 +114,35 @@ async function EmployeeHome({
           </div>
         </div>
       </section>
+
+      {/* Delivery follow-up — own pending orders */}
+      <FollowUpList
+        groups={ops.followUps}
+        todayYmd={today}
+        title="My delivery follow-up"
+        showSalesperson={false}
+        allHref="/orders?f=pending"
+      />
+
+      {/* Own order status (booked this month) + payment modes (received this month) */}
+      <PieRow ops={ops} periodLabel={o.monthLabel} showEmployees={false} />
+
+      <Link
+        href="/service"
+        className="surface-card flex items-center gap-3 p-4 transition-colors hover:bg-[color:var(--color-surface-2)]"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[color:var(--color-surface-2)]">
+          <Wrench className="h-4 w-4 text-[color:var(--color-accent)]" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold">My service requests:</span>{" "}
+          <span className={ops.service.pending > 0 ? "font-semibold text-[color:var(--color-warn)]" : "text-[color:var(--color-ink-2)]"}>
+            {ops.service.pending} pending
+          </span>
+          <span className="text-[color:var(--color-ink-3)]"> · {ops.service.doneThisMonth} done in {o.monthLabel}</span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--color-ink-3)]" aria-hidden />
+      </Link>
 
       {/* 6-month chart */}
       <section className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-1)]">
