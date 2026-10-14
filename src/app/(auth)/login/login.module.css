@@ -1,19 +1,19 @@
-/* Login — flat deep logo-green theme (KFM green #406E32 + light green) + CSS-only 3D scene. No gradients: every
+/* Login — flat deep forest-green theme + CSS-only 3D scene. No gradients: every
    fill is a single solid colour. Scoped to the login route. */
 
 /* ───────────── Theme (re-points the shared design tokens) ───────────── */
 .theme {
-  --teal: #406e32;
-  --teal-bright: #8cc47a;
+  --teal: #2d6a4f;
+  --teal-bright: #74c69d;
 
-  --color-bg: #172a12;
-  --color-surface: #1e3518;
-  --color-surface-2: #25401e;
-  --color-border: #2f4f27;
-  --color-border-strong: #3a5e31;
-  --color-ink: #eef4ea;
-  --color-ink-2: #c0d3b7;
-  --color-ink-3: #93ab89;
+  --color-bg: #10261b;
+  --color-surface: #163024;
+  --color-surface-2: #1c3a2c;
+  --color-border: #24493a;
+  --color-border-strong: #2f5a47;
+  --color-ink: #eaf4ee;
+  --color-ink-2: #b7d0c1;
+  --color-ink-3: #8aa798;
 
   position: relative;
   min-height: 100dvh;
@@ -28,11 +28,11 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   background: var(--teal);
-  box-shadow: 0 10px 28px -10px rgba(64, 110, 50, 0.8);
+  box-shadow: 0 10px 28px -10px rgba(45, 106, 79, 0.8);
   transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .theme [data-gold]:hover {
-  background: #4e8340;
+  background: #40916c;
 }
 .theme [data-gold]:active {
   transform: translateY(1px) scale(0.99);
@@ -45,11 +45,11 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .theme input::placeholder {
-  color: #8aa180;
+  color: #7f9a8b;
 }
 .theme input:focus-visible {
   border-color: var(--teal-bright);
-  box-shadow: 0 0 0 4px rgba(140, 196, 122, 0.18);
+  box-shadow: 0 0 0 4px rgba(116, 198, 157, 0.18);
   --tw-ring-color: transparent;
 }
 /* Chrome autofill would otherwise paint a pale-blue box. */
@@ -98,7 +98,7 @@
   width: 2px;
   height: 2px;
   border-radius: 9999px;
-  background: #dfecd9;
+  background: #d8ebdf;
   animation: twinkle 4s ease-in-out infinite alternate;
 }
 @keyframes twinkle { from { opacity: 0.15; } to { opacity: 0.8; } }
@@ -191,8 +191,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 18px;
-  border: 1.5px solid rgba(140, 196, 122, 0.6);
-  background: rgba(64, 110, 50, 0.6);
+  border: 1.5px solid rgba(116, 198, 157, 0.6);
+  background: rgba(45, 106, 79, 0.6);
   color: #ffffff;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -205,8 +205,8 @@
 .back   { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
 .right  { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
 .left   { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
-.top    { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: rgba(64, 110, 50, 0.35); }
-.bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); background: rgba(64, 110, 50, 0.35); }
+.top    { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: rgba(45, 106, 79, 0.35); }
+.bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); background: rgba(45, 106, 79, 0.35); }
 
 /* Orbit rings with a travelling dot. */
 .ring {
@@ -214,7 +214,7 @@
   left: 50%;
   top: 50%;
   border-radius: 9999px;
-  border: 1.5px solid rgba(140, 196, 122, 0.4);
+  border: 1.5px solid rgba(116, 198, 157, 0.4);
   transform-style: preserve-3d;
 }
 .ring1 {
@@ -334,7 +334,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: rgba(140, 196, 122, 0.18);
+  background: rgba(116, 198, 157, 0.18);
   color: #c4e3b9;
 }
 

@@ -7,7 +7,7 @@ export type Slice = { key: string; label: string; value: number; color: string }
 export type StatusCounts = { pending: number; inProgress: number; finished: number; delivered: number; cancelled: number };
 
 /** Fixed categorical palette (no purple / violet). */
-export const PALETTE = ["#2D6A4F", "#E0A526", "#2D2B2C", "#D7262E", "#74C69D", "#8A5A00", "#406E32"] as const;
+export const PALETTE = ["#2D6A4F", "#E0A526", "#2D2B2C", "#D7262E", "#74C69D", "#8A5A00", "#40916C"] as const;
 const OTHERS_COLOR = "#A3B1A8";
 
 const STATUS: { key: keyof StatusCounts; label: string; color: string }[] = [

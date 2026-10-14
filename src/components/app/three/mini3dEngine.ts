@@ -180,7 +180,7 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
   // Teal parcel with flaps and a green check badge, slowly turning.
   parcel() {
     const { scene, camera, track, dispose } = baseScene(30, [0, 1.6, 6.4]);
-    const boxMat = track(new THREE.MeshStandardMaterial({ color: "#7AB567", roughness: 0.6, flatShading: true }));
+    const boxMat = track(new THREE.MeshStandardMaterial({ color: "#52B788", roughness: 0.6, flatShading: true }));
     const flapMat = track(new THREE.MeshStandardMaterial({ color: "#A9D49A", roughness: 0.6, flatShading: true }));
     const tapeMat = track(new THREE.MeshStandardMaterial({ color: "#F1F6EE", roughness: 0.5 }));
     const g = new THREE.Group();
@@ -202,7 +202,7 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
     g.add(hingeA, hingeB);
     const badge = new THREE.Mesh(
       track(new THREE.CircleGeometry(0.46, 48)),
-      track(new THREE.MeshBasicMaterial({ map: track(glyphTexture("✓", "#406E32", "#FFFFFF")) })),
+      track(new THREE.MeshBasicMaterial({ map: track(glyphTexture("✓", "#2D6A4F", "#FFFFFF")) })),
     );
     badge.position.set(0.55, 0.15, 0.93);
     g.add(badge);
@@ -286,9 +286,9 @@ const BUILDERS: Record<Mini3DKind, () => Built> = {
   // A tilted monitor showing bars that grow and a rising arrow.
   growth() {
     const { scene, camera, track, dispose } = baseScene(28, [0, 0.4, 7]);
-    const caseMat = track(new THREE.MeshStandardMaterial({ color: "#24401C", roughness: 0.4, metalness: 0.2 }));
+    const caseMat = track(new THREE.MeshStandardMaterial({ color: "#1B4332", roughness: 0.4, metalness: 0.2 }));
     const screenMat = track(new THREE.MeshStandardMaterial({ color: "#16260F", roughness: 0.6 }));
-    const barMat = track(new THREE.MeshStandardMaterial({ color: "#7AB567", emissive: "#406E32", emissiveIntensity: 0.4, roughness: 0.4 }));
+    const barMat = track(new THREE.MeshStandardMaterial({ color: "#52B788", emissive: "#2D6A4F", emissiveIntensity: 0.4, roughness: 0.4 }));
     const arrowMat = track(new THREE.MeshStandardMaterial({ color: "#FF8A8F", emissive: "#D7262E", emissiveIntensity: 0.8 }));
     const g = new THREE.Group();
     g.add(new THREE.Mesh(track(new RoundedBoxGeometry(3.4, 2.3, 0.35, 4, 0.14)), caseMat));

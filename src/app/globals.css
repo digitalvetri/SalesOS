@@ -1,114 +1,113 @@
-/* Kumar Food Machinery (KFM) — "Green & White" design system (2026-10-15, from the KFM logo:
-   green #406E32 + charcoal #2D2B2C). Flat colours only, no gradients, no purple. White pages,
-   deep logo-green sidebar + money tile, logo green for actions; red only for pending / money
-   to collect.
+/* Kumar Food Machinery — "Forest & White" design system (2026-10-13). Flat colours only,
+   no gradients, no purple. White pages, deep forest-green sidebar + money tile, forest
+   green for actions; logo red only for pending / money to collect.
    Light tokens live in @theme (the default, see app/layout.tsx); the dark set overrides
    them on :root[data-theme="dark"]. Token NAMES are unchanged so every screen picks the
-   palette up automatically ("gold" = the one accent = logo green). */
+   palette up automatically ("gold" = the one accent = forest green). */
 @import "tailwindcss";
 
 @theme {
   /* Surfaces — white. */
   --color-bg: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-surface-2: #F4F7F2;
-  --color-border: #E4EBE0;
-  --color-border-strong: #CCD8C6;
+  --color-surface-2: #F3F8F5;
+  --color-border: #E3ECE6;
+  --color-border-strong: #CBDACF;
 
-  /* Ink — logo charcoal family. */
-  --color-ink: #2D2B2C;
-  --color-ink-2: #4A4748;
-  --color-ink-3: #6B6869;
+  /* Ink — deep green-black. */
+  --color-ink: #13241B;
+  --color-ink-2: #3A4D42;
+  --color-ink-3: #5D6F64;
 
-  /* The one accent (logo green). */
-  --color-gold: #406E32;
+  /* The one accent (forest green). */
+  --color-gold: #2D6A4F;
   --color-gold-ink: #FFFFFF;
-  --color-gold-soft: #ECF3E8;
+  --color-gold-soft: #E7F3EC;
 
-  /* Status — completed = green, pending / to collect = red. */
-  --color-ok: #406E32;
-  --color-ok-bg: #ECF3E8;
+  /* Status — completed = green, pending / to collect = logo red. */
+  --color-ok: #2D6A4F;
+  --color-ok-bg: #E7F3EC;
   --color-warn: #C21F27;
   --color-warn-bg: #FBE9EA;
   --color-warn-fill: #D7262E; /* bars/dots only — text uses --color-warn */
   --color-danger: #B3141C;
   --color-danger-bg: #FBE4E5;
-  --color-info: #406E32;
-  --color-info-bg: #ECF3E8;
-  --color-chart: #406E32;
+  --color-info: #2D6A4F;
+  --color-info-bg: #E7F3EC;
+  --color-chart: #2D6A4F;
 
   /* Nav chrome */
   --color-nav-bg: #FFFFFF;
-  --color-nav-bg-2: #F4F7F2;
-  --color-nav-active-bg: #ECF3E8;
-  --color-nav-ink: #2D2B2C;
-  --color-nav-ink-2: #4A4748;
-  --color-nav-ink-3: #6B6869;
-  --color-nav-border: #E4EBE0;
-  --color-nav-accent: #406E32;
+  --color-nav-bg-2: #F3F8F5;
+  --color-nav-active-bg: #E7F3EC;
+  --color-nav-ink: #13241B;
+  --color-nav-ink-2: #3A4D42;
+  --color-nav-ink-3: #6E8277;
+  --color-nav-border: #E3ECE6;
+  --color-nav-accent: #2D6A4F;
 
-  /* Solid accent fill (primary buttons). White text on it is AA (6.0:1). */
-  --color-accent: #406E32;
-  --color-accent-hover: #355C29;
-  /* Hero KPI tile + sidebar — deep logo green (white text 11.5:1). */
-  --color-hero: #24401C;
-  --color-sidebar-bg: #24401C;
-  --color-sidebar-hover: #2E5024;
-  --color-sidebar-active-bg: #406E32;
-  --color-sidebar-ink: #F1F6EE;
-  --color-sidebar-ink-2: #BCD0B3;
+  /* Solid accent fill (primary buttons). White text on it is AA. */
+  --color-accent: #2D6A4F;
+  --color-accent-hover: #245A42;
+  /* Hero KPI tile + sidebar — deep forest green. */
+  --color-hero: #1B4332;
+  --color-sidebar-bg: #1B4332;
+  --color-sidebar-hover: #24563F;
+  --color-sidebar-active-bg: #2D6A4F;
+  --color-sidebar-ink: #EEF6F1;
+  --color-sidebar-ink-2: #B5CFBE;
 
   --radius-sm: 10px;
   --radius: 14px;
   --radius-lg: 20px;
 
-  --shadow-1: 0 1px 2px rgba(45, 43, 44, 0.05), 0 1px 3px rgba(45, 43, 44, 0.06);
-  --shadow-2: 0 12px 32px -8px rgba(45, 43, 44, 0.14);
+  --shadow-1: 0 1px 2px rgba(19, 36, 27, 0.05), 0 1px 3px rgba(19, 36, 27, 0.06);
+  --shadow-2: 0 12px 32px -8px rgba(19, 36, 27, 0.14);
 
   --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Dark — charcoal + logo green (opt-in from the profile menu; light is the default). */
+/* Dark — deep forest (opt-in from the profile menu; light is the default). */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #111511;
-  --color-surface: #181D17;
-  --color-surface-2: #1F261D;
-  --color-border: #2A3427;
-  --color-border-strong: #364333;
-  --color-ink: #ECEFEA;
-  --color-ink-2: #B7C0B2;
-  --color-ink-3: #8B9586;
-  --color-gold: #8CC47A;
-  --color-gold-ink: #0F1E0B; /* dark text on the light-green dark-mode accent (≈9:1) */
-  --color-gold-soft: #1E3318;
-  --color-ok: #8CC47A;
-  --color-ok-bg: #1E3318;
+  --color-bg: #0F1A14;
+  --color-surface: #15231B;
+  --color-surface-2: #1B2C22;
+  --color-border: #24392C;
+  --color-border-strong: #2F4A39;
+  --color-ink: #E6F0EA;
+  --color-ink-2: #AFC5B7;
+  --color-ink-3: #82998B;
+  --color-gold: #52B788;
+  --color-gold-ink: #FFFFFF;
+  --color-gold-soft: #173326;
+  --color-ok: #74C69D;
+  --color-ok-bg: #173326;
   --color-warn: #FF7A80;
   --color-warn-bg: #3A1A1F;
   --color-warn-fill: #F0525A;
   --color-danger: #FF6B70;
   --color-danger-bg: #3A1519;
-  --color-info: #8CC47A;
-  --color-info-bg: #1E3318;
-  --color-chart: #6FAA5C;
+  --color-info: #74C69D;
+  --color-info-bg: #173326;
+  --color-chart: #52B788;
 
-  --color-nav-bg: #0D110C;
-  --color-nav-bg-2: #161C15;
-  --color-nav-active-bg: #1E3318;
-  --color-nav-ink: #ECEFEA;
-  --color-nav-ink-2: #B7C0B2;
-  --color-nav-ink-3: #8B9586;
-  --color-nav-border: #1F271D;
-  --color-nav-accent: #8CC47A;
-  --color-accent: #406E32;
-  --color-accent-hover: #4A7A3C;
-  --color-hero: #24401C;
-  --color-sidebar-bg: #0D110C;
-  --color-sidebar-hover: #161C15;
-  --color-sidebar-active-bg: #24401C;
-  --color-sidebar-ink: #ECEFEA;
-  --color-sidebar-ink-2: #9EAE97;
+  --color-nav-bg: #0B140F;
+  --color-nav-bg-2: #142019;
+  --color-nav-active-bg: #173326;
+  --color-nav-ink: #E6F0EA;
+  --color-nav-ink-2: #AFC5B7;
+  --color-nav-ink-3: #7A9183;
+  --color-nav-border: #1C2D23;
+  --color-nav-accent: #52B788;
+  --color-accent: #2D6A4F;
+  --color-accent-hover: #40916C;
+  --color-hero: #1B4332;
+  --color-sidebar-bg: #0B140F;
+  --color-sidebar-hover: #142019;
+  --color-sidebar-active-bg: #1B4332;
+  --color-sidebar-ink: #E6F0EA;
+  --color-sidebar-ink-2: #93AD9D;
 
   --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
   --shadow-2: 0 20px 50px -16px rgba(0, 0, 0, 0.75);
