@@ -10,14 +10,20 @@ export type Period = { kind: "year"; year: number } | { kind: "month"; year: num
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** `?p=2026` → the year; `?p=2026-10` → October 2026; anything else → the current month. */
-export function parsePeriod(p: string | undefined | null, todayYmd: string): Period {
+/** `?p=2026` → the year; `?p=2026-10` → October 2026; anything else → the current month.
+ *  With `startYm`, a period before the go-live month falls back to the current month. */
+export function parsePeriod(p: string | undefined | null, todayYmd: string, startYm?: string): Period {
   const y = Number(todayYmd.slice(0, 4));
   const m = Number(todayYmd.slice(5, 7));
-  if (p && /^\d{4}$/.test(p)) return { kind: "year", year: Number(p) };
+  const current: Period = { kind: "month", year: y, month: m };
+  if (p && /^\d{4}$/.test(p)) {
+    return startYm && Number(p) < Number(startYm.slice(0, 4)) ? current : { kind: "year", year: Number(p) };
+  }
   const mm = p ? /^(\d{4})-(\d{2})$/.exec(p) : null;
-  if (mm && Number(mm[2]) >= 1 && Number(mm[2]) <= 12) return { kind: "month", year: Number(mm[1]), month: Number(mm[2]) };
-  return { kind: "month", year: y, month: m };
+  if (mm && Number(mm[2]) >= 1 && Number(mm[2]) <= 12) {
+    return startYm && p! < startYm ? current : { kind: "month", year: Number(mm[1]), month: Number(mm[2]) };
+  }
+  return current;
 }
 
 export const ym = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
@@ -25,11 +31,12 @@ export const periodKey = (p: Period) => (p.kind === "year" ? String(p.year) : ym
 export const monthShortName = (month: number) => MONTH_NAMES[month - 1]!;
 export const periodLabel = (p: Period) => (p.kind === "year" ? `Year ${p.year}` : `${MONTH_LONG[p.month - 1]} ${p.year}`);
 
-/** Months (YYYY-MM) of the period's year up to `todayYmd` (the whole year for past years). */
-export function monthsOfYear(year: number, todayYmd: string): string[] {
+/** Months (YYYY-MM) of the period's year up to `todayYmd` (the whole year for past years),
+ *  starting no earlier than `startYm` (the go-live month) when given. */
+export function monthsOfYear(year: number, todayYmd: string, startYm?: string): string[] {
   const ty = Number(todayYmd.slice(0, 4));
   const last = year < ty ? 12 : year > ty ? 0 : Number(todayYmd.slice(5, 7));
-  return Array.from({ length: last }, (_, i) => ym(year, i + 1));
+  return Array.from({ length: last }, (_, i) => ym(year, i + 1)).filter((k) => !startYm || k >= startYm);
 }
 
 /** One aggregated cell: orders booked in a month by one salesperson. */

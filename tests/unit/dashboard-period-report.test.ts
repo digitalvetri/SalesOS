@@ -23,6 +23,13 @@ describe("period report", () => {
     expect(periodLabel({ kind: "month", year: 2026, month: 10 })).toBe("October 2026");
     expect(monthsOfYear(2026, "2026-10-13")).toHaveLength(10);
     expect(monthsOfYear(2025, "2026-10-13")).toHaveLength(12);
+    // Go-live month: nothing before October 2026, years roll on after it.
+    expect(monthsOfYear(2026, "2026-10-15", "2026-10")).toEqual(["2026-10"]);
+    expect(monthsOfYear(2025, "2026-10-15", "2026-10")).toEqual([]);
+    expect(monthsOfYear(2027, "2027-03-02", "2026-10")).toEqual(["2027-01", "2027-02", "2027-03"]);
+    expect(parsePeriod("2026-05", "2026-10-15", "2026-10")).toEqual({ kind: "month", year: 2026, month: 10 });
+    expect(parsePeriod("2025", "2026-10-15", "2026-10")).toEqual({ kind: "month", year: 2026, month: 10 });
+    expect(parsePeriod("2026", "2026-10-15", "2026-10")).toEqual({ kind: "year", year: 2026 });
   });
   it("completed + pending always equal the orders booked in the same period", () => {
     const oct = sumCells(inPeriod(cells, { kind: "month", year: 2026, month: 10 }));

@@ -4,6 +4,9 @@
 // year and the year before (for "vs previous").
 import { prisma, type Prisma } from "@/server/repo/client";
 import { monthsOfYear, type PeriodCell } from "@/server/domain/dashboard/periodReport";
+import { GO_LIVE_YM } from "@/config/brand";
+
+const GO_LIVE_YEAR = Number(GO_LIVE_YM.slice(0, 4));
 
 type OrderAgg = {
   ym: string; sp: string; orders: bigint; cancelled: bigint; value: Prisma.Decimal; completed: bigint;
@@ -88,7 +91,7 @@ export async function periodReport(opts: { tenantId: string; year: number; today
   return {
     cells: [...cells.values()],
     employees: [...employees, ...extra],
-    years: [...new Set([...years.map((y) => y.y), todayYear])].sort((a, b) => b - a),
-    months: monthsOfYear(opts.year, opts.todayYmd),
+    years: [...new Set([...years.map((y) => y.y), todayYear])].filter((y) => y >= GO_LIVE_YEAR).sort((a, b) => b - a),
+    months: monthsOfYear(opts.year, opts.todayYmd, GO_LIVE_YM),
   };
 }

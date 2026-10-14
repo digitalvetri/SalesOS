@@ -1,3 +1,4 @@
+import { GO_LIVE_YM } from "@/config/brand";
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/server/auth/session";
 import { listUsers } from "@/server/repo/users";
@@ -17,8 +18,10 @@ export default async function TargetsPage() {
 
   const now = firstOfMonthUTC(new Date());
   const months: Date[] = [];
+  const goLive = new Date(`${GO_LIVE_YM}-01T00:00:00Z`);
   for (let i = -MONTHS_BACK; i <= MONTHS_AHEAD; i++) {
-    months.push(firstOfMonthUTC(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1))));
+    const m = firstOfMonthUTC(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1)));
+    if (m >= goLive) months.push(m); // nothing before the go-live month
   }
 
   const [users, targets] = await Promise.all([

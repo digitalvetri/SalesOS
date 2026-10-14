@@ -2,6 +2,7 @@
 // Pick a year or a month at the top; every tile and table below describes the
 // orders booked in that period, so the numbers can be compared with each other.
 import Link from "next/link";
+import { GO_LIVE_YM } from "@/config/brand";
 import { redirect } from "next/navigation";
 import { ArrowRight, BarChart3 } from "lucide-react";
 import { requireSession } from "@/server/auth/session";
@@ -38,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const today = istToday();
   const sp = await searchParams;
-  const period = parsePeriod(sp.p, today);
+  const period = parsePeriod(sp.p, today, GO_LIVE_YM);
   const [o, report, ops] = await Promise.all([
     adminOverview({ tenantId: session.tenantId }),
     periodReport({ tenantId: session.tenantId, year: period.year, todayYmd: today }),
