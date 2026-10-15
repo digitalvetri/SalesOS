@@ -17,9 +17,9 @@ type ProductHit = { id: string; name: string; spec: string | null; customerPrice
 
 const METHODS: { v: PaymentMethod; label: string }[] = [
   { v: "UPI", label: "UPI" },
-  { v: "CASH", label: "Cash" },
-  { v: "BANK_TRANSFER", label: "Account" },
+  { v: "BANK_TRANSFER", label: "Bank" },
   { v: "CHEQUE", label: "Cheque" },
+  { v: "CASH", label: "Cash" },
 ];
 
 /** Debounced JSON search; returns [] for queries shorter than `min`. */
@@ -462,8 +462,8 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                 />
                 <FieldError id="err-paid" msg={errors.paid} />
               </div>
-              {paid.greaterThan(0) && (
-                <div className="space-y-1.5">
+              {/* Always visible so the employee sees the choice; it is only saved with an amount. */}
+              <div className="space-y-1.5">
                   <span className="text-sm font-medium">Payment mode</span>
                   <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Payment mode">
                     {METHODS.map((m) => (
@@ -484,8 +484,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="no-acc">
                   Account name <span className="font-normal text-[color:var(--color-ink-3)]">(optional)</span>

@@ -9,7 +9,7 @@ import { amountMissing, summarise } from "@/lib/orderDisplay";
 import { BRAND } from "@/config/brand";
 import { ORDER_STATUS_LABEL, PRODUCTION_LABEL } from "@/server/domain/v1_1/workflow";
 
-const MODE_LABEL: Record<string, string> = { UPI: "UPI", CASH: "Cash", BANK_TRANSFER: "Account", CHEQUE: "Cheque", CARD: "Card" };
+const MODE_LABEL: Record<string, string> = { UPI: "UPI", CASH: "Cash", BANK_TRANSFER: "Bank", CHEQUE: "Cheque", CARD: "Card" };
 
 const STATUS_VALUES = ["all", "pending", "completed", "balance_due"] as const;
 

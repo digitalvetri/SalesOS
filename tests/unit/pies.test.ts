@@ -51,7 +51,7 @@ describe("paymentModeSlices", () => {
       { mode: "CHEQUE", amount: "0" },
       { mode: "CARD", amount: "-10" },
     ]);
-    expect(s.map((x) => x.label)).toEqual(["Account", "UPI", "Cash"]);
+    expect(s.map((x) => x.label)).toEqual(["Bank", "UPI", "Cash"]);
     expect(s[2]!.value).toBeCloseTo(1000.5);
     expect(new Set(s.map((x) => x.color)).size).toBe(3);
   });

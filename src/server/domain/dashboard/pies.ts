@@ -42,7 +42,7 @@ export function slicesWithPercent<T extends Slice>(s: T[]): (T & { pct: number }
 export const PAYMENT_MODE_LABEL: Record<string, string> = {
   UPI: "UPI",
   CASH: "Cash",
-  BANK_TRANSFER: "Account",
+  BANK_TRANSFER: "Bank",
   CHEQUE: "Cheque",
   CARD: "Card",
 };
