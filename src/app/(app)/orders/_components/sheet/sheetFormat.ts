@@ -47,5 +47,5 @@ export function initialsOf(name: string): string {
 
 // Dialog surface: bottom sheet on phones, centred dialog from 640 px.
 export const SHEET_CONTENT =
-  "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto rounded-t-[24px] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[var(--shadow-2)] focus:outline-none sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[var(--radius-lg)] sm:p-6";
+  "fixed inset-x-0 bottom-0 z-50 max-h-[92svh] overflow-y-auto rounded-t-[24px] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[var(--shadow-2)] focus:outline-none sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[var(--radius-lg)] sm:p-6";
 export const SHEET_OVERLAY = "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm";

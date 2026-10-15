@@ -105,7 +105,6 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
     setTotalRaw,
     paidRaw,
     setPaidRaw,
-    setAdvancePct,
     method,
     setMethod,
     orderDate,
@@ -170,7 +169,7 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
             e.preventDefault();
             phoneRef.current?.focus();
           }}
-          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[96dvh] flex-col rounded-t-[24px] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] shadow-[var(--shadow-2)] focus:outline-none sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90dvh] sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[var(--radius-lg)]"
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[96svh] flex-col rounded-t-[24px] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] shadow-[var(--shadow-2)] focus:outline-none sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[90svh] sm:w-full sm:max-w-xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[var(--radius-lg)]"
         >
           {/* Header */}
           <div className="shrink-0 border-b border-[color:var(--color-border)] px-5 pb-4 pt-3 sm:pt-5">
@@ -429,24 +428,6 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
 
             {/* 4 · Payment */}
             <Step n={4} title="Payment received" hint="optional">
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Quick advance">
-                {[
-                  { label: "None", pct: 0 },
-                  { label: "25%", pct: 25 },
-                  { label: "50%", pct: 50 },
-                  { label: "Full", pct: 100 },
-                ].map((q) => (
-                  <button
-                    key={q.label}
-                    type="button"
-                    onClick={() => setAdvancePct(q.pct)}
-                    disabled={pending || (q.pct > 0 && total.isZero())}
-                    className="h-9 rounded-full border border-[color:var(--color-border-strong)] px-3.5 text-xs font-medium transition-colors hover:border-[color:var(--color-gold)] hover:text-[color:var(--color-gold)] disabled:opacity-40"
-                  >
-                    {q.label}
-                  </button>
-                ))}
-              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="no-paid">Amount received ₹</Label>
                 <Input

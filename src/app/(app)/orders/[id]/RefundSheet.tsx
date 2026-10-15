@@ -82,7 +82,7 @@ export function RefundSheet(props: {
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto rounded-t-[var(--radius-lg)] border-t border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-2)]",
+            "fixed inset-x-0 bottom-0 z-50 max-h-[92svh] overflow-y-auto rounded-t-[var(--radius-lg)] border-t border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-2)]",
             "md:bottom-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[var(--radius-lg)] md:border",
           )}
         >

@@ -12,7 +12,7 @@ export function EmptyState({ title, action, className }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "flex min-h-[60dvh] flex-col items-center justify-center gap-6 px-6 text-center",
+        "flex min-h-[60svh] flex-col items-center justify-center gap-6 px-6 text-center",
         className,
       )}
     >

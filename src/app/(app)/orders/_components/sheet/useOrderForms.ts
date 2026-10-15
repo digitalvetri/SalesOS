@@ -76,10 +76,6 @@ export function useNewOrderForm(onDone: () => void) {
   function removeItem(name: string) {
     applyItems(items.filter((i) => i.name !== name));
   }
-  function setAdvancePct(pct: number) {
-    setPaidRaw(pct === 0 || total.isZero() ? "" : total.times(pct).div(100).toDecimalPlaces(0).toFixed(0));
-    clearError("paid");
-  }
 
   const productText = [...items.map((i) => i.name), itemQuery.trim()].filter(Boolean).join(", ");
   const dirty = Boolean(phone || customerName || productText || totalRaw || paidRaw || deliveryDate || accDetails || notes);
@@ -155,7 +151,6 @@ export function useNewOrderForm(onDone: () => void) {
       setPaidRaw(v);
       clearError("paid");
     },
-    setAdvancePct,
     method,
     setMethod,
     orderDate,

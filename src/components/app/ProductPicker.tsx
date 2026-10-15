@@ -77,7 +77,7 @@ export function ProductPicker({ trigger, onPick }: ProductPickerProps) {
         <DialogPrimitive.Content
           className={cn(
             // Full-screen on mobile, modal on desktop
-            "fixed inset-0 z-50 flex flex-col bg-[color:var(--color-surface)] md:left-1/2 md:top-1/2 md:h-auto md:max-h-[80dvh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[var(--radius-lg)] md:border md:border-[color:var(--color-border-strong)] md:shadow-[var(--shadow-2)]",
+            "fixed inset-0 z-50 flex flex-col bg-[color:var(--color-surface)] md:left-1/2 md:top-1/2 md:h-auto md:max-h-[80svh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[var(--radius-lg)] md:border md:border-[color:var(--color-border-strong)] md:shadow-[var(--shadow-2)]",
           )}
         >
           <header className="flex items-center gap-3 border-b border-[color:var(--color-border)] px-4 py-3">

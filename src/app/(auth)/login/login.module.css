@@ -16,7 +16,7 @@
   --color-ink-3: #8aa798;
 
   position: relative;
-  min-height: 100dvh;
+  min-height: 100svh;
   overflow: hidden;
   isolation: isolate;
   color: var(--color-ink);
@@ -107,7 +107,7 @@
 .layout {
   position: relative;
   display: grid;
-  min-height: 100dvh;
+  min-height: 100svh;
   grid-template-columns: 1fr;
   align-items: center;
   align-content: center; /* stacked (phone/tablet): keep scene + card together */
@@ -369,3 +369,13 @@
   font-size: 12px;
   color: var(--color-ink-3);
 }
+
+/* Phones / tablets: keep the scene but hold it still, and keep the form out of any 3D
+   layer. Moving backgrounds and transformed parents make inputs jitter on mobile
+   browsers while typing and while the address bar / keyboard slides in and out. */
+@media (max-width: 1023px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .floor, .star, .cube, .ring1, .ring2, .floatA, .floatB, .floatC, .bar { animation: none; }
+  .cardWrap { perspective: none; }
+  .card { transform: none; transition: none; animation: fade 0.4s ease-out both; }
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }

@@ -136,7 +136,7 @@ body {
 
 body {
   min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100svh;
   margin: 0;
   line-height: 1.45;
 }
@@ -207,5 +207,17 @@ body {
   * {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* iPhone/iPad Safari zooms the page when a field with text under 16px is focused, which
+   makes forms jump. Touch Apple devices only — desktop and Android keep the designed sizes. */
+@supports (-webkit-touch-callout: none) {
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }

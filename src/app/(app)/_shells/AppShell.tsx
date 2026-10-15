@@ -15,7 +15,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex min-h-svh">
       <SideNav items={items} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={user} />
