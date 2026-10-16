@@ -115,27 +115,49 @@ describe.skipIf(!DB_REACHABLE)("v1.1 order + user rules", () => {
     expect(after.completedAt?.toISOString()).toBe(back.toISOString());
   });
 
-  it("sales mark Delivered only after production Finished; production can't touch delivered orders", async () => {
+  it("production Finished → sales deliver; production can't touch delivered orders", async () => {
     const order = await newOrder("100");
-    await expect(
-      setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" }),
-    ).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(
       setProductionStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "FINISHED" }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" });
     await setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "FINISHED" });
     await setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" });
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(after.productionStatus).toBe("FINISHED");
     await expect(
       setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" }),
     ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
-  it("an admin override to Delivered also marks production Finished", async () => {
-    const order = await newOrder("100");
-    await setOrderStatusV2({ tenantId, actorId: adminId, actorRole: "ADMIN", orderId: order.id, status: "DELIVERED" });
-    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
-    expect(after.productionStatus).toBe("FINISHED");
+  it("sales may deliver before production finishes — the order becomes Ready stock", async () => {
+    for (const start of ["NOT_STARTED", "IN_PROGRESS"] as const) {
+      const order = await newOrder("100");
+      if (start === "IN_PROGRESS") {
+        await setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" });
+      }
+      await setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" });
+      const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+      expect(after.simpleStatus).toBe("DELIVERED");
+      expect(after.productionStatus).toBe("NOT_NEEDED");
+    }
+  });
+
+  it("a ready-stock order never goes to production", async () => {
+    const { order } = await createOrderV2({
+      tenantId,
+      actorId: salesId,
+      salespersonId: salesId,
+      productText: "Stock item",
+      contactPhone: "+919999911111",
+      customerName: "Stock customer",
+      total: "100",
+      readyStock: true,
+    });
+    expect(order.productionStatus).toBe("NOT_NEEDED");
+    await expect(
+      setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
   });
 
   it("an ADMIN can't change the OWNER's password, email or deactivate them", async () => {

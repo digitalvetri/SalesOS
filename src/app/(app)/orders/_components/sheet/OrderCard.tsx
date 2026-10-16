@@ -52,14 +52,7 @@ export function OrderCard({
           className={`h-8 shrink-0 rounded-full border-0 px-2.5 text-xs font-semibold ${PILL_STYLE[row.simpleStatus]}`}
         >
           <option value="PENDING">Pending</option>
-          <option
-            value="DELIVERED"
-            disabled={mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"}
-          >
-            {mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"
-              ? "Delivered (after production)"
-              : "Delivered"}
-          </option>
+          <option value="DELIVERED">Delivered</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
       </div>

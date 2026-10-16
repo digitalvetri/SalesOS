@@ -17,7 +17,7 @@ import { computeBalance, applyPayment } from "@/server/domain/v1_1/balance";
 import { istDateString } from "@/server/domain/payment/record";
 import {
   canUpdateProduction,
-  deliveredBlockReason,
+  productionAfterDelivery,
   productionEditable,
   type ProductionStatus,
 } from "@/server/domain/v1_1/workflow";
@@ -44,6 +44,7 @@ export type CreateOrderV2Input = {
   note?: string;
   deliveryDate?: string | null; // YYYY-MM-DD — promised delivery
   accDetails?: string | null; // account / person the money went to (optional)
+  readyStock?: boolean; // item is in ready stock — never goes to production
 };
 
 export async function createOrderV2(input: CreateOrderV2Input) {
@@ -126,6 +127,7 @@ export async function createOrderV2(input: CreateOrderV2Input) {
         accDetails,
         promisedDeliveryDate,
         note: input.note?.trim() || null,
+        productionStatus: input.readyStock ? "NOT_NEEDED" : undefined,
       });
 
       return { order, payment, customer };
@@ -159,6 +161,7 @@ export type InsertOrderV2Args = {
   paymentNote?: string | null; // e.g. the sheet's ACC DETAILS
   accDetails?: string | null; // where the money went (order-level, editable)
   cancelNote?: string | null;
+  productionStatus?: "NOT_STARTED" | "NOT_NEEDED"; // NOT_NEEDED = from ready stock
 };
 
 /** Order row + S.No + v1.0 number + optional advance payment + audit, inside `tx`.
@@ -196,6 +199,7 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
       ...(a.sheetRow ? { sheetRow: a.sheetRow } : {}),
       promisedDeliveryDate: a.promisedDeliveryDate ?? null,
       cancelNote: a.cancelNote ?? null,
+      ...(a.productionStatus ? { productionStatus: a.productionStatus } : {}),
       subtotal: a.total.toFixed(2),
       chargesTotal: "0.00",
       discount: "0.00",
@@ -303,11 +307,6 @@ export async function setOrderStatusV2(input: {
   if (input.status === "CANCELLED" && !input.cancelReason?.trim()) {
     throw new AppError("VALIDATION", "Cancellation needs a one-line reason.");
   }
-  // Delivered only after production finished (Owner / Admin may override).
-  if (input.status === "DELIVERED" && current.simpleStatus !== "DELIVERED") {
-    const why = deliveredBlockReason({ productionStatus: current.productionStatus, role: input.actorRole });
-    if (why) throw new AppError("VALIDATION", why);
-  }
 
   const row = await prisma.order.update({
     where: { id: input.orderId },
@@ -322,9 +321,14 @@ export async function setOrderStatusV2(input: {
             : istToday()
           : null,
       cancelNote: input.status === "CANCELLED" ? input.cancelReason ?? null : null,
-      // A delivered order has been produced (covers an admin override).
-      ...(input.status === "DELIVERED" && current.productionStatus !== "FINISHED"
-        ? { productionStatus: "FINISHED" as const, productionUpdatedAt: new Date(), productionUpdatedById: input.actorId }
+      // Sales may deliver any time. If production hadn't finished it, it came from
+      // ready stock: it leaves the production board ("Ready stock").
+      ...(input.status === "DELIVERED" && productionAfterDelivery(current.productionStatus) !== current.productionStatus
+        ? {
+            productionStatus: productionAfterDelivery(current.productionStatus),
+            productionUpdatedAt: new Date(),
+            productionUpdatedById: input.actorId,
+          }
         : {}),
       // Mirror the v1.0 status column so legacy queries still work.
       status:
@@ -761,8 +765,13 @@ export async function setProductionStatusV2(input: {
     select: { id: true, simpleStatus: true, productionStatus: true },
   });
   if (!current) throw new AppError("NOT_FOUND", "Order not found.");
-  if (!productionEditable({ simpleStatus: current.simpleStatus })) {
-    throw new AppError("VALIDATION", "This order is already delivered or cancelled.");
+  if (!productionEditable({ simpleStatus: current.simpleStatus, productionStatus: current.productionStatus })) {
+    throw new AppError(
+      "VALIDATION",
+      current.productionStatus === "NOT_NEEDED"
+        ? "This order is from ready stock — it doesn't need production."
+        : "This order is already delivered or cancelled.",
+    );
   }
   if (current.productionStatus === input.status) return current;
 

@@ -47,7 +47,8 @@ function tabWhere(tenantId: string, tab: ProductionTab): Prisma.OrderWhereInput 
     case "finished":
       return { tenantId, simpleStatus: "PENDING", productionStatus: "FINISHED" };
     case "delivered":
-      return { tenantId, simpleStatus: "DELIVERED", completedAt: { gte: deliveredSince() } };
+      // Orders delivered from ready stock never went through production.
+      return { tenantId, simpleStatus: "DELIVERED", productionStatus: { not: "NOT_NEEDED" }, completedAt: { gte: deliveredSince() } };
   }
 }
 

@@ -161,7 +161,8 @@ export async function opsOverview(opts: {
   for (const o of pendingOrders) {
     if (o.productionStatus === "IN_PROGRESS") pipeline.inProgress += 1;
     else if (o.productionStatus === "FINISHED") pipeline.finishedAwaitingDelivery += 1;
-    else pipeline.notStarted += 1;
+    else if (o.productionStatus === "NOT_STARTED") pipeline.notStarted += 1;
+    // NOT_NEEDED (ready stock) never goes to production — not part of the pipeline.
   }
 
   const typeCount = (t: "FREE" | "PAID") => svcTypes.find((g) => g.serviceType === t)?._count._all ?? 0;

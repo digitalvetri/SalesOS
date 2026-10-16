@@ -39,6 +39,7 @@ export function useNewOrderForm(onDone: () => void) {
   const [deliveryDate, setDeliveryDateState] = React.useState("");
   const [accDetails, setAccDetails] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [readyStock, setReadyStock] = React.useState(false);
   const [errors, setErrors] = React.useState<Partial<Record<NewOrderField, string>>>({});
   const [pending, setPending] = React.useState(false);
 
@@ -111,6 +112,7 @@ export function useNewOrderForm(onDone: () => void) {
         deliveryDate: deliveryDate || null,
         accDetails: accDetails.trim() || null,
         note: notes.trim() || undefined,
+        readyStock,
       });
       if (!r.ok) {
         toast.error(r.error.message);
@@ -167,6 +169,8 @@ export function useNewOrderForm(onDone: () => void) {
     setAccDetails,
     notes,
     setNotes,
+    readyStock,
+    setReadyStock,
     total,
     paid,
     balance,
@@ -184,6 +188,14 @@ export function useOrderStatus(row: OrderV2Row) {
   async function updateStatus(next: "PENDING" | "DELIVERED" | "CANCELLED") {
     if (pending) return;
     if (next === row.simpleStatus) return;
+    // Delivering before production finished = from ready stock; it leaves the production board.
+    if (
+      next === "DELIVERED" &&
+      row.productionStatus === "IN_PROGRESS" &&
+      !window.confirm("Production is still working on this order. Deliver it from ready stock instead? It will be removed from the production board.")
+    ) {
+      return;
+    }
     if (next === "CANCELLED") {
       const reason = window.prompt("Why cancel this order? (one line)");
       if (!reason?.trim()) return;
@@ -211,7 +223,13 @@ export function useOrderStatus(row: OrderV2Row) {
       const r = await setOrderStatusV2Action({ orderId: row.id, status: next });
       if (!r.ok) toast.error(r.error.message);
       else {
-        toast.success(next === "DELIVERED" ? "Marked delivered." : "Reopened.");
+        toast.success(
+          next === "DELIVERED"
+            ? row.productionStatus === "FINISHED"
+              ? "Marked delivered."
+              : "Delivered from ready stock."
+            : "Reopened.",
+        );
         router.refresh();
       }
     } catch {

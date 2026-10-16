@@ -719,14 +719,7 @@ function OrderSheetRow({ row, mode, showEmployee }: { row: OrderV2Row; mode: Mod
           className={`h-7 w-full max-w-[112px] rounded-full border-0 pl-2 pr-1 text-xs font-medium ${PILL_STYLE[row.simpleStatus]}`}
         >
           <option value="PENDING">Pending</option>
-          <option
-            value="DELIVERED"
-            disabled={mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"}
-          >
-            {mode === "employee" && row.simpleStatus !== "DELIVERED" && row.productionStatus !== "FINISHED"
-              ? "Delivered (after production)"
-              : "Delivered"}
-          </option>
+          <option value="DELIVERED">Delivered</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
         {row.simpleStatus !== "CANCELLED" && <ProductionBadge status={row.productionStatus} className="mt-1" />}

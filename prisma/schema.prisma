@@ -264,6 +264,7 @@ enum ProductionStatus {
   NOT_STARTED
   IN_PROGRESS
   FINISHED
+  NOT_NEEDED // delivered from ready stock — never goes to production
 }
 
 enum ServiceType {

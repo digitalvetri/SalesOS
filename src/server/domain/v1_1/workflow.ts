@@ -1,7 +1,8 @@
-// Order workflow (2026-10-15). Pure — no IO.
+// Order workflow. Pure — no IO.
 //   Sales enter the order (Pending) → production marks On progress → Finished →
-//   sales mark Delivered. Owner/Admin may override the gate.
-export type ProductionStatus = "NOT_STARTED" | "IN_PROGRESS" | "FINISHED";
+//   sales mark Delivered. Sales may also deliver straight from ready stock at any
+//   time (2026-10-16): the order is then "Ready stock" and never goes to production.
+export type ProductionStatus = "NOT_STARTED" | "IN_PROGRESS" | "FINISHED" | "NOT_NEEDED";
 export type OrderStatus = "PENDING" | "DELIVERED" | "CANCELLED";
 export type ActorRole = "OWNER" | "ADMIN" | "ACCOUNTS" | "SALES" | "DISPATCH" | "PRODUCTION";
 
@@ -9,6 +10,7 @@ export const PRODUCTION_LABEL: Record<ProductionStatus, string> = {
   NOT_STARTED: "Not started",
   IN_PROGRESS: "On progress",
   FINISHED: "Finished",
+  NOT_NEEDED: "Ready stock",
 };
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: "Pending",
@@ -18,14 +20,14 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 
 const isAdmin = (r: ActorRole) => r === "OWNER" || r === "ADMIN";
 
-/** Why this person may not mark the order Delivered yet (null = allowed). */
-export function deliveredBlockReason(p: { productionStatus: ProductionStatus; role: ActorRole }): string | null {
-  if (isAdmin(p.role) || p.productionStatus === "FINISHED") return null;
-  return "Production hasn't finished this order yet — mark it Delivered once production marks it Finished.";
-}
+/** Production status once an order is marked Delivered: production's Finished work
+ *  stays Finished; anything else was delivered from ready stock. */
+export const productionAfterDelivery = (current: ProductionStatus): ProductionStatus =>
+  current === "FINISHED" ? "FINISHED" : "NOT_NEEDED";
 
 /** Who may change the production status. */
 export const canUpdateProduction = (role: ActorRole) => role === "PRODUCTION" || isAdmin(role);
 
-/** Production status can change only while the order is still pending. */
-export const productionEditable = (o: { simpleStatus: OrderStatus }) => o.simpleStatus === "PENDING";
+/** Production status can change only while the order is still pending and needs production. */
+export const productionEditable = (o: { simpleStatus: OrderStatus; productionStatus?: ProductionStatus }) =>
+  o.simpleStatus === "PENDING" && o.productionStatus !== "NOT_NEEDED";

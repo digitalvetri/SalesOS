@@ -115,6 +115,8 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
     setAccDetails,
     notes,
     setNotes,
+    readyStock,
+    setReadyStock,
     total,
     paid,
     balance,
@@ -378,6 +380,28 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
                   </p>
                 )}
               </div>
+              <label
+                className={cn(
+                  "flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-3 transition-colors",
+                  readyStock
+                    ? "border-[color:var(--color-gold)] bg-[color:var(--color-gold-soft)]"
+                    : "border-[color:var(--color-border)] hover:bg-[color:var(--color-surface-2)]",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-5 w-5 shrink-0 accent-[color:var(--color-accent)]"
+                  checked={readyStock}
+                  onChange={(e) => setReadyStock(e.target.checked)}
+                  disabled={pending}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">From ready stock</span>
+                  <span className="block text-xs text-[color:var(--color-ink-3)]">
+                    The item is already available — this order won&apos;t go to the production team.
+                  </span>
+                </span>
+              </label>
             </Step>
 
             {/* 3 · Dates + comments */}

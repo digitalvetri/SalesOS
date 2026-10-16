@@ -58,6 +58,7 @@ const CreateInput = z.object({
   orderDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   accDetails: z.string().max(200).nullable().optional(),
+  readyStock: z.boolean().optional(),
 });
 
 export const createOrderV2Action = makeServerAction({
@@ -81,6 +82,7 @@ export const createOrderV2Action = makeServerAction({
       orderDate: parsed.orderDate ? new Date(`${parsed.orderDate}T00:00:00.000Z`) : undefined,
       deliveryDate: parsed.deliveryDate ?? null,
       accDetails: parsed.accDetails ?? null,
+      readyStock: parsed.readyStock ?? false,
     });
     return { orderId: order.id, serialNo: order.serialNo, number: order.number };
   },
