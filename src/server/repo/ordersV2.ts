@@ -231,6 +231,10 @@ export async function getOrderV2WithPayments(opts: {
       promisedDeliveryDate: true,
       salespersonId: true,
       salesperson: { select: { name: true } },
+      lines: {
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, description: true, qty: true, unitPrice: true, lineTotal: true },
+      },
       customer: { select: { id: true, name: true, phoneE164: true } },
       payments: {
         where: { status: { not: "REJECTED" } },

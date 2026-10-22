@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Decimal from "decimal.js";
-import { Phone, Plus, Truck, Landmark } from "lucide-react";
+import { Phone, Pencil, Plus, Truck, Landmark } from "lucide-react";
 import { formatInr } from "@/lib/formatInr";
 import { amountMissing } from "@/lib/orderDisplay";
 import type { OrderV2Row } from "@/server/repo/ordersV2";
@@ -122,19 +122,27 @@ export function OrderCard({
         </div>
       </dl>
 
-      {!cancelled && !paidUp && (
+      {!cancelled && !blank && (
         <button
           type="button"
           onClick={() => setShowPay(true)}
           className="mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[var(--radius)] border border-[color:var(--color-border-strong)] text-sm font-medium transition-colors hover:border-[color:var(--color-gold)] hover:text-[color:var(--color-gold)]"
         >
-          <Plus className="h-4 w-4" aria-hidden />
-          Add payment
+          {paidUp ? <Pencil className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+          {new Decimal(row.paidTotal).isZero() ? "Add payment" : paidUp ? "Payments" : "Payments · add / edit"}
         </button>
       )}
 
       {showPay && (
-        <AddPaymentPopover orderId={row.id} currentBalance={row.balanceDue} onClose={() => setShowPay(false)} />
+        <AddPaymentPopover
+          orderId={row.id}
+          customerLabel={row.customerLabel}
+          total={row.total}
+          paidTotal={row.paidTotal}
+          currentBalance={row.balanceDue}
+          canChange={mode === "admin" || row.simpleStatus === "PENDING"}
+          onClose={() => setShowPay(false)}
+        />
       )}
     </li>
   );

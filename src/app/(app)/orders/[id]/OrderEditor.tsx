@@ -4,11 +4,12 @@
 // admins edit anything; employees edit their own pending orders.
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/app/Toast";
-import { updateOrderFieldsV2Action, updatePaymentV2Action } from "../actions-v2";
+import { deletePaymentV2Action, updateOrderFieldsV2Action, updatePaymentV2Action } from "../actions-v2";
+import { parseAmount } from "@/server/domain/v1_1/amountParser";
 
 export type EditableOrder = {
   id: string;
@@ -163,12 +164,13 @@ const METHODS = [
 export function PaymentRow({
   payment, canEdit, children,
 }: {
-  payment: { id: string; method: string; paidOn: string; note: string };
+  payment: { id: string; amount: string; method: string; paidOn: string; note: string };
   canEdit: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
+  const [amount, setAmount] = React.useState(String(Number(payment.amount)));
   const [method, setMethod] = React.useState(payment.method);
   const [paidOn, setPaidOn] = React.useState(payment.paidOn);
   const [note, setNote] = React.useState(payment.note);
@@ -176,10 +178,16 @@ export function PaymentRow({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    const a = parseAmount(amount);
+    if (!a || a.lessThanOrEqualTo(0)) {
+      toast.error("Enter the amount received. To remove this payment, use Delete.");
+      return;
+    }
     setPending(true);
     try {
       const r = await updatePaymentV2Action({
         paymentId: payment.id,
+        amount: a.toFixed(2),
         method: method as (typeof METHODS)[number][0],
         paidOn,
         note: note.trim() || null,
@@ -196,19 +204,49 @@ export function PaymentRow({
     }
   }
 
+  async function remove() {
+    if (!window.confirm(`Delete this payment of ₹${Number(payment.amount).toLocaleString("en-IN")}? The balance will go up by the same amount.`)) return;
+    setPending(true);
+    try {
+      const r = await deletePaymentV2Action({ paymentId: payment.id });
+      if (!r.ok) {
+        toast.error(r.error.message);
+        return;
+      }
+      toast.success("Payment deleted.");
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (!editing) {
     return (
       <li className="flex items-start gap-2 py-2 text-sm">
         <div className="min-w-0 flex-1">{children}</div>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            aria-label="Edit payment"
-            className="rounded-full p-1.5 text-[color:var(--color-ink-3)] hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-accent)]"
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              disabled={pending}
+              aria-label="Edit payment"
+              title="Edit amount, mode, date"
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-[color:var(--color-border-strong)] px-3 text-xs font-medium text-[color:var(--color-ink-2)] hover:border-[color:var(--color-accent)] hover:text-[color:var(--color-accent)]"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => void remove()}
+              disabled={pending}
+              aria-label="Delete payment"
+              title="Delete this payment"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--color-border-strong)] text-[color:var(--color-ink-3)] hover:border-[color:var(--color-danger)] hover:text-[color:var(--color-danger)]"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         )}
       </li>
     );
@@ -216,6 +254,10 @@ export function PaymentRow({
   return (
     <li className="py-3">
       <form onSubmit={save} className="space-y-3 rounded-[var(--radius)] bg-[color:var(--color-surface-2)] p-3">
+        <label className={`${fieldCls} block`}>
+          <span className={labelCls}>Amount received ₹</span>
+          <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="text-lg font-semibold tabular-nums" autoFocus />
+        </label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={fieldCls}>
             <span className={labelCls}>Date</span>

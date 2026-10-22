@@ -45,11 +45,40 @@ export type CreateOrderV2Input = {
   deliveryDate?: string | null; // YYYY-MM-DD — promised delivery
   accDetails?: string | null; // account / person the money went to (optional)
   readyStock?: boolean; // item is in ready stock — never goes to production
+  /** Itemised order (2026-10-22). When given, the total and productText are worked
+   *  out from the lines here on the server — the client's figures are ignored. */
+  items?: OrderItemInput[];
 };
+
+export type OrderItemInput = { name: string; qty: number; unitPrice: string; productId?: string | null };
+
+const MAX_ITEMS = 50;
+
+/** Validates the lines; returns them cleaned with line totals, the order total and a one-line summary. */
+export function priceOrderItems(items: OrderItemInput[]) {
+  if (items.length === 0) throw new AppError("VALIDATION", "Add at least one item.");
+  if (items.length > MAX_ITEMS) throw new AppError("VALIDATION", `An order can have at most ${MAX_ITEMS} items.`);
+  const lines = items.map((it, i) => {
+    const name = it.name.trim();
+    const n = i + 1;
+    if (!name) throw new AppError("VALIDATION", `Item ${n}: type the product name.`);
+    if (name.length > 200) throw new AppError("VALIDATION", `Item ${n}: the name is too long.`);
+    if (!Number.isInteger(it.qty) || it.qty < 1 || it.qty > 9999) {
+      throw new AppError("VALIDATION", `Item ${n}: quantity must be a whole number from 1.`);
+    }
+    const unitPrice = new Decimal(it.unitPrice);
+    if (unitPrice.isNaN() || unitPrice.isNegative()) throw new AppError("VALIDATION", `Item ${n}: enter the price.`);
+    return { name, qty: it.qty, unitPrice, lineTotal: unitPrice.times(it.qty), productId: it.productId ?? null };
+  });
+  const total = lines.reduce((s, l) => s.plus(l.lineTotal), new Decimal(0));
+  const productText = lines.map((l) => (l.qty > 1 ? `${l.name} × ${l.qty}` : l.name)).join(", ").slice(0, 500);
+  return { lines, total, productText };
+}
 
 export async function createOrderV2(input: CreateOrderV2Input) {
   // ─── Validate up-front (fail fast, before touching DB) ─────────────
-  const productText = input.productText.trim();
+  const priced = input.items ? priceOrderItems(input.items) : null;
+  const productText = priced ? priced.productText : input.productText.trim();
   if (productText.length === 0 || productText.length > 500) {
     throw new AppError("VALIDATION", "Type what the customer ordered.");
   }
@@ -66,7 +95,7 @@ export async function createOrderV2(input: CreateOrderV2Input) {
     }
     throw e;
   }
-  const total = new Decimal(input.total);
+  const total = priced ? priced.total : new Decimal(input.total);
   if (total.isNaN() || total.lessThanOrEqualTo(0)) {
     throw new AppError("VALIDATION", "Total must be more than ₹0.");
   }
@@ -94,6 +123,15 @@ export async function createOrderV2(input: CreateOrderV2Input) {
     }
   }
   const accDetails = input.accDetails?.trim() || null;
+
+  // Price-list links must be this company's products; anything else is kept as typed text.
+  if (priced) {
+    const ids = [...new Set(priced.lines.map((l) => l.productId).filter((x): x is string => !!x))];
+    const known = ids.length
+      ? new Set((await prisma.product.findMany({ where: { tenantId: input.tenantId, id: { in: ids } }, select: { id: true } })).map((p) => p.id))
+      : new Set<string>();
+    for (const l of priced.lines) if (l.productId && !known.has(l.productId)) l.productId = null;
+  }
 
   // Resolve entity: user's default, or first active in the tenant.
   const entity = await resolveEntity(input.tenantId, input.salespersonId, input.entityId);
@@ -128,6 +166,7 @@ export async function createOrderV2(input: CreateOrderV2Input) {
         promisedDeliveryDate,
         note: input.note?.trim() || null,
         productionStatus: input.readyStock ? "NOT_NEEDED" : undefined,
+        lines: priced?.lines,
       });
 
       return { order, payment, customer };
@@ -162,6 +201,7 @@ export type InsertOrderV2Args = {
   accDetails?: string | null; // where the money went (order-level, editable)
   cancelNote?: string | null;
   productionStatus?: "NOT_STARTED" | "NOT_NEEDED"; // NOT_NEEDED = from ready stock
+  lines?: { name: string; qty: number; unitPrice: Decimal; lineTotal: Decimal; productId: string | null }[];
 };
 
 /** Order row + S.No + v1.0 number + optional advance payment + audit, inside `tx`.
@@ -212,6 +252,22 @@ export async function insertOrderV2Tx(tx: Prisma.TransactionClient, a: InsertOrd
       createdById: a.actorId,
     },
   });
+
+  // Itemised lines (product, qty, price). GST isn't tracked on these orders.
+  if (a.lines?.length) {
+    await tx.orderLine.createMany({
+      data: a.lines.map((l, i) => ({
+        orderId: order.id,
+        productId: l.productId,
+        description: l.name,
+        qty: l.qty,
+        unitPrice: l.unitPrice.toFixed(2),
+        gstRate: "0",
+        lineTotal: l.lineTotal.toFixed(2),
+        sortOrder: i,
+      })),
+    });
+  }
 
   // Optional advance payment — written as VERIFIED immediately (v1.1 §4.5).
   let payment = null;
@@ -607,7 +663,22 @@ export async function addPaymentV2(input: {
   return result;
 }
 
-// ─── Delete payment (own within 24 h, admin any time) ────────────────
+// ─── Who may correct / delete a payment ──────────────────────────────
+// Owner / Admin / Accounts any time; the salesperson on their own order while it's
+// still Pending (2026-10-22: replaces the old 24-hour window). Every change is audited.
+function assertMayChangePayment(
+  role: Role,
+  actorId: string,
+  order: { salespersonId: string; simpleStatus: "PENDING" | "DELIVERED" | "CANCELLED" },
+) {
+  if (role === "OWNER" || role === "ADMIN" || role === "ACCOUNTS") return;
+  if (order.salespersonId !== actorId) throw new AppError("FORBIDDEN", "You can only change payments on your own orders.");
+  if (order.simpleStatus !== "PENDING") {
+    throw new AppError("VALIDATION", "This order is already delivered or cancelled — ask your admin to change its payments.");
+  }
+}
+
+// ─── Delete payment ──────────────────────────────────────────────────
 
 export async function deletePaymentV2(input: {
   tenantId: string;
@@ -623,24 +694,12 @@ export async function deletePaymentV2(input: {
       amount: true,
       createdAt: true,
       createdById: true,
-      order: { select: { total: true, paidTotal: true, salespersonId: true } },
+      order: { select: { total: true, paidTotal: true, salespersonId: true, simpleStatus: true } },
     },
   });
   if (!p) throw new AppError("NOT_FOUND", "Payment not found.");
 
-  const isAdmin = input.actorRole === "OWNER" || input.actorRole === "ADMIN";
-  if (!isAdmin) {
-    if (p.createdById !== input.actorId) {
-      throw new AppError("FORBIDDEN", "You can only delete your own payments.");
-    }
-    const hours = (Date.now() - p.createdAt.getTime()) / 36e5;
-    if (hours > 24) {
-      throw new AppError(
-        "VALIDATION",
-        "This payment was entered more than 24 hours ago. Ask your admin to delete it.",
-      );
-    }
-  }
+  assertMayChangePayment(input.actorRole, input.actorId, p.order);
 
   await runWithSerializableRetry(() =>
     prisma.$transaction(
@@ -711,40 +770,73 @@ export async function updatePaymentV2(input: {
   actorId: string;
   actorRole: Role;
   paymentId: string;
+  amount?: string; // corrected amount (decimal string)
   method?: "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE";
   paidOn?: string; // YYYY-MM-DD
   note?: string | null; // e.g. "KUMAR GPAY", "KFM account"
 }) {
   const p = await prisma.payment.findFirst({
     where: { tenantId: input.tenantId, id: input.paymentId },
-    select: { id: true, method: true, paidOn: true, note: true, order: { select: { salespersonId: true, simpleStatus: true } } },
+    select: {
+      id: true, orderId: true, type: true, amount: true, method: true, paidOn: true, note: true,
+      order: { select: { salespersonId: true, simpleStatus: true } },
+    },
   });
   if (!p) throw new AppError("NOT_FOUND", "Payment not found.");
-  const isAdmin = input.actorRole === "OWNER" || input.actorRole === "ADMIN" || input.actorRole === "ACCOUNTS";
-  if (!isAdmin) {
-    if (p.order.salespersonId !== input.actorId) throw new AppError("FORBIDDEN", "You can only edit payments on your own orders.");
-    if (p.order.simpleStatus !== "PENDING") throw new AppError("VALIDATION", "Only payments on pending orders can be edited.");
-  }
+  assertMayChangePayment(input.actorRole, input.actorId, p.order);
   if (input.paidOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(input.paidOn)) throw new AppError("VALIDATION", "Pick a valid date.");
   if (input.paidOn && input.paidOn > istDateString(new Date())) throw new AppError("VALIDATION", "The payment date can't be in the future.");
 
-  const after = await prisma.payment.update({
-    where: { id: p.id },
-    data: {
-      ...(input.method ? { method: input.method } : {}),
-      ...(input.paidOn ? { paidOn: new Date(`${input.paidOn}T00:00:00.000Z`) } : {}),
-      ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
-    },
-  });
-  await writeAudit(prisma, {
-    tenantId: input.tenantId,
-    actorId: input.actorId,
-    action: "PAYMENT_EDIT_V2",
-    entity: "Payment",
-    entityId: p.id,
-    before: { method: p.method, paidOn: p.paidOn, note: p.note },
-    after: { method: after.method, paidOn: after.paidOn, note: after.note },
-  });
+  let amount: Decimal | null = null;
+  if (input.amount !== undefined) {
+    amount = new Decimal(input.amount);
+    if (amount.isNaN() || amount.lessThanOrEqualTo(0)) throw new AppError("VALIDATION", "Amount must be more than ₹0. To remove the payment, delete it.");
+    if (p.type === "REFUND") throw new AppError("VALIDATION", "A refund's amount can't be changed — delete it and record it again.");
+    if (amount.equals(p.amount.toString())) amount = null;
+  }
+
+  const after = await runWithSerializableRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        if (amount) {
+          // Re-read inside the transaction so a concurrent payment isn't lost.
+          const order = await tx.order.findUniqueOrThrow({ where: { id: p.orderId }, select: { total: true, paidTotal: true } });
+          const nextPaid = new Decimal(order.paidTotal.toString()).minus(p.amount.toString()).plus(amount);
+          if (nextPaid.greaterThan(order.total.toString())) {
+            const room = new Decimal(order.total.toString()).minus(new Decimal(order.paidTotal.toString()).minus(p.amount.toString()));
+            throw new AppError("VALIDATION", `That's more than the order total — this payment can be at most ₹${room.toFixed(0)}.`);
+          }
+          await tx.order.update({
+            where: { id: p.orderId },
+            data: {
+              paidTotal: Decimal.max(nextPaid, new Decimal(0)).toFixed(2),
+              balanceDue: computeBalance(order.total.toString(), nextPaid).toFixed(2),
+            },
+          });
+        }
+        const row = await tx.payment.update({
+          where: { id: p.id },
+          data: {
+            ...(amount ? { amount: amount.toFixed(2) } : {}),
+            ...(input.method ? { method: input.method } : {}),
+            ...(input.paidOn ? { paidOn: new Date(`${input.paidOn}T00:00:00.000Z`) } : {}),
+            ...(input.note !== undefined ? { note: input.note?.trim() || null } : {}),
+          },
+        });
+        await writeAudit(tx, {
+          tenantId: input.tenantId,
+          actorId: input.actorId,
+          action: "PAYMENT_EDIT_V2",
+          entity: "Payment",
+          entityId: p.id,
+          before: { amount: p.amount.toString(), method: p.method, paidOn: p.paidOn, note: p.note },
+          after: { amount: row.amount.toString(), method: row.method, paidOn: row.paidOn, note: row.note },
+        });
+        return row;
+      },
+      { isolationLevel: "Serializable" as Prisma.TransactionIsolationLevel },
+    ),
+  );
   return after;
 }
 

@@ -10,8 +10,16 @@ import { createOrderV2Action, setOrderStatusV2Action } from "@/app/(app)/orders/
 import type { OrderV2Row } from "@/server/repo/ordersV2";
 
 export type PaymentMethod = "UPI" | "CASH" | "BANK_TRANSFER" | "CHEQUE";
-export type OrderItem = { name: string; price: string | null };
+/** One line of the new-order form. qty / price stay as typed text until saved. */
+export type OrderLineDraft = { key: string; name: string; productId: string | null; qty: string; price: string };
+export type LineError = Partial<Record<"name" | "qty" | "price", string>>;
 export type NewOrderField = "phone" | "customerName" | "items" | "total" | "paid" | "orderDate" | "deliveryDate";
+
+let lineSeq = 0;
+const blankLine = (): OrderLineDraft => ({ key: `l${++lineSeq}`, name: "", productId: null, qty: "1", price: "" });
+const lineQty = (l: OrderLineDraft) => (/^\d{1,4}$/.test(l.qty.trim()) ? Number(l.qty.trim()) : 0);
+/** qty × price for one line (0 while incomplete). */
+export const lineAmount = (l: OrderLineDraft) => (parseAmount(l.price) ?? new Decimal(0)).times(lineQty(l));
 
 /** Today in India (YYYY-MM-DD) — the default order date. */
 export const istToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
@@ -29,10 +37,8 @@ export function useNewOrderForm(onDone: () => void) {
   const router = useRouter();
   const [phone, setPhoneState] = React.useState("");
   const [customerName, setCustomerName] = React.useState("");
-  const [items, setItems] = React.useState<OrderItem[]>([]);
-  const [itemQuery, setItemQuery] = React.useState("");
-  const [totalRaw, setTotalRawState] = React.useState("");
-  const [totalTouched, setTotalTouched] = React.useState(false);
+  const [lines, setLines] = React.useState<OrderLineDraft[]>(() => [blankLine()]);
+  const [lineErrors, setLineErrors] = React.useState<Record<string, LineError>>({});
   const [paidRaw, setPaidRaw] = React.useState("");
   const [method, setMethod] = React.useState<PaymentMethod>("UPI");
   const [orderDate, setOrderDateState] = React.useState(istToday);
@@ -43,7 +49,8 @@ export function useNewOrderForm(onDone: () => void) {
   const [errors, setErrors] = React.useState<Partial<Record<NewOrderField, string>>>({});
   const [pending, setPending] = React.useState(false);
 
-  const total = parseAmount(totalRaw) ?? new Decimal(0);
+  // The order total is always the sum of the lines — worked out here and again on the server.
+  const total = lines.reduce((sum, l) => sum.plus(lineAmount(l)), new Decimal(0));
   const paid = parseAmount(paidRaw) ?? new Decimal(0);
   const balance = Decimal.max(total.minus(paid), 0);
 
@@ -52,43 +59,54 @@ export function useNewOrderForm(onDone: () => void) {
     setPhoneState(normalizeMobile(v));
     clearError("phone");
   };
-  const setTotalRaw = (v: string) => {
-    setTotalRawState(v);
-    setTotalTouched(true);
-    clearError("total");
-  };
-
-  // Until the employee types a total, it follows the price-list sum of the items.
-  function applyItems(next: OrderItem[]) {
-    setItems(next);
+  function updateLine(key: string, patch: Partial<Omit<OrderLineDraft, "key">>) {
+    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+    setLineErrors((e) => (e[key] ? { ...e, [key]: {} } : e));
     clearError("items");
-    if (!totalTouched) {
-      const sum = next.reduce((s, it) => (it.price ? s.plus(it.price) : s), new Decimal(0));
-      setTotalRawState(sum.greaterThan(0) ? sum.toFixed(0) : "");
-      if (sum.greaterThan(0)) clearError("total");
-    }
+    clearError("total");
   }
-  function addItem(item: OrderItem) {
-    const name = item.name.trim();
-    if (!name || items.some((i) => i.name.toLowerCase() === name.toLowerCase())) return;
-    applyItems([...items, { ...item, name }]);
-    setItemQuery("");
+  /** Typing a name by hand drops any earlier price-list link. */
+  const setLineName = (key: string, name: string) => updateLine(key, { name, productId: null });
+  function pickProduct(key: string, p: { id: string; name: string; customerPrice: string | null }) {
+    updateLine(key, {
+      name: p.name,
+      productId: p.id,
+      ...(p.customerPrice ? { price: new Decimal(p.customerPrice).toDecimalPlaces(2).toString() } : {}),
+    });
   }
-  function removeItem(name: string) {
-    applyItems(items.filter((i) => i.name !== name));
+  function addLine() {
+    setLines((ls) => [...ls, blankLine()]);
+  }
+  function removeLine(key: string) {
+    setLines((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== key) : [blankLine()]));
+    setLineErrors((e) => {
+      const next = { ...e };
+      delete next[key];
+      return next;
+    });
   }
 
-  const productText = [...items.map((i) => i.name), itemQuery.trim()].filter(Boolean).join(", ");
-  const dirty = Boolean(phone || customerName || productText || totalRaw || paidRaw || deliveryDate || accDetails || notes);
+  const usedLines = lines.filter((l) => l.name.trim() || l.price.trim());
+  const dirty = Boolean(phone || customerName || usedLines.length || paidRaw || deliveryDate || accDetails || notes);
 
   function validate() {
     const e: Partial<Record<NewOrderField, string>> = {};
     if (phone.length !== 10) e.phone = "Enter a 10-digit mobile number.";
     if (!customerName.trim()) e.customerName = "Enter the customer's name.";
-    if (!productText) e.items = "Type what the customer ordered.";
-    const t = parseAmount(totalRaw);
-    if (!t || t.lessThanOrEqualTo(0)) e.total = "Total must be more than ₹0.";
-    else if (paid.greaterThan(t)) e.paid = `Paid can't be more than the total (₹${t.toFixed(0)}).`;
+    const le: Record<string, LineError> = {};
+    for (const l of usedLines) {
+      const x: LineError = {};
+      if (!l.name.trim()) x.name = "Type the product.";
+      if (lineQty(l) < 1) x.qty = "Qty?";
+      const pr = parseAmount(l.price);
+      if (!l.price.trim() || !pr || pr.isNegative()) x.price = "Price?";
+      if (Object.keys(x).length) le[l.key] = x;
+    }
+    setLineErrors(le);
+    if (usedLines.length === 0) e.items = "Add what the customer ordered.";
+    else if (Object.keys(le).length) e.items = "Fill in the product, quantity and price for each item.";
+    else if (total.lessThanOrEqualTo(0)) e.total = "The order total must be more than ₹0.";
+    else if (paid.greaterThan(total)) e.paid = `Paid can't be more than the total (₹${total.toFixed(0)}).`;
     if (paidRaw && !parseAmount(paidRaw)) e.paid = "Enter the amount received as a number.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(orderDate)) e.orderDate = "Pick the order date.";
     else if (orderDate > istToday()) e.orderDate = "The order date can't be in the future.";
@@ -102,7 +120,12 @@ export function useNewOrderForm(onDone: () => void) {
     setPending(true);
     try {
       const r = await createOrderV2Action({
-        productText,
+        items: usedLines.map((l) => ({
+          name: l.name.trim(),
+          qty: lineQty(l),
+          unitPrice: (parseAmount(l.price) ?? new Decimal(0)).toFixed(2),
+          productId: l.productId,
+        })),
         contactPhone: phone,
         customerName: customerName.trim(),
         total: total.toFixed(2),
@@ -138,16 +161,13 @@ export function useNewOrderForm(onDone: () => void) {
       setCustomerName(v);
       clearError("customerName");
     },
-    items,
-    addItem,
-    removeItem,
-    itemQuery,
-    setItemQuery: (v: string) => {
-      setItemQuery(v);
-      clearError("items");
-    },
-    totalRaw,
-    setTotalRaw,
+    lines,
+    lineErrors,
+    setLineName,
+    updateLine,
+    pickProduct,
+    addLine,
+    removeLine,
     paidRaw,
     setPaidRaw: (v: string) => {
       setPaidRaw(v);

@@ -11,6 +11,7 @@ import {
   addPaymentV2,
   deletePaymentV2,
   updateOrderFieldsV2,
+  updatePaymentV2,
   setOrderStatusV2, setProductionStatusV2 } from "@/server/services/orderV2Service";
 import { adminSetPassword, adminUpdateUserEmail, adminUpdateUser } from "@/server/services/userService";
 
@@ -48,6 +49,7 @@ describe.skipIf(!DB_REACHABLE)("v1.1 order + user rules", () => {
   afterAll(async () => {
     await prisma.auditLog.deleteMany({ where: { tenantId } });
     await prisma.payment.deleteMany({ where: { tenantId } });
+    await prisma.orderLine.deleteMany({ where: { order: { tenantId } } });
     await prisma.order.deleteMany({ where: { tenantId } });
     await prisma.documentCounter.deleteMany({ where: { tenantId } });
     await prisma.customer.deleteMany({ where: { tenantId } });
@@ -158,6 +160,50 @@ describe.skipIf(!DB_REACHABLE)("v1.1 order + user rules", () => {
     await expect(
       setProductionStatusV2({ tenantId, actorId: adminId, actorRole: "PRODUCTION", orderId: order.id, status: "IN_PROGRESS" }),
     ).rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
+  it("an itemised order saves its lines and the server's own total", async () => {
+    const { order } = await createOrderV2({
+      tenantId, actorId: salesId, salespersonId: salesId,
+      productText: "", total: "1", // ignored when items are given
+      contactPhone: "+919999922222", customerName: "Items customer",
+      items: [
+        { name: "Grinder", qty: 3, unitPrice: "1000" },
+        { name: "Stand", qty: 1, unitPrice: "500" },
+      ],
+      paid: "1000",
+    });
+    expect(order.total.toFixed(2)).toBe("3500.00");
+    expect(order.balanceDue.toFixed(2)).toBe("2500.00");
+    expect(order.productText).toBe("Grinder × 3, Stand");
+    const lines = await prisma.orderLine.findMany({ where: { orderId: order.id }, orderBy: { sortOrder: "asc" } });
+    expect(lines.map((l) => [l.description, l.qty, l.lineTotal.toFixed(2)])).toEqual([["Grinder", 3, "3000.00"], ["Stand", 1, "500.00"]]);
+  });
+
+  it("a wrong advance can be corrected or deleted by the salesperson while the order is pending", async () => {
+    const order = await newOrder("10000", "7000");
+    const pay = await prisma.payment.findFirstOrThrow({ where: { orderId: order.id } });
+    await updatePaymentV2({ tenantId, actorId: salesId, actorRole: "SALES", paymentId: pay.id, amount: "700" });
+    let o = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect([o.paidTotal.toFixed(2), o.balanceDue.toFixed(2)]).toEqual(["700.00", "9300.00"]);
+    await expect(
+      updatePaymentV2({ tenantId, actorId: salesId, actorRole: "SALES", paymentId: pay.id, amount: "10001" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await deletePaymentV2({ tenantId, actorId: salesId, actorRole: "SALES", paymentId: pay.id });
+    o = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect([o.paidTotal.toFixed(2), o.balanceDue.toFixed(2)]).toEqual(["0.00", "10000.00"]);
+  });
+
+  it("after delivery only an admin can change payments", async () => {
+    const order = await newOrder("1000", "400");
+    const pay = await prisma.payment.findFirstOrThrow({ where: { orderId: order.id } });
+    await setOrderStatusV2({ tenantId, actorId: salesId, actorRole: "SALES", orderId: order.id, status: "DELIVERED" });
+    await expect(
+      updatePaymentV2({ tenantId, actorId: salesId, actorRole: "SALES", paymentId: pay.id, amount: "500" }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await updatePaymentV2({ tenantId, actorId: adminId, actorRole: "ADMIN", paymentId: pay.id, amount: "500" });
+    const o = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(o.paidTotal.toFixed(2)).toBe("500.00");
   });
 
   it("an ADMIN can't change the OWNER's password, email or deactivate them", async () => {

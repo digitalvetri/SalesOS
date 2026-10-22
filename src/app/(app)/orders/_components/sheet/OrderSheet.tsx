@@ -13,7 +13,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Decimal from "decimal.js";
-import { Plus, Download, Users, ArrowRight } from "lucide-react";
+import { Plus, Download, Users, ArrowRight, Pencil } from "lucide-react";
 import { toast } from "@/components/app/Toast";
 import { formatInr } from "@/lib/formatInr";
 import { amountMissing, groupByMonth, summarise, type MoneySummary } from "@/lib/orderDisplay";
@@ -685,12 +685,13 @@ function OrderSheetRow({ row, mode, showEmployee }: { row: OrderV2Row; mode: Mod
         <button
           type="button"
           onClick={() => !cancelled && setShowPay(true)}
-          className="hover:underline disabled:no-underline"
+          className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 decoration-dotted underline-offset-4 hover:bg-[color:var(--color-surface-2)] hover:underline disabled:no-underline"
           disabled={cancelled}
-          aria-label={cancelled ? undefined : `Add payment for ${row.customerLabel}`}
-          title={cancelled ? undefined : "Add payment"}
+          aria-label={cancelled ? undefined : `Payments for ${row.customerLabel}`}
+          title={cancelled ? undefined : "See, edit or add payments"}
         >
           {blank ? <Blank /> : <span className="font-medium">{money(row.paidTotal)}</span>}
+          {!cancelled && <Pencil className="h-3 w-3 text-[color:var(--color-ink-3)]" aria-hidden />}
         </button>
       </td>
       <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>
@@ -738,7 +739,15 @@ function OrderSheetRow({ row, mode, showEmployee }: { row: OrderV2Row; mode: Mod
         </span>
       </td>
       {showPay && (
-        <AddPaymentPopover orderId={row.id} currentBalance={row.balanceDue} onClose={() => setShowPay(false)} />
+        <AddPaymentPopover
+          orderId={row.id}
+          customerLabel={row.customerLabel}
+          total={row.total}
+          paidTotal={row.paidTotal}
+          currentBalance={row.balanceDue}
+          canChange={mode === "admin" || row.simpleStatus === "PENDING"}
+          onClose={() => setShowPay(false)}
+        />
       )}
     </tr>
   );

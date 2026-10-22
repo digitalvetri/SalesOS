@@ -123,6 +123,31 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             {order.notes && <Field label="Notes">{order.notes}</Field>}
           </dl>
 
+          {order.lines.length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded-[var(--radius)] border border-[color:var(--color-border)]">
+              <table className="w-full text-sm">
+                <thead className="bg-[color:var(--color-surface-2)] text-left text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
+                  <tr>
+                    <th className="px-3 py-2 font-semibold">Item</th>
+                    <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                    {showMoney && <th className="px-3 py-2 text-right font-semibold">Price</th>}
+                    {showMoney && <th className="px-3 py-2 text-right font-semibold">Amount</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[color:var(--color-border)]">
+                  {order.lines.map((l) => (
+                    <tr key={l.id}>
+                      <td className="px-3 py-2 break-words">{l.description}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{l.qty}</td>
+                      {showMoney && <td className="px-3 py-2 text-right tabular-nums">{formatInr(l.unitPrice.toString())}</td>}
+                      {showMoney && <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatInr(l.lineTotal.toString())}</td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {showMoney && (
             <dl className="mt-4 grid grid-cols-3 gap-2 rounded-[var(--radius)] bg-[color:var(--color-surface-2)] p-3 text-center">
               <MoneyCell label="Total" value={blank ? null : order.total.toString()} />
@@ -145,7 +170,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     <PaymentRow
                       key={p.id}
                       canEdit={canEditPayments}
-                      payment={{ id: p.id, method: p.method, paidOn: ymdOf(p.paidOn), note: p.note ?? "" }}
+                      payment={{ id: p.id, amount: p.amount.toString(), method: p.method, paidOn: ymdOf(p.paidOn), note: p.note ?? "" }}
                     >
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="min-w-0">

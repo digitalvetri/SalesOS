@@ -47,8 +47,16 @@ async function ownsPayment(paymentId: string, session: Session | null) {
 const isAdminRole = (role: string) => role === "OWNER" || role === "ADMIN";
 
 
+const ItemInput = z.object({
+  name: z.string().max(200),
+  qty: z.number().int().min(1).max(9999),
+  unitPrice: Money,
+  productId: z.string().nullable().optional(),
+});
+
 const CreateInput = z.object({
-  productText: z.string().min(1).max(500),
+  productText: z.string().max(500).default(""),
+  items: z.array(ItemInput).min(1).max(50).optional(),
   contactPhone: z.string().min(3),
   customerName: z.string().min(1).max(120),
   total: Money,
@@ -83,6 +91,7 @@ export const createOrderV2Action = makeServerAction({
       deliveryDate: parsed.deliveryDate ?? null,
       accDetails: parsed.accDetails ?? null,
       readyStock: parsed.readyStock ?? false,
+      items: parsed.items,
     });
     return { orderId: order.id, serialNo: order.serialNo, number: order.number };
   },
@@ -209,6 +218,7 @@ export const deletePaymentV2Action = makeServerAction({
 
 const UpdatePaymentInput = z.object({
   paymentId: z.string(),
+  amount: Money.optional(),
   method: z.enum(["CASH", "UPI", "BANK_TRANSFER", "CHEQUE"]).optional(),
   paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   note: z.string().max(200).nullable().optional(),
@@ -230,10 +240,39 @@ export const updatePaymentV2Action = makeServerAction({
       actorId: session.userId,
       actorRole: session.role,
       paymentId: parsed.paymentId,
+      amount: parsed.amount,
       method: parsed.method,
       paidOn: parsed.paidOn,
       note: parsed.note,
     });
     return { paymentId: p.id };
+  },
+});
+
+// ─── Payments on one order (the "Payments" window on the orders list) ───
+
+const ListPaymentsInput = z.object({ orderId: z.string() });
+
+export const listOrderPaymentsAction = makeServerAction({
+  input: ListPaymentsInput,
+  action: "payments.record",
+  resolveOwnership: (p, session) => ownsOrder(p.orderId, session),
+  async run(parsed, session) {
+    if (!session) throw new AppError("UNAUTHENTICATED", "Sign in required.");
+    const rows = await prisma.payment.findMany({
+      where: { tenantId: session.tenantId, orderId: parsed.orderId, status: { not: "REJECTED" } },
+      orderBy: [{ paidOn: "asc" }, { createdAt: "asc" }],
+      select: { id: true, type: true, amount: true, method: true, paidOn: true, note: true },
+    });
+    return {
+      payments: rows.map((r) => ({
+        id: r.id,
+        type: r.type,
+        amount: r.amount.toString(),
+        method: r.method,
+        paidOn: r.paidOn.toISOString().slice(0, 10),
+        note: r.note ?? "",
+      })),
+    };
   },
 });

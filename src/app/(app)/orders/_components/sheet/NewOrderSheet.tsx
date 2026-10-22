@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Money } from "@/components/app/Money";
 import { cn } from "@/lib/utils";
-import { normalizeMobile, useNewOrderForm, type PaymentMethod } from "./useOrderForms";
+import { lineAmount, normalizeMobile, useNewOrderForm, type LineError, type OrderLineDraft, type PaymentMethod } from "./useOrderForms";
+import { formatInr } from "@/lib/formatInr";
 import { SHEET_OVERLAY } from "./sheetFormat";
 
 type CustomerHit = { id: string; name: string; phoneE164: string; city: string | null; ordersCount: number };
@@ -96,13 +97,13 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
     setPhone,
     customerName,
     setCustomerName,
-    items,
-    addItem,
-    removeItem,
-    itemQuery,
-    setItemQuery,
-    totalRaw,
-    setTotalRaw,
+    lines,
+    lineErrors,
+    setLineName,
+    updateLine,
+    pickProduct,
+    addLine,
+    removeLine,
     paidRaw,
     setPaidRaw,
     method,
@@ -142,11 +143,6 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
       if (!customerName.trim()) setCustomerName(exact.name);
     },
   );
-  const products = useSearch<ProductHit>(
-    (q) => `/api/products/search?q=${encodeURIComponent(q)}`,
-    itemQuery.trim(),
-    2,
-  );
 
   function pickCustomer(c: CustomerHit) {
     setMatched(c);
@@ -160,7 +156,6 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
   }
 
   const showCustomerHits = !matched && phone.length >= 3 && customers.hits.length > 0;
-  const showProductHits = itemQuery.trim().length >= 2;
 
   return (
     <DialogPrimitive.Root open onOpenChange={(v) => !v && requestClose()}>
@@ -282,104 +277,44 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
 
             {/* 2 · Order */}
             <Step n={2} title="What did they order?">
-              {items.length > 0 && (
-                <ul className="flex flex-wrap gap-2" aria-label="Items in this order">
-                  {items.map((it) => (
-                    <li
-                      key={it.name}
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[color:var(--color-gold-soft)] py-1 pl-3 pr-1 text-sm text-[color:var(--color-gold)]"
-                    >
-                      <span className="truncate">{it.name}</span>
-                      {it.price && <Money value={it.price} className="text-xs opacity-80" />}
-                      <button
-                        type="button"
-                        onClick={() => removeItem(it.name)}
-                        aria-label={`Remove ${it.name}`}
-                        className="rounded-full p-1 hover:bg-[color:var(--color-surface)]"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="no-item" className="sr-only">
-                  Search the price list or type an item
-                </Label>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--color-ink-3)]" />
-                  <Input
-                    id="no-item"
-                    value={itemQuery}
-                    onChange={(e) => setItemQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && itemQuery.trim()) {
-                        e.preventDefault();
-                        addItem({ name: itemQuery, price: null });
-                      }
-                    }}
-                    placeholder={items.length ? "Add another item…" : 'Search price list, e.g. "grinder"'}
-                    maxLength={200}
-                    aria-invalid={Boolean(errors.items)}
-                    aria-describedby={errors.items ? "err-items" : undefined}
-                    className={cn("pl-9", errors.items && "border-[color:var(--color-danger)]")}
+              <ol className="space-y-3" aria-label="Items in this order">
+                {lines.map((l, i) => (
+                  <ItemLine
+                    key={l.key}
+                    line={l}
+                    index={i}
+                    error={lineErrors[l.key]}
+                    canRemove={lines.length > 1 || Boolean(l.name || l.price)}
                     disabled={pending}
+                    onName={(v) => setLineName(l.key, v)}
+                    onQty={(v) => updateLine(l.key, { qty: v.replace(/\D/g, "").slice(0, 4) })}
+                    onPrice={(v) => updateLine(l.key, { price: v })}
+                    onPick={(p) => pickProduct(l.key, p)}
+                    onRemove={() => removeLine(l.key)}
                   />
-                </div>
-                <FieldError id="err-items" msg={errors.items} />
-                {showProductHits && (
-                  <ul className="max-h-56 overflow-y-auto rounded-[var(--radius)] border border-[color:var(--color-border)]" aria-label="Price list matches">
-                    {products.hits.map((p) => (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => addItem({ name: p.name, price: p.customerPrice })}
-                          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-[color:var(--color-surface-2)]"
-                        >
-                          <span className="min-w-0">
-                            <span className="block truncate font-medium">{p.name}</span>
-                            {p.spec && <span className="block truncate text-xs text-[color:var(--color-ink-3)]">{p.spec}</span>}
-                          </span>
-                          {p.customerPrice && <Money value={p.customerPrice} className="shrink-0 text-sm" />}
-                        </button>
-                      </li>
-                    ))}
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => addItem({ name: itemQuery, price: null })}
-                        className="flex w-full items-center gap-2 border-t border-[color:var(--color-border)] px-3 py-2.5 text-left text-sm text-[color:var(--color-gold)] hover:bg-[color:var(--color-surface-2)]"
-                      >
-                        <Plus className="h-4 w-4" aria-hidden />
-                        Add “{itemQuery.trim()}” as typed
-                      </button>
-                    </li>
-                  </ul>
-                )}
-              </div>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={addLine}
+                disabled={pending}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[color:var(--color-gold)] text-sm font-semibold text-[color:var(--color-gold)] transition-colors hover:bg-[color:var(--color-gold-soft)]"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Add another item
+              </button>
+              <FieldError id="err-items" msg={errors.items} />
 
-              <div className="space-y-1.5">
-                <Label htmlFor="no-total">Order total ₹</Label>
-                <Input
-                  id="no-total"
-                  inputMode="decimal"
-                  value={totalRaw}
-                  onChange={(e) => setTotalRaw(e.target.value)}
-                  placeholder="e.g. 62,500"
-                  aria-invalid={Boolean(errors.total)}
-                  aria-describedby={errors.total ? "err-total" : "hint-total"}
-                  className={cn("text-lg font-semibold tabular-nums", errors.total && "border-[color:var(--color-danger)]")}
-                  disabled={pending}
-                />
-                {errors.total ? (
-                  <FieldError id="err-total" msg={errors.total} />
-                ) : (
-                  <p id="hint-total" className="text-xs text-[color:var(--color-ink-3)]">
-                    Filled from the price list — change it if you agreed a different price.
+              <div className="flex items-center justify-between gap-3 rounded-[var(--radius)] bg-[color:var(--color-gold-soft)] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold">Order total</p>
+                  <p className="text-xs text-[color:var(--color-ink-3)]">
+                    Worked out from the items ({lines.filter((x) => x.name.trim()).length} {lines.filter((x) => x.name.trim()).length === 1 ? "item" : "items"})
                   </p>
-                )}
+                </div>
+                <Money value={total.toString()} className="text-xl font-bold text-[color:var(--color-gold)]" />
               </div>
+              <FieldError id="err-total" msg={errors.total} />
               <label
                 className={cn(
                   "flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-3 transition-colors",
@@ -543,5 +478,139 @@ export function NewOrderSheet({ onDone }: { onDone: () => void }) {
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
+  );
+}
+
+/** One item: product (search the price list or type), qty, price and its amount. */
+function ItemLine({
+  line,
+  index,
+  error,
+  canRemove,
+  disabled,
+  onName,
+  onQty,
+  onPrice,
+  onPick,
+  onRemove,
+}: {
+  line: OrderLineDraft;
+  index: number;
+  error?: LineError;
+  canRemove: boolean;
+  disabled: boolean;
+  onName: (v: string) => void;
+  onQty: (v: string) => void;
+  onPrice: (v: string) => void;
+  onPick: (p: ProductHit) => void;
+  onRemove: () => void;
+}) {
+  const [focused, setFocused] = React.useState(false);
+  // Search the price list only while typing a name that isn't already a price-list pick.
+  const q = focused && !line.productId ? line.name.trim() : "";
+  const products = useSearch<ProductHit>((x) => `/api/products/search?q=${encodeURIComponent(x)}`, q, 2);
+  const n = index + 1;
+  const amount = lineAmount(line);
+  const bad = "border-[color:var(--color-danger)]";
+
+  return (
+    <li className="rounded-[var(--radius)] border border-[color:var(--color-border)] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[color:var(--color-ink-3)]">Item {n}</span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={disabled}
+            aria-label={`Remove item ${n}`}
+            className="rounded-full p-1.5 text-[color:var(--color-ink-3)] hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-danger)]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="relative space-y-1.5">
+        <Label htmlFor={`item-name-${line.key}`} className="sr-only">
+          Item {n} product
+        </Label>
+        <Search className="pointer-events-none absolute left-3 top-[22px] h-4 w-4 -translate-y-1/2 text-[color:var(--color-ink-3)]" />
+        <Input
+          id={`item-name-${line.key}`}
+          value={line.name}
+          onChange={(e) => onName(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => window.setTimeout(() => setFocused(false), 150)}
+          placeholder='Product — search price list, e.g. "grinder"'
+          maxLength={200}
+          autoComplete="off"
+          aria-invalid={Boolean(error?.name)}
+          className={cn("pl-9", error?.name && bad)}
+          disabled={disabled}
+        />
+        {focused && q.length >= 2 && products.hits.length > 0 && (
+          <ul
+            className="absolute inset-x-0 top-full z-10 mt-1 max-h-56 overflow-y-auto rounded-[var(--radius)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-2)]"
+            aria-label="Price list matches"
+          >
+            {products.hits.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onPick(p);
+                    setFocused(false);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-[color:var(--color-surface-2)]"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{p.name}</span>
+                    {p.spec && <span className="block truncate text-xs text-[color:var(--color-ink-3)]">{p.spec}</span>}
+                  </span>
+                  {p.customerPrice && <Money value={p.customerPrice} className="shrink-0 text-sm" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-[72px_1fr] gap-2 sm:grid-cols-[80px_1fr_auto] sm:items-end">
+        <div className="space-y-1">
+          <Label htmlFor={`item-qty-${line.key}`} className="text-xs text-[color:var(--color-ink-3)]">
+            Qty
+          </Label>
+          <Input
+            id={`item-qty-${line.key}`}
+            value={line.qty}
+            onChange={(e) => onQty(e.target.value)}
+            inputMode="numeric"
+            aria-invalid={Boolean(error?.qty)}
+            className={cn("text-center tabular-nums", error?.qty && bad)}
+            disabled={disabled}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`item-price-${line.key}`} className="text-xs text-[color:var(--color-ink-3)]">
+            Price per piece ₹
+          </Label>
+          <Input
+            id={`item-price-${line.key}`}
+            value={line.price}
+            onChange={(e) => onPrice(e.target.value)}
+            inputMode="decimal"
+            placeholder="0"
+            aria-invalid={Boolean(error?.price)}
+            className={cn("tabular-nums", error?.price && bad)}
+            disabled={disabled}
+          />
+        </div>
+        <p className="col-span-2 flex items-center justify-between text-sm sm:col-span-1 sm:block sm:pb-2.5 sm:text-right">
+          <span className="text-xs text-[color:var(--color-ink-3)] sm:hidden">Amount</span>
+          <span className="font-semibold tabular-nums">{formatInr(amount.toString())}</span>
+        </p>
+      </div>
+    </li>
   );
 }
