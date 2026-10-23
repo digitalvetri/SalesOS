@@ -170,9 +170,9 @@ async function performance(s: ReportScope) {
     sheet: "Salesperson performance",
     cols: [
       { header: "Salesperson", width: 18 }, { header: "Booked", type: "money" }, { header: "Target", type: "money" }, { header: "% of target", type: "int", width: 12 },
-      { header: "Orders", type: "int" }, { header: "Avg order", type: "money" }, { header: "Collected (verified)", type: "money", width: 20 },
+      { header: "Orders", type: "int" }, { header: "Collected (verified)", type: "money", width: 20 },
     ] as Col[],
-    rows: rows.map((r) => [r.name, num(r.booked), num(r.target), r.pct, r.orders, num(r.avgOrder), num(r.collected)]),
+    rows: rows.map((r) => [r.name, num(r.booked), num(r.target), r.pct, r.orders, num(r.collected)]),
   };
 }
 

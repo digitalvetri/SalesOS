@@ -113,7 +113,7 @@ export function PeriodKpis({
       <Tile href={ordersHref} icon={<PackagePlus className="h-4 w-4" aria-hidden />} label="Orders booked" value={t.orders}>
         <div className="font-semibold">{formatInr(t.value)} sales value</div>
         <div className="text-[color:var(--color-ink-3)]">
-          avg {t.avgOrder ? formatInr(t.avgOrder) : "—"}{t.cancelled ? ` · ${t.cancelled} cancelled` : ""}{t.noAmount ? ` · ${t.noAmount} without amount` : ""}
+          {[t.cancelled ? `${t.cancelled} cancelled` : "", t.noAmount ? `${t.noAmount} without amount` : ""].filter(Boolean).join(" · ")}
         </div>
         <div><Change pct={changeOf(t.value, prev.value)} label={prevLabel} /></div>
       </Tile>
@@ -187,8 +187,7 @@ export function MonthlyBreakdown({ year, rows, total, selected }: { year: number
               <th className="px-3 py-2.5 text-right font-semibold">Delivered</th>
               <th className="px-3 py-2.5 text-right font-semibold">Pending</th>
               <th className="px-3 py-2.5 text-right font-semibold">Collected on these orders</th>
-              <th className="px-3 py-2.5 text-right font-semibold">Still to collect</th>
-              <th className="px-3 py-2.5 text-right font-semibold sm:pr-6">Avg order</th>
+              <th className="px-3 py-2.5 text-right font-semibold sm:pr-6">Still to collect</th>
             </tr>
           </thead>
           <tbody>
@@ -206,8 +205,7 @@ export function MonthlyBreakdown({ year, rows, total, selected }: { year: number
                 <td className="px-3 py-2.5 text-right tabular-nums text-[color:var(--color-ok)]">{r.completed} <span className="text-[11px] text-[color:var(--color-ink-3)]">({pct(r.completionPct)})</span></td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-[color:var(--color-warn)]">{r.pending}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatInr(r.paidOnOrders)} <span className="text-[11px] text-[color:var(--color-ink-3)]">({pct(r.collectedPct)})</span></td>
-                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[color:var(--color-warn)]">{formatInr(r.balance)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums sm:pr-6">{r.avgOrder ? formatInr(r.avgOrder) : "—"}</td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[color:var(--color-warn)] sm:pr-6">{formatInr(r.balance)}</td>
               </tr>
             ))}
             <tr className="bg-[color:var(--color-surface-2)] font-bold">
@@ -220,8 +218,7 @@ export function MonthlyBreakdown({ year, rows, total, selected }: { year: number
               <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-ok)]">{total.completed} <span className="text-[11px] font-normal">({pct(total.completionPct)})</span></td>
               <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)]">{total.pending}</td>
               <td className="px-3 py-3 text-right tabular-nums">{formatInr(total.paidOnOrders)} <span className="text-[11px] font-normal">({pct(total.collectedPct)})</span></td>
-              <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)]">{formatInr(total.balance)}</td>
-              <td className="px-3 py-3 text-right tabular-nums sm:pr-6">{total.avgOrder ? formatInr(total.avgOrder) : "—"}</td>
+              <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)] sm:pr-6">{formatInr(total.balance)}</td>
             </tr>
           </tbody>
         </table>
@@ -253,8 +250,7 @@ export function TeamTable({ period, rows, total, label }: { period: Period; rows
               <th className="px-3 py-2.5 text-right font-semibold">Money received</th>
               <th className="px-3 py-2.5 text-right font-semibold">Delivered</th>
               <th className="px-3 py-2.5 text-right font-semibold">Pending</th>
-              <th className="px-3 py-2.5 text-right font-semibold">Still to collect</th>
-              <th className="px-3 py-2.5 text-right font-semibold sm:pr-6">Avg order</th>
+              <th className="px-3 py-2.5 text-right font-semibold sm:pr-6">Still to collect</th>
             </tr>
           </thead>
           <tbody>
@@ -279,8 +275,7 @@ export function TeamTable({ period, rows, total, label }: { period: Period; rows
                 <td className="px-3 py-2.5 text-right tabular-nums">{formatInr(r.received)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-[color:var(--color-ok)]">{r.completed} <span className="text-[11px] text-[color:var(--color-ink-3)]">({pct(r.completionPct)})</span></td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-[color:var(--color-warn)]">{r.pending}</td>
-                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[color:var(--color-warn)]">{formatInr(r.balance)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums sm:pr-6">{r.avgOrder ? formatInr(r.avgOrder) : "—"}</td>
+                <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[color:var(--color-warn)] sm:pr-6">{formatInr(r.balance)}</td>
               </tr>
             ))}
             <tr className="bg-[color:var(--color-surface-2)] font-bold">
@@ -291,8 +286,7 @@ export function TeamTable({ period, rows, total, label }: { period: Period; rows
               <td className="px-3 py-3 text-right tabular-nums">{formatInr(total.received)}</td>
               <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-ok)]">{total.completed}</td>
               <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)]">{total.pending}</td>
-              <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)]">{formatInr(total.balance)}</td>
-              <td className="px-3 py-3 text-right tabular-nums sm:pr-6">{total.avgOrder ? formatInr(total.avgOrder) : "—"}</td>
+              <td className="px-3 py-3 text-right tabular-nums text-[color:var(--color-warn)] sm:pr-6">{formatInr(total.balance)}</td>
             </tr>
           </tbody>
         </table>

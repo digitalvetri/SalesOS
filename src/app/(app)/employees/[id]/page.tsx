@@ -94,7 +94,6 @@ export default async function EmployeeDetailPage({
                 <th className="py-2 pr-3">Month</th>
                 <th className="py-2 pr-3 text-right">Orders</th>
                 <th className="py-2 pr-3 text-right">Booked</th>
-                <th className="py-2 pr-3 text-right">Avg order</th>
                 <th className="py-2 pr-3 text-right">Target</th>
                 <th className="py-2 pr-3 text-right">%</th>
                 <th className="py-2 pr-3 text-right" title="Orders booked that month that are now delivered">Delivered</th>
@@ -116,9 +115,6 @@ export default async function EmployeeDetailPage({
                   <td className="py-2 pr-3 text-right tabular-nums">{m.orders}</td>
                   <td className="py-2 pr-3 text-right tabular-nums">
                     <Money value={m.booked} />
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">
-                    <Money value={m.avgOrder} />
                   </td>
                   <td className="py-2 pr-3 text-right tabular-nums text-[color:var(--color-ink-3)]">
                     {m.hasTarget ? <Money value={m.target} /> : <span className="text-xs">Not set</span>}
